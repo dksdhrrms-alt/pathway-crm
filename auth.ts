@@ -1,11 +1,6 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const sb = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -15,33 +10,77 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { type: 'password' },
       },
       async authorize(credentials) {
-        const email = (credentials?.email as string || '').toLowerCase().trim();
-        const password = credentials?.password as string || '';
-        if (!email || !password) return null;
+        try {
+          console.log('=== AUTH ATTEMPT ===', credentials?.email);
 
-        if (!sb) return null;
+          const email = (credentials?.email as string || '').toLowerCase().trim();
+          const password = credentials?.password as string || '';
+          if (!email || !password) {
+            console.log('[AUTH] Missing credentials');
+            return null;
+          }
 
-        const { data: user } = await sb
-          .from('users').select('*')
-          .eq('email', email).single();
+          // Use server-side env vars first, fall back to NEXT_PUBLIC_ vars
+          const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+          const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-        if (!user || user.status !== 'active') return null;
+          console.log('[AUTH] Supabase URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'MISSING');
+          console.log('[AUTH] Supabase key exists:', !!supabaseKey);
 
-        // Support both bcrypt and plain text passwords
-        const pwOk = user.password.startsWith('$2')
-          ? await bcrypt.compare(password, user.password)
-          : password === user.password;
+          if (!supabaseUrl || !supabaseKey) {
+            console.error('[AUTH] Supabase env vars not configured');
+            return null;
+          }
 
-        if (!pwOk) return null;
+          const sb = createClient(supabaseUrl, supabaseKey);
 
-        console.log('[AUTH] Login OK:', user.email, 'role:', user.role);
+          const { data: user, error } = await sb
+            .from('users').select('*')
+            .eq('email', email).single();
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
+          console.log('[AUTH] DB result:', {
+            found: !!user,
+            error: error?.message,
+            errorCode: error?.code,
+            userName: user?.name,
+            userRole: user?.role,
+            pwLength: user?.password?.length,
+          });
+
+          if (error || !user) {
+            console.log('[AUTH] User not found or DB error:', error?.message);
+            return null;
+          }
+
+          if (user.status !== 'active') {
+            console.log('[AUTH] User not active:', user.status);
+            return null;
+          }
+
+          // Support both bcrypt and plain text passwords
+          const bcrypt = await import('bcryptjs');
+          const pwOk = user.password.startsWith('$2')
+            ? await bcrypt.compare(password, user.password)
+            : password === user.password;
+
+          console.log('[AUTH] Password match:', pwOk);
+
+          if (!pwOk) return null;
+
+          console.log('=== AUTH SUCCESS ===', user.email, user.role);
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          };
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          const stack = err instanceof Error ? err.stack : '';
+          console.error('=== AUTH ERROR ===', msg, stack);
+          return null;
+        }
       },
     }),
   ],
