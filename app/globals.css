@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9fafb;
+  --foreground: #111827;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar styling for kanban */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Mobile Responsive ─────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Hamburger button */
+  .hamburger-btn { display: flex !important; }
+  .mobile-backdrop { display: block !important; }
+
+  /* Sidebar: slide from left */
+  .sidebar-nav {
+    position: fixed !important;
+    left: -260px !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: 240px !important;
+    z-index: 99 !important;
+    transition: left 0.25s ease !important;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.2) !important;
+  }
+  .sidebar-nav.mobile-open { left: 0 !important; }
+
+  /* Main content: no left margin */
+  .md\:ml-60 { margin-left: 0 !important; }
+  main { padding-left: 12px !important; padding-right: 12px !important; }
+
+  /* Top bar: space for hamburger */
+  .topbar-wrap { left: 0 !important; padding-left: 52px !important; }
+  .topbar-search { display: none !important; }
+
+  /* Grids: stack */
+  .grid.xl\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+  .grid.xl\:grid-cols-2 { grid-template-columns: 1fr !important; }
+  .grid.sm\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid.sm\:grid-cols-3 { grid-template-columns: 1fr !important; }
+
+  /* Tables: horizontal scroll */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  thead, tbody, tfoot { display: table; width: 100%; min-width: 600px; }
+
+  /* Modals: bottom sheet style */
+  .fixed.inset-0.z-50.flex { align-items: flex-end !important; }
+  .fixed.inset-0.z-50.flex > div:not(.fixed) {
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 90vh !important; overflow-y: auto !important;
+    margin: 0 !important;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="date"], input[type="tel"],
+  select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Kanban: horizontal scroll */
+  .kanban-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 16px !important; }
+  .kanban-col { min-width: 260px !important; flex-shrink: 0 !important; }
+
+  /* Charts: reduced height */
+  .recharts-responsive-container { min-height: 200px; }
+}
