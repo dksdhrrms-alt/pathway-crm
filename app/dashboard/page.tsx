@@ -154,6 +154,17 @@ export default function DashboardPage() {
     setShowQuotaModal(false);
   }
 
+  // Notification counts
+  const overdueTaskCount = allTasks.filter(
+    (t) => t.ownerId === userId && t.status !== 'Completed' && t.dueDate && new Date(t.dueDate + 'T00:00:00') < new Date(),
+  ).length;
+  const closingTodayCount = allOpps.filter((o) => {
+    if (!o.closeDate || o.stage === 'Closed Won' || o.stage === 'Closed Lost') return false;
+    if (o.ownerId !== userId) return false;
+    const days = Math.floor((new Date(o.closeDate + 'T00:00:00').getTime() - new Date().getTime()) / 86400000);
+    return days >= 0 && days <= 1;
+  }).length;
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -161,6 +172,40 @@ export default function DashboardPage() {
       <TopBar placeholder="Search CRM..." />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
+
+          {/* Urgent alert banner */}
+          {(overdueTaskCount > 0 || closingTodayCount > 0) && (
+            <div
+              style={{
+                background: '#FCEBEB', border: '1px solid #F09595',
+                borderRadius: '10px', padding: '12px 16px',
+                marginTop: '24px', marginBottom: '0',
+                display: 'flex', alignItems: 'center', gap: '12px',
+              }}
+            >
+              <span style={{ fontSize: '20px' }}>&#9888;&#65039;</span>
+              <div style={{ flex: 1, fontSize: '13px', color: '#A32D2D' }}>
+                {overdueTaskCount > 0 && (
+                  <span><strong>{overdueTaskCount}</strong> overdue task{overdueTaskCount > 1 ? 's' : ''}</span>
+                )}
+                {overdueTaskCount > 0 && closingTodayCount > 0 && ' \u00B7 '}
+                {closingTodayCount > 0 && (
+                  <span><strong>{closingTodayCount}</strong> deal{closingTodayCount > 1 ? 's' : ''} closing today</span>
+                )}
+              </div>
+              <a
+                href="/tasks"
+                style={{
+                  fontSize: '12px', color: '#A32D2D', fontWeight: 500,
+                  textDecoration: 'none', padding: '4px 10px',
+                  border: '1px solid #F09595', borderRadius: '6px',
+                }}
+              >
+                View &rarr;
+              </a>
+            </div>
+          )}
+
           <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
+import NotificationBell from './NotificationBell';
 
 interface TopBarProps {
   searchValue?: string;
@@ -82,8 +83,9 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
         />
       </div>
 
-      {/* User avatar + dropdown */}
+      {/* Notifications + User avatar */}
       <div className="relative flex items-center gap-3" ref={dropdownRef}>
+        <NotificationBell />
         <div className="hidden sm:flex items-center gap-2">
           <span className="text-sm text-gray-600">{userName}</span>
           {roleBadge && (
