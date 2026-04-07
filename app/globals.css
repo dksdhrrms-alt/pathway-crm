@@ -93,6 +93,10 @@ body {
 
   /* Charts: reduced height */
   .recharts-responsive-container { min-height: 200px; }
+
+  /* Account 360: stack columns */
+  .account-360-grid { grid-template-columns: 1fr !important; }
+  .account-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 /* ── Quick Log slide-up animation ──────────────────────────── */
