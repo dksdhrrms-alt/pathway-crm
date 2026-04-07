@@ -94,3 +94,12 @@ body {
   /* Charts: reduced height */
   .recharts-responsive-container { min-height: 200px; }
 }
+
+/* ── Quick Log slide-up animation ──────────────────────────── */
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slideUp {
+  animation: slideUp 0.2s ease-out;
+}

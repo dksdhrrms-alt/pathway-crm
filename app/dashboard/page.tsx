@@ -10,6 +10,7 @@ import MetricCard from '@/app/components/MetricCard';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Toast from '@/app/components/Toast';
+import QuickLogModal from '@/app/components/QuickLogModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const [quotaTarget, setQuotaTarget] = useState(500000);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaInput, setQuotaInput] = useState('500000');
+  const [quickLogType, setQuickLogType] = useState<ActivityType | null>(null);
 
   useEffect(() => {
     try {
@@ -169,7 +171,20 @@ export default function DashboardPage() {
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Quick Log shortcuts */}
+              <div className="flex gap-1.5">
+                {(['Call', 'Meeting', 'Email', 'Note'] as ActivityType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setQuickLogType(t)}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs hover:border-gray-300 hover:shadow-sm transition-all flex items-center gap-1"
+                  >
+                    {t === 'Call' ? '📞' : t === 'Meeting' ? '🤝' : t === 'Email' ? '📧' : '📝'}
+                    <span className="hidden sm:inline">{t}</span>
+                  </button>
+                ))}
+              </div>
               {/* View tabs */}
               <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 {isAdminCeo && (
@@ -394,6 +409,13 @@ export default function DashboardPage() {
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+
+      {quickLogType && (
+        <QuickLogModal
+          onClose={() => setQuickLogType(null)}
+          initialType={quickLogType}
+        />
+      )}
     </div>
   );
 }
