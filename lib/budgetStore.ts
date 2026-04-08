@@ -1,6 +1,6 @@
 import { supabase, supabaseEnabled } from './supabase';
 
-export type BudgetCategory = 'all' | 'monogastrics' | 'ruminants' | 'latam' | 'familyb2b';
+export type BudgetCategory = 'all' | 'monogastrics' | 'ruminants' | 'latam' | 'familyb2b' | 'swine';
 
 export interface BudgetEntry {
   id: string;
@@ -27,19 +27,50 @@ function saveLocal(entries: BudgetEntry[]) {
 
 export async function getBudgets(year: number, category: BudgetCategory): Promise<BudgetEntry[]> {
   if (supabaseEnabled) {
-    const { data } = await supabase
-      .from('sales_budgets')
-      .select('*')
-      .eq('year', year)
-      .eq('category', category);
-    if (data && data.length > 0) {
-      return data.map((r) => ({
-        id: r.id,
-        year: r.year,
-        month: r.month,
-        category: r.category,
-        budgetAmount: Number(r.budget_amount),
-      }));
+    try {
+      const { data, error } = await supabase
+        .from('sales_budgets')
+        .select('*')
+        .eq('year', year)
+        .eq('category', category.toLowerCase());
+
+      if (error) {
+        console.error('[BUDGET] Supabase error:', error.message);
+      }
+
+      if (data && data.length > 0) {
+        const mapped = data.map((r) => ({
+          id: r.id,
+          year: Number(r.year),
+          month: Number(r.month),
+          category: String(r.category) as BudgetCategory,
+          budgetAmount: Number(r.budget_amount) || 0,
+        }));
+        // Also cache locally
+        const existing = loadLocal().filter((b) => !(b.year === year && b.category === category));
+        saveLocal([...existing, ...mapped]);
+        return mapped;
+      }
+
+      // If no data found with exact match, try ilike for case-insensitive
+      const { data: data2 } = await supabase
+        .from('sales_budgets')
+        .select('*')
+        .eq('year', year)
+        .ilike('category', category);
+
+      if (data2 && data2.length > 0) {
+        console.log(`[BUDGET] Found ${data2.length} budgets via ilike for ${category}`);
+        return data2.map((r) => ({
+          id: r.id,
+          year: Number(r.year),
+          month: Number(r.month),
+          category: String(r.category) as BudgetCategory,
+          budgetAmount: Number(r.budget_amount) || 0,
+        }));
+      }
+    } catch (err) {
+      console.error('[BUDGET] Fetch error:', err);
     }
   }
   return loadLocal().filter((b) => b.year === year && b.category === category);
@@ -70,6 +101,25 @@ export async function setBudgetBulk(year: number, category: BudgetCategory, amou
 
 export function getBudgetAmount(budgets: BudgetEntry[], month: number): number {
   return budgets.find((b) => b.month === month)?.budgetAmount ?? 0;
+}
+
+// Build budgets from raw Supabase rows (used by CRMContext salesBudgets)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function budgetsFromRaw(raw: any[], year: number, category: string): BudgetEntry[] {
+  return raw
+    .filter((r) => {
+      const rYear = Number(r.year);
+      const rCat = String(r.category || '').toLowerCase();
+      const cat = category.toLowerCase();
+      return rYear === year && (cat === 'all' || rCat === cat);
+    })
+    .map((r) => ({
+      id: r.id,
+      year: Number(r.year),
+      month: Number(r.month),
+      category: String(r.category) as BudgetCategory,
+      budgetAmount: Number(r.budget_amount ?? r.budgetAmount) || 0,
+    }));
 }
 
 // Seed budgets

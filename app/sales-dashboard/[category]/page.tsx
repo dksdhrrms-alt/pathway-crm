@@ -10,9 +10,8 @@ import {
 } from 'recharts';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
-import { getBudgets, setBudget, setBudgetBulk, getBudgetAmount, BudgetEntry, BudgetCategory, getSeedBudgets } from '@/lib/budgetStore';
+import { getBudgets, setBudget, setBudgetBulk, getBudgetAmount, budgetsFromRaw, BudgetEntry, BudgetCategory } from '@/lib/budgetStore';
 import { useCRM } from '@/lib/CRMContext';
-void getSeedBudgets; // used elsewhere
 import * as XLSX from 'xlsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -53,7 +52,7 @@ export default function SalesDashboardPage() {
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
-  const { saleRecords: salesData } = useCRM();
+  const { saleRecords: salesData, salesBudgets: ctxBudgets } = useCRM();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -62,24 +61,37 @@ export default function SalesDashboardPage() {
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  // Load data
+  // Load data — try Supabase first, fall back to CRMContext salesBudgets
   const loadBudgets = useCallback(async () => {
     if (category === 'all') {
       const [m, r, l, f] = await Promise.all([
         getBudgets(year, 'monogastrics'), getBudgets(year, 'ruminants'), getBudgets(year, 'latam'), getBudgets(year, 'familyb2b'),
       ]);
+      // If Supabase returned empty, try CRMContext raw budgets
+      const mFinal = m.length > 0 ? m : budgetsFromRaw(ctxBudgets, year, 'monogastrics');
+      const rFinal = r.length > 0 ? r : budgetsFromRaw(ctxBudgets, year, 'ruminants');
+      const lFinal = l.length > 0 ? l : budgetsFromRaw(ctxBudgets, year, 'latam');
+      const fFinal = f.length > 0 ? f : budgetsFromRaw(ctxBudgets, year, 'familyb2b');
+
       const combined: BudgetEntry[] = [];
       for (let mo = 1; mo <= 12; mo++) {
         combined.push({
           id: `all-${year}-${mo}`, year, month: mo, category: 'all',
-          budgetAmount: getBudgetAmount(m, mo) + getBudgetAmount(r, mo) + getBudgetAmount(l, mo) + getBudgetAmount(f, mo),
+          budgetAmount: getBudgetAmount(mFinal, mo) + getBudgetAmount(rFinal, mo) + getBudgetAmount(lFinal, mo) + getBudgetAmount(fFinal, mo),
         });
       }
       setBudgets(combined);
     } else {
-      setBudgets(await getBudgets(year, category));
+      const result = await getBudgets(year, category);
+      // Fallback to CRMContext if Supabase returned nothing
+      if (result.length > 0) {
+        setBudgets(result);
+      } else {
+        const fromCtx = budgetsFromRaw(ctxBudgets, year, category);
+        setBudgets(fromCtx);
+      }
     }
-  }, [year, category]);
+  }, [year, category, ctxBudgets]);
 
   useEffect(() => { loadBudgets(); }, [loadBudgets]);
 
