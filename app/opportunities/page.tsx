@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import {
   DragDropContext,
   Droppable,
@@ -18,6 +17,8 @@ import NewOpportunityModal from '@/app/components/NewOpportunityModal';
 import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EditOpportunityModal from '@/app/components/EditOpportunityModal';
+import ViewTabs from '@/app/components/ViewTabs';
+import { useViewFilter } from '@/hooks/useViewFilter';
 
 const TODAY = new Date().toISOString().split('T')[0];
 const STAGES: Stage[] = [
@@ -70,16 +71,11 @@ const columnTitleStyle: Record<Stage, string> = {
 };
 
 export default function OpportunitiesPage() {
-  const { data: session } = useSession();
-  const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
-  const userId = session?.user?.id ?? '';
-
   const { opportunities: allOpps, accounts, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
   const { users } = useUsers();
+  const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
 
-  const scopedOpps = useMemo(() => {
-    return isAdmin ? allOpps : allOpps.filter((o) => o.ownerId === userId);
-  }, [allOpps, isAdmin, userId]);
+  const scopedOpps = useMemo(() => filterByView(allOpps), [allOpps, activeView, filterByView]);
 
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [oppList, setOppList] = useState<Opportunity[]>([]);
@@ -92,6 +88,11 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     setOppList([...scopedOpps]);
   }, [scopedOpps]);
+
+  // Stats for current view
+  const openOpps = scopedOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+  const totalPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const closedWonCount = scopedOpps.filter((o) => o.stage === 'Closed Won').length;
 
   function getAccountName(accountId: string): string {
     return accounts.find((a) => a.id === accountId)?.name ?? '';
@@ -142,12 +143,13 @@ export default function OpportunitiesPage() {
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-full mx-auto">
-          <div className="mt-6 mb-6 flex items-center justify-between">
+          <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{scopedOpps.length} {isAdmin ? 'total' : 'your'} opportunit{scopedOpps.length !== 1 ? 'ies' : 'y'}</p>
+              <p className="text-sm text-gray-500 mt-0.5">{scopedOpps.length} opportunit{scopedOpps.length !== 1 ? 'ies' : 'y'} &middot; {viewLabel}</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={isAdminOrCeo} />
               <button
                 onClick={() => setShowNewModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
@@ -175,6 +177,22 @@ export default function OpportunitiesPage() {
                   List
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN OPPORTUNITIES</div>
+              <div style={{ fontSize: '22px', fontWeight: 500 }}>{openOpps.length}</div>
+            </div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>PIPELINE VALUE</div>
+              <div style={{ fontSize: '22px', fontWeight: 500 }}>{formatCurrency(totalPipeline)}</div>
+            </div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>CLOSED WON</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: '#0F6E56' }}>{closedWonCount}</div>
             </div>
           </div>
 

@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import { Task } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -11,6 +10,8 @@ import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EditTaskModal from '@/app/components/EditTaskModal';
+import ViewTabs from '@/app/components/ViewTabs';
+import { useViewFilter } from '@/hooks/useViewFilter';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -31,21 +32,22 @@ const priorityStyles: Record<string, string> = {
 };
 
 export default function TasksPage() {
-  const { data: session } = useSession();
-  const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
-  const userId = session?.user?.id ?? '';
-
   const { tasks: allTasks, accounts, contacts, toggleTask, deleteTask, loading } = useCRM();
   const { users } = useUsers();
+  const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
 
-  const taskList = useMemo(() => {
-    return isAdmin ? allTasks : allTasks.filter((t) => t.ownerId === userId);
-  }, [allTasks, isAdmin, userId]);
+  const taskList = useMemo(() => filterByView(allTasks), [allTasks, activeView, filterByView]);
 
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [editTaskId, setEditTaskId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Stats for current view
+  const openTaskCount = taskList.filter((t) => t.status === 'Open').length;
+  const overdueCount = taskList.filter((t) => t.dueDate < TODAY && t.status === 'Open').length;
+  const dueTodayCount = taskList.filter((t) => t.dueDate === TODAY && t.status === 'Open').length;
+  const completedCount = taskList.filter((t) => t.status === 'Completed').length;
 
   const tabs: FilterTab[] = ['All', 'Due Today', 'Overdue', 'Upcoming', 'Completed'];
 
@@ -100,18 +102,41 @@ export default function TasksPage() {
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
-          <div className="mt-6 mb-6 flex items-center justify-between">
+          <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{taskList.length} task{taskList.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
+              <p className="text-sm text-gray-500 mt-0.5">{openTaskCount} open &middot; {viewLabel}</p>
             </div>
-            <button
-              onClick={() => setShowNewTaskModal(true)}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#1a4731' }}
-            >
-              + New Task
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={isAdminOrCeo} />
+              <button
+                onClick={() => setShowNewTaskModal(true)}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#1a4731' }}
+              >
+                + New Task
+              </button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN TASKS</div>
+              <div style={{ fontSize: '22px', fontWeight: 500 }}>{openTaskCount}</div>
+            </div>
+            <div style={{ background: overdueCount > 0 ? '#FCEBEB' : '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OVERDUE</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: overdueCount > 0 ? '#E24B4A' : 'inherit' }}>{overdueCount}</div>
+            </div>
+            <div style={{ background: dueTodayCount > 0 ? '#FAEEDA' : '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>DUE TODAY</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: dueTodayCount > 0 ? '#854F0B' : 'inherit' }}>{dueTodayCount}</div>
+            </div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>COMPLETED</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: '#0F6E56' }}>{completedCount}</div>
+            </div>
           </div>
 
           {/* Filter Tabs */}
