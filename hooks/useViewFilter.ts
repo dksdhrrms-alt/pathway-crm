@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useUsers } from '@/lib/UserContext';
 import { MONOGASTRICS_GROUP } from '@/lib/teams';
@@ -51,12 +51,12 @@ export function useViewFilter() {
         ? `${teamLabel} team view`
         : 'My personal view';
 
-  // Filter by ownerId
-  function filterByView<T extends { ownerId: string }>(data: T[]): T[] {
+  // Filter by ownerId — stable reference via useCallback
+  const filterByView = useCallback(<T extends { ownerId: string }>(data: T[]): T[] => {
     if (activeView === 'company') return data;
     if (activeView === 'team') return data.filter((item) => teamMemberIds.includes(item.ownerId));
     return data.filter((item) => item.ownerId === userId);
-  }
+  }, [activeView, teamMemberIds, userId]);
 
   return { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo, userId, teamMemberIds };
 }
