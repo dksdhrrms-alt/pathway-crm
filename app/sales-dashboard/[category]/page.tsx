@@ -17,8 +17,8 @@ import * as XLSX from 'xlsx';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const CURRENT_MONTH = 3; // March
-const CURRENT_YEAR = 2026;
+const CURRENT_MONTH = new Date().getMonth() + 1; // 1-12
+const CURRENT_YEAR = new Date().getFullYear();
 
 const CATEGORY_LABELS: Record<string, string> = {
   all: 'All Categories', monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM', familyb2b: 'Family / B2B',

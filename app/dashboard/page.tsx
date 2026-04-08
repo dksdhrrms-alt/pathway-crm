@@ -17,7 +17,7 @@ import {
 } from 'recharts';
 
 const TODAY = new Date().toISOString().split('T')[0];
-const CURRENT_MONTH = '2026-03';
+const CURRENT_MONTH = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
 
 const typeIcon: Record<ActivityType, string> = {
   Call: '📞', Meeting: '🤝', Email: '📧', Note: '📝',
