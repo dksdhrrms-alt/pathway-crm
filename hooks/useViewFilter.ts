@@ -39,6 +39,7 @@ export function useViewFilter() {
       ruminants: 'Ruminants',
       latam: 'LATAM',
       familyb2b: 'Family/B2B',
+      marketing: 'Marketing',
       management: 'Management',
     };
     return map[userTeam] || 'Team';

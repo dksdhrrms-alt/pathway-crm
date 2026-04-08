@@ -4,6 +4,7 @@ export const TEAMS = [
   { id: 'ruminants', label: 'Ruminants', color: '#0F6E56', bg: '#E1F5EE' },
   { id: 'latam', label: 'LATAM', color: '#854F0B', bg: '#FAEEDA' },
   { id: 'familyb2b', label: 'Family / B2B', color: '#534AB7', bg: '#EEEDFE' },
+  { id: 'marketing', label: 'Marketing', color: '#993556', bg: '#FBEAF0' },
   { id: 'management', label: 'Management', color: '#5F5E5A', bg: '#F1EFE8' },
 ] as const;
 

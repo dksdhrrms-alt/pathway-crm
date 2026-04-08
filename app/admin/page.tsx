@@ -395,6 +395,7 @@ export default function AdminPage() {
                             <option value="ruminants">Ruminants</option>
                             <option value="latam">LATAM</option>
                             <option value="familyb2b">Family / B2B</option>
+                            <option value="marketing">Marketing</option>
                             <option value="management">Management</option>
                           </select>
                         </td>

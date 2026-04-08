@@ -160,6 +160,7 @@ export default function ReportsPage() {
     { key: 'ruminants', label: 'Ruminants', color: '#22c55e' },
     { key: 'latam', label: 'LATAM', color: '#f59e0b' },
     { key: 'familyb2b', label: 'Family / B2B', color: '#8b5cf6' },
+    { key: 'marketing', label: 'Marketing', color: '#993556' },
     { key: 'management', label: 'Management', color: '#6b7280' },
   ];
 
@@ -194,6 +195,7 @@ export default function ReportsPage() {
       { id: 'swine', teamFilter: 'swine', label: 'Swine' },
       { id: 'ruminants', teamFilter: 'ruminants', label: 'Ruminant' },
       { id: 'latam', teamFilter: 'latam', label: 'LATAM' },
+      { id: 'marketing', teamFilter: 'marketing', label: 'Marketing' },
       { id: 'management', teamFilter: 'management', label: 'Management' },
     ];
     teams.forEach(({ id, teamFilter, label }) => {

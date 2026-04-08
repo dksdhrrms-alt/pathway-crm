@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const currentTeam = (currentUser as { team?: string })?.team ?? '';
   const dashboardTeam = currentTeam === 'swine' ? 'monogastrics' : currentTeam;
   const MONO_GROUP = ['monogastrics', 'swine'];
-  const teamLabel = dashboardTeam ? ({ monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM', familyb2b: 'Family / B2B', management: 'Management' }[dashboardTeam] || dashboardTeam) : 'Team';
+  const teamLabel = dashboardTeam ? ({ monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM', familyb2b: 'Family / B2B', marketing: 'Marketing', management: 'Management' }[dashboardTeam] || dashboardTeam) : 'Team';
   const teamMembers = useMemo(() => {
     if (!dashboardTeam) return [];
     if (dashboardTeam === 'monogastrics') return users.filter((u) => MONO_GROUP.includes((u as { team?: string }).team || ''));

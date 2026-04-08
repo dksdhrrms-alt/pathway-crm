@@ -1,7 +1,7 @@
 export type UserRole = 'administrative_manager' | 'admin' | 'ceo' | 'sales_director' | 'coo' | 'sales' | 'marketing';
 export type UserStatus = 'active' | 'pending' | 'inactive';
 
-export type UserTeam = 'monogastrics' | 'ruminants' | 'latam' | 'familyb2b' | 'management' | null;
+export type UserTeam = 'monogastrics' | 'swine' | 'ruminants' | 'latam' | 'familyb2b' | 'marketing' | 'management' | null;
 
 export interface AppUser {
   id: string;

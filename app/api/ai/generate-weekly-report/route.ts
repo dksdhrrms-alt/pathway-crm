@@ -14,9 +14,10 @@ const SALES_CATS = ['familyb2b', 'ruminants', 'monogastrics', 'swine', 'latam'];
 const CAT_LABELS: Record<string, string> = {
   familyb2b: 'Family/B2B', ruminants: 'Ruminant', monogastrics: 'Poultry', swine: 'Swine', latam: 'LATAM',
 };
-const TEAM_KEYS = ['poultry', 'swine', 'ruminants', 'latam', 'management'];
+const TEAM_KEYS = ['poultry', 'swine', 'ruminants', 'latam', 'marketing', 'management'];
 const TEAM_DISPLAY: Record<string, string> = {
-  poultry: 'Poultry', swine: 'Swine', ruminants: 'Ruminant', latam: 'LATAM', management: 'Management',
+  poultry: 'Poultry', swine: 'Swine', ruminants: 'Ruminant', latam: 'LATAM',
+  marketing: 'Marketing (Tech & R&D)', management: 'Management',
 };
 
 // ── Cell helpers ──
