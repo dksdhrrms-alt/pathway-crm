@@ -196,18 +196,86 @@ export async function POST(request: Request) {
       if (hasAI && (actCount > 0 || taskCount > 0)) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const actText = (data.activities || []).slice(0, 15).map((a: any) => `- [${sanitize(a.type || 'Note')}] ${sanitize(a.subject || '')}`).join('\n') || 'None';
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const oppText = (data.opportunities || []).slice(0, 8).map((o: any) => `- ${sanitize(o.name || '')} $${Number(o.amount) || 0} ${sanitize(o.stage || '')}`).join('\n') || 'None';
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const taskText = (data.tasks || []).slice(0, 8).map((t: any) => `- ${sanitize(t.subject || '')} due ${t.dueDate || ''}`).join('\n') || 'None';
+          const actText = actCount > 0 ? (data.activities || []).slice(0, 15).map((a: any) => {
+            const type = sanitize(a.type || 'Activity');
+            const subject = sanitize(a.subject || '');
+            const desc = sanitize(String(a.description || '')).substring(0, 200);
+            const account = sanitize(a.accountName || a.account_name || a.relatedAccountName || a.related_account_name || '');
+            const contact = sanitize(a.contactName || a.contact_name || a.relatedContactName || a.related_contact_name || '');
+            const date = a.date ? new Date(a.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            let line = `[${type}]`;
+            if (date) line += ` ${date}`;
+            line += ` - "${subject}"`;
+            if (account) line += ` | Account: ${account}`;
+            if (contact) line += ` | Contact: ${contact}`;
+            if (desc) line += ` | Notes: ${desc}`;
+            return line;
+          }).join('\n') : 'No activities this period';
 
-          const prompt = sanitize(`Summarize CRM data for Pathway Intermediates USA, ${TEAM_DISPLAY[team]} team.\nActivities:\n${actText}\nOpportunities:\n${oppText}\nTasks:\n${taskText}\nReply ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-5 bullets, under 15 words each)`);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const oppText = oppCount > 0 ? (data.opportunities || []).slice(0, 8).map((o: any) => {
+            const name = sanitize(o.name || '');
+            const account = sanitize(o.accountName || o.account_name || '');
+            const stage = sanitize(o.stage || '');
+            const amount = Number(o.amount || 0);
+            const closeDate = sanitize(o.closeDate || o.close_date || '');
+            const nextStep = sanitize(String(o.nextStep || o.next_step || '')).substring(0, 100);
+            let line = `"${name}"`;
+            if (account) line += ` | Account: ${account}`;
+            line += ` | Stage: ${stage}`;
+            if (amount > 0) line += ` | $${amount.toLocaleString()}`;
+            if (closeDate) line += ` | Close: ${closeDate}`;
+            if (nextStep) line += ` | Next: ${nextStep}`;
+            return line;
+          }).join('\n') : 'No open opportunities';
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const taskText = taskCount > 0 ? (data.tasks || []).slice(0, 8).map((t: any) => {
+            const subject = sanitize(t.subject || '');
+            const due = sanitize(t.dueDate || t.due_date || '');
+            const account = sanitize(t.relatedAccountName || t.related_account_name || '');
+            const priority = sanitize(t.priority || 'Medium');
+            let line = `[${priority.toUpperCase()}] "${subject}"`;
+            if (due) line += ` | Due: ${due}`;
+            if (account) line += ` | Account: ${account}`;
+            return line;
+          }).join('\n') : 'No pending tasks';
+
+          const teamName = TEAM_DISPLAY[team];
+          const prompt = sanitize(`You are a sales manager at Pathway Intermediates USA writing the weekly report for the ${teamName} team.
+
+Below is the ACTUAL data from our CRM. Use these specific details in your summary - mention account names, contact names, deal values, and what was discussed.
+
+=== ACTIVITIES THIS PERIOD ===
+${actText}
+
+=== OPEN OPPORTUNITIES ===
+${oppText}
+
+=== PENDING TASKS ===
+${taskText}
+
+Write a professional weekly summary:
+
+"thisWeek": Summarize what happened this week.
+- Mention specific accounts and contacts by name
+- Note what type of interaction (call/meeting/email)
+- Include key outcomes or next steps discussed
+- 3-5 bullet points starting with -
+
+"nextWeek": What should the team do next week?
+- Based on pending tasks and open opportunities
+- Mention specific accounts and deals to follow up
+- Include deal stages and amounts where relevant
+- 3-5 bullet points starting with -
+
+IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
+{"thisWeek":"- point1\\n- point2\\n- point3","nextWeek":"- point1\\n- point2\\n- point3"}`);
 
           const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
-            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }),
+            body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
           });
           console.log(`[REPORT] ${team} AI status:`, res.status);
           if (!res.ok) { console.error(`[REPORT] ${team} AI error:`, await res.text()); throw new Error(`${team} AI failed`); }
