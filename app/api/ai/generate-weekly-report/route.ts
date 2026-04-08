@@ -1,46 +1,69 @@
 import { auth } from '@/auth';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ShadingType, VerticalAlign } from 'docx';
+import {
+  Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+  AlignmentType, WidthType, BorderStyle, ShadingType, VerticalAlign,
+  PageOrientation,
+} from 'docx';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const MONTH_NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const CATEGORIES = ['monogastrics', 'ruminants', 'latam', 'familyb2b'];
-const CAT_LABELS: Record<string, string> = { monogastrics: 'Poultry', ruminants: 'Ruminant', latam: 'LATAM', familyb2b: 'Family/B2B' };
-const TEAM_LABELS: Record<string, string> = { monogastrics: 'Monogastric', ruminants: 'Ruminant', latam: 'LATAM', management: 'Management' };
+const SALES_CATS = ['familyb2b', 'ruminants', 'monogastrics', 'swine', 'latam'];
+const CAT_LABELS: Record<string, string> = {
+  familyb2b: 'Family/B2B', ruminants: 'Ruminant', monogastrics: 'Poultry', swine: 'Swine', latam: 'LATAM',
+};
+const TEAM_KEYS = ['poultry', 'swine', 'ruminants', 'latam', 'management'];
+const TEAM_DISPLAY: Record<string, string> = {
+  poultry: 'Poultry', swine: 'Swine', ruminants: 'Ruminant', latam: 'LATAM', management: 'Management',
+};
 
+// ── Cell helpers ──
 const brd = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
 const borders = { top: brd, bottom: brd, left: brd, right: brd };
 
-function c(text: string, o: { bold?: boolean; bg?: string; color?: string; center?: boolean; width?: number } = {}) {
-  return new TableCell({ borders, width: { size: o.width || 1000, type: WidthType.DXA },
+function cell(text: string, o: { bold?: boolean; bg?: string; color?: string; center?: boolean; width?: number; size?: number } = {}) {
+  const lines = String(text || '').split('\n');
+  return new TableCell({
+    borders, width: { size: o.width || 1000, type: WidthType.DXA },
     shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
-    verticalAlign: VerticalAlign.CENTER, margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    children: [new Paragraph({ alignment: o.center ? AlignmentType.CENTER : AlignmentType.LEFT,
-      children: [new TextRun({ text: String(text), bold: o.bold || false, size: 18, color: o.color || '000000', font: 'Arial' })] })] });
+    verticalAlign: VerticalAlign.CENTER,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: lines.map((line, i) => new Paragraph({
+      alignment: o.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+      spacing: i < lines.length - 1 ? { after: 60 } : {},
+      children: [new TextRun({ text: line, bold: o.bold || false, size: o.size || 18, color: o.color || '000000', font: 'Arial' })],
+    })),
+  });
 }
 
-function mc(lines: string[], o: { width?: number; bg?: string } = {}) {
-  return new TableCell({ borders, width: { size: o.width || 4000, type: WidthType.DXA },
+function multiCell(lines: string[], o: { width?: number; bg?: string } = {}) {
+  return new TableCell({
+    borders, width: { size: o.width || 4000, type: WidthType.DXA },
     shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
-    margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    children: lines.map((l) => new Paragraph({ children: [new TextRun({ text: l, size: 18, font: 'Arial' })] })) });
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: (lines.length > 0 ? lines : ['']).map((l) => new Paragraph({
+      spacing: { after: 40 },
+      children: [new TextRun({ text: l, size: 18, font: 'Arial' })],
+    })),
+  });
 }
 
 function fmtUSD(n: number) { return n > 0 ? '$' + Math.round(n).toLocaleString('en-US') : '—'; }
-function achCol(p: number) { return p >= 80 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
+function achColor(p: number) { return p >= 100 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    // Get pre-computed teamSummaries from client
     const { teamSummaries } = await request.json();
 
-    // Fetch ONLY sales data from Supabase (needs batching for >1000 rows)
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
+    // ── Fetch sales + budgets from Supabase ──
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const sb = createClient(url, key);
     const [sb1, sb2, sb3, budRes] = await Promise.all([
       sb.from('sale_records').select('*').range(0, 999),
       sb.from('sale_records').select('*').range(1000, 1999),
@@ -52,13 +75,6 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const budgets = (budRes.data || []) as any[];
 
-    console.log(`[REPORT] Sales: ${records.length} records, ${budgets.length} budgets`);
-    Object.entries(teamSummaries || {}).forEach(([t, d]) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const data = d as any;
-      console.log(`[REPORT] Team ${t}: acts=${data.activities?.length || 0} tasks=${data.tasks?.length || 0} opps=${data.opportunities?.length || 0}`);
-    });
-
     const now = new Date();
     const curMonth = now.getMonth() + 1;
     const curYear = now.getFullYear();
@@ -67,33 +83,88 @@ export async function POST(request: Request) {
     const months: { m: number; y: number }[] = [];
     for (let i = 2; i >= 0; i--) { let m = curMonth - i, y = curYear; if (m <= 0) { m += 12; y--; } months.push({ m, y }); }
 
-    // Sales helpers
+    // ── Sales helpers ──
     const getMonthSales = (cat: string, y: number, m: number) => {
       const pfx = `${y}-${String(m).padStart(2, '0')}`;
-      return records.filter((r) => r.date?.startsWith(pfx) && (cat === 'all' || r.category === cat)).reduce((s: number, r: { amount?: number }) => s + (Number(r.amount) || 0), 0);
+      return records.filter((r) => r.date?.startsWith(pfx) && (cat === 'all' || r.category === cat))
+        .reduce((s: number, r: { amount?: number }) => s + (Number(r.amount) || 0), 0);
     };
-    const getCumSales = (cat: string, y: number) => records.filter((r) => { const p = (r.date || '').split('-'); return parseInt(p[0]) === y && parseInt(p[1]) <= curMonth && (cat === 'all' || r.category === cat); }).reduce((s: number, r: { amount?: number }) => s + (Number(r.amount) || 0), 0);
-    const getBgt = (cat: string, y: number, m: number) => { const f = budgets.find((b) => Number(b.year) === y && Number(b.month) === m && b.category === cat); return Number(f?.budget_amount) || Number(f?.budgetAmount) || 0; };
-    const getAnnBgt = (cat: string, y: number) => budgets.filter((b) => Number(b.year) === y && b.category === cat).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+    const getCumSales = (cat: string, y: number) =>
+      records.filter((r) => { const p = (r.date || '').split('-'); return parseInt(p[0]) === y && parseInt(p[1]) <= curMonth && (cat === 'all' || r.category === cat); })
+        .reduce((s: number, r: { amount?: number }) => s + (Number(r.amount) || 0), 0);
+    const getBgt = (cat: string, y: number, m: number) => {
+      const f = budgets.find((b) => Number(b.year) === y && Number(b.month) === m && b.category === cat);
+      return Number(f?.budget_amount) || Number(f?.budgetAmount) || 0;
+    };
+    const getAnnBgt = (cat: string, y: number) =>
+      budgets.filter((b) => Number(b.year) === y && b.category === cat)
+        .reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
 
-    // Build sales table
-    const salesRows = CATEGORIES.map((cat) => {
-      const m1 = getMonthSales(cat, months[0].y, months[0].m), m2 = getMonthSales(cat, months[1].y, months[1].m), m3 = getMonthSales(cat, months[2].y, months[2].m);
-      const bgt = getBgt(cat, curYear, curMonth), annBgt = getAnnBgt(cat, curYear), cum = getCumSales(cat, curYear);
-      const ach = bgt > 0 ? Math.round((m3 / bgt) * 100) : 0, cumAch = annBgt > 0 ? Math.round((cum / annBgt) * 100) : 0;
+    // ── Build sales rows (Family/B2B, Ruminant, Poultry, Swine, LATAM) ──
+    const salesRows = SALES_CATS.map((cat) => {
+      const m1 = getMonthSales(cat, months[0].y, months[0].m);
+      const m2 = getMonthSales(cat, months[1].y, months[1].m);
+      const m3 = getMonthSales(cat, months[2].y, months[2].m);
+      const bgt = getBgt(cat, curYear, curMonth);
+      const annBgt = getAnnBgt(cat, curYear);
+      const cum = getCumSales(cat, curYear);
+      const ach = bgt > 0 ? Math.round((m3 / bgt) * 100) : 0;
+      const cumAch = annBgt > 0 ? Math.round((cum / annBgt) * 100) : 0;
       return { label: CAT_LABELS[cat], m1, m2, m3, bgt, ach, annBgt, cum, cumAch };
     });
-    const total = { label: 'Total', m1: salesRows.reduce((s, r) => s + r.m1, 0), m2: salesRows.reduce((s, r) => s + r.m2, 0), m3: salesRows.reduce((s, r) => s + r.m3, 0), bgt: salesRows.reduce((s, r) => s + r.bgt, 0), ach: 0, annBgt: salesRows.reduce((s, r) => s + r.annBgt, 0), cum: salesRows.reduce((s, r) => s + r.cum, 0), cumAch: 0 };
+    const total = {
+      label: 'Total',
+      m1: salesRows.reduce((s, r) => s + r.m1, 0),
+      m2: salesRows.reduce((s, r) => s + r.m2, 0),
+      m3: salesRows.reduce((s, r) => s + r.m3, 0),
+      bgt: salesRows.reduce((s, r) => s + r.bgt, 0),
+      ach: 0, annBgt: salesRows.reduce((s, r) => s + r.annBgt, 0),
+      cum: salesRows.reduce((s, r) => s + r.cum, 0), cumAch: 0,
+    };
     total.ach = total.bgt > 0 ? Math.round((total.m3 / total.bgt) * 100) : 0;
     total.cumAch = total.annBgt > 0 ? Math.round((total.cum / total.annBgt) * 100) : 0;
     const allRows = [...salesRows, total];
 
-    // AI Summaries using pre-computed team data from client
+    // ── AI: Focus Activities ──
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const hasAI = apiKey && !apiKey.includes('placeholder');
+
+    let focusSummary: Record<string, string> = {
+      poultry: 'Poultry:\n\u2022 Key account development and product trials\n\u2022 Lipidol Prime and EndoPower focus',
+      swine: 'Swine:\n\u2022 Developing swine market opportunities',
+      ruminants: 'Ruminants:\n\u2022 Dairy distribution and LP trials',
+      latam: 'LATAM:\n\u2022 Mexico, Colombia, Peru distributor development',
+    };
+
+    if (hasAI) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const oppsSample = Object.values(teamSummaries || {}).flatMap((t: any) =>
+          (t.opportunities || []).slice(0, 5).map((o: { name?: string; stage?: string; amount?: number }) => ({
+            name: o.name, stage: o.stage, amount: o.amount,
+          })),
+        ).slice(0, 20);
+
+        const focusRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514', max_tokens: 600,
+            messages: [{ role: 'user', content: `Write monthly focus points for Pathway Intermediates USA (livestock feed additives company) weekly report.\n\nOpen opportunities:\n${JSON.stringify(oppsSample)}\n\nWrite 2-3 bullet points for each team section.\nRespond ONLY with JSON (no markdown):\n{"poultry":"Poultry:\\n\\u2022 bullet1\\n\\u2022 bullet2","swine":"Swine:\\n\\u2022 bullet1","ruminants":"Ruminants:\\n\\u2022 bullet1\\n\\u2022 bullet2","latam":"LATAM:\\n\\u2022 bullet1\\n\\u2022 bullet2"}` }],
+          }),
+        });
+        const focusData = await focusRes.json();
+        const focusText = (focusData.content?.[0]?.text || '{}').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        focusSummary = { ...focusSummary, ...JSON.parse(focusText) };
+      } catch (e) {
+        console.error('[REPORT] Focus AI error:', e);
+      }
+    }
+
+    // ── AI: Team Summaries ──
     const aiSummaries: Record<string, { thisWeek: string; nextWeek: string }> = {};
 
-    for (const team of ['monogastrics', 'ruminants', 'latam', 'management']) {
+    for (const team of TEAM_KEYS) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = (teamSummaries?.[team] || { activities: [], tasks: [], opportunities: [] }) as any;
       const actCount = data.activities?.length || 0;
@@ -109,71 +180,214 @@ export async function POST(request: Request) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const taskText = (data.tasks || []).slice(0, 8).map((t: any) => `- ${t.subject || ''} due ${t.dueDate || ''}`).join('\n') || 'None';
 
-          const prompt = `Summarize CRM data for Pathway Intermediates USA, ${TEAM_LABELS[team]} team.\nActivities:\n${actText}\nOpportunities:\n${oppText}\nTasks:\n${taskText}\nReply ONLY JSON: {"thisWeek":"• pt1\\n• pt2","nextWeek":"• pt1\\n• pt2"} (3-5 bullets, under 15 words each)`;
+          const prompt = `Summarize CRM data for Pathway Intermediates USA, ${TEAM_DISPLAY[team]} team.\nActivities:\n${actText}\nOpportunities:\n${oppText}\nTasks:\n${taskText}\nReply ONLY JSON: {"thisWeek":"\\u2022 pt1\\n\\u2022 pt2","nextWeek":"\\u2022 pt1\\n\\u2022 pt2"} (3-5 bullets, under 15 words each)`;
 
           const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }),
           });
           const cData = await res.json();
           const parsed = JSON.parse((cData.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim());
-          aiSummaries[team] = { thisWeek: parsed.thisWeek || '• No data', nextWeek: parsed.nextWeek || '• No tasks' };
+          aiSummaries[team] = { thisWeek: parsed.thisWeek || '\u2022 No data', nextWeek: parsed.nextWeek || '\u2022 No tasks' };
         } catch {
-          aiSummaries[team] = { thisWeek: `• ${actCount} activities logged`, nextWeek: `• ${taskCount} tasks pending, ${oppCount} opportunities open` };
+          aiSummaries[team] = {
+            thisWeek: `\u2022 ${actCount} activities logged`,
+            nextWeek: `\u2022 ${taskCount} tasks pending, ${oppCount} opportunities open`,
+          };
         }
       } else {
-        aiSummaries[team] = { thisWeek: actCount > 0 ? `• ${actCount} activities logged` : '• No activities recorded', nextWeek: taskCount > 0 ? `• ${taskCount} tasks pending` : '• No tasks scheduled' };
+        aiSummaries[team] = {
+          thisWeek: actCount > 0 ? `\u2022 ${actCount} activities logged` : '\u2022 No activities recorded',
+          nextWeek: taskCount > 0 ? `\u2022 ${taskCount} tasks pending` : '\u2022 No tasks scheduled',
+        };
       }
     }
 
-    // Build Word document
-    const colW = [1200, 900, 900, 900, 900, 900, 700, 1000, 1000, 800];
+    // ── Build Word Document ──
     const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const m1Name = MONTH_NAMES[months[0].m - 1];
+    const m2Name = MONTH_NAMES[months[1].m - 1];
+    const m3Name = MONTH_NAMES[months[2].m - 1];
+
+    // Sales table column widths (landscape)
+    const sColW = [1200, 900, 900, 900, 1000, 900, 700, 1100, 1100, 700, 760];
+    const sTotal = sColW.reduce((a, b) => a + b, 0);
+
+    // Build sales table data rows
+    const salesTableRows = allRows.map((r) => {
+      const isTotal = r.label === 'Total';
+      const isPoultry = r.label === 'Poultry';
+      const isSwine = r.label === 'Swine';
+      const bg = isTotal ? 'D6E4D0' : (isPoultry || isSwine) ? 'E6F1FB' : undefined;
+      return new TableRow({
+        children: [
+          cell(r.label, { bold: isTotal, bg, width: sColW[0] }),
+          cell(fmtUSD(r.m1), { center: true, bg, width: sColW[1] }),
+          cell(fmtUSD(r.m2), { center: true, bg, width: sColW[2] }),
+          cell(fmtUSD(r.m3), { center: true, bg, width: sColW[3] }),
+          cell(fmtUSD(r.bgt), { center: true, bg, width: sColW[4] }),
+          cell(fmtUSD(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[5] }),
+          cell(r.ach > 0 ? r.ach + '%' : '\u2014', { center: true, bg, width: sColW[6], color: achColor(r.ach), bold: true }),
+          cell(fmtUSD(r.annBgt), { center: true, bg, width: sColW[7] }),
+          cell(fmtUSD(r.cum), { center: true, bg, width: sColW[8] }),
+          cell(r.cumAch > 0 ? r.cumAch + '%' : '\u2014', { center: true, bg, width: sColW[9], color: achColor(r.cumAch), bold: true }),
+          cell('', { bg, width: sColW[10] }),
+        ],
+      });
+    });
+
+    // Activity table column widths (landscape)
+    const actColW = [1800, 5500, 5500];
+    const actTotal = actColW.reduce((a, b) => a + b, 0);
+
+    // Activity table rows: Poultry, Swine, Ruminant, LATAM, Marketing, HR, Others, Travel
+    const activityTeamRows = [
+      { key: 'poultry', label: 'Poultry', bg: 'E6F1FB' },
+      { key: 'swine', label: 'Swine', bg: 'E6F1FB' },
+      { key: 'ruminants', label: 'Ruminant', bg: 'E1F5EE' },
+      { key: 'latam', label: 'LATAM', bg: 'FAEEDA' },
+      { key: 'marketing', label: 'Marketing\n(Tech & R&D)', bg: 'F1EFE8' },
+      { key: 'hr', label: 'HR', bg: 'F1EFE8' },
+      { key: 'others', label: 'Others', bg: 'F1EFE8' },
+      { key: 'travel', label: 'Travel', bg: 'F1EFE8' },
+    ];
+
+    const activityTableRows = activityTeamRows.map((t) => {
+      const summary = aiSummaries[t.key] || {};
+      return new TableRow({
+        children: [
+          cell(t.label, { bold: true, bg: t.bg, width: actColW[0] }),
+          multiCell((summary.thisWeek || '').split('\n').filter(Boolean), { width: actColW[1] }),
+          multiCell((summary.nextWeek || '').split('\n').filter(Boolean), { width: actColW[2] }),
+        ],
+      });
+    });
+
+    // Focus content paragraphs
+    const focusParagraphs: Paragraph[] = [];
+    for (const key of ['poultry', 'swine', 'ruminants', 'latam']) {
+      const text = focusSummary[key] || '';
+      text.split('\n').filter(Boolean).forEach((line) => {
+        const isHeader = /^(Poultry|Swine|Ruminants|LATAM):/.test(line);
+        focusParagraphs.push(new Paragraph({
+          spacing: { after: isHeader ? 40 : 60 },
+          children: [new TextRun({ text: line, size: 18, font: 'Arial', bold: isHeader })],
+        }));
+      });
+      // Add spacing between sections
+      focusParagraphs.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
+    }
 
     const doc = new Document({
-      sections: [{ properties: { page: { size: { width: 15840, height: 12240 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+      styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
+      sections: [{
+        properties: {
+          page: {
+            size: { width: 15840, height: 12240, orientation: PageOrientation.LANDSCAPE },
+            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+          },
+        },
         children: [
-          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 200 }, children: [new TextRun({ text: 'Pathway Intermediates USA — Weekly Report', bold: true, size: 32, font: 'Arial', color: '1a4731' })] }),
-          new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 400 }, children: [new TextRun({ text: reportDate, size: 22, font: 'Arial', color: '666666' })] }),
-          new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: 'Sales Performance', bold: true, size: 24, font: 'Arial', color: '1a4731' })] }),
-          new Table({ width: { size: colW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows: [
-            new TableRow({ children: [
-              c('(USD)', { bold: true, bg: '1a4731', color: 'FFFFFF', width: colW[0] }),
-              c(MONTH_NAMES[months[0].m - 1], { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[1] }),
-              c(MONTH_NAMES[months[1].m - 1], { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[2] }),
-              c(MONTH_NAMES[months[2].m - 1], { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[3] }),
-              c('Budget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[4] }),
-              c('Actual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: colW[5] }),
-              c('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: colW[6] }),
-              c('Ann.Budget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[7] }),
-              c('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[8] }),
-              c('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: colW[9] }),
-            ] }),
-            ...allRows.map((r) => { const isT = r.label === 'Total'; const bg = isT ? 'D6E4D0' : undefined; return new TableRow({ children: [
-              c(r.label, { bold: isT, bg, width: colW[0] }), c(fmtUSD(r.m1), { center: true, bg, width: colW[1] }), c(fmtUSD(r.m2), { center: true, bg, width: colW[2] }),
-              c(fmtUSD(r.m3), { center: true, bg, width: colW[3] }), c(fmtUSD(r.bgt), { center: true, bg, width: colW[4] }),
-              c(fmtUSD(r.m3), { center: true, bg: isT ? 'D6E4D0' : 'E8F5E9', width: colW[5] }),
-              c(r.ach > 0 ? r.ach + '%' : '—', { center: true, bg, width: colW[6], color: achCol(r.ach), bold: true }),
-              c(fmtUSD(r.annBgt), { center: true, bg, width: colW[7] }), c(fmtUSD(r.cum), { center: true, bg, width: colW[8] }),
-              c(r.cumAch > 0 ? r.cumAch + '%' : '—', { center: true, bg, width: colW[9], color: achCol(r.cumAch), bold: true }),
-            ] }); }),
-          ] }),
-          new Paragraph({ spacing: { before: 400, after: 160 }, children: [new TextRun({ text: 'Team Weekly Activities (AI Summary)', bold: true, size: 24, font: 'Arial', color: '1a4731' })] }),
-          new Table({ width: { size: 9600, type: WidthType.DXA }, rows: [
-            new TableRow({ children: [c('Team', { bold: true, bg: '1a4731', color: 'FFFFFF', width: 2200 }), c('This Week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: 3700 }), c('Next Week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: 3700 })] }),
-            ...['monogastrics', 'ruminants', 'latam', 'management'].map((t) => new TableRow({ children: [
-              c(TEAM_LABELS[t], { bold: true, width: 2200, bg: 'F0F7EE' }),
-              mc((aiSummaries[t]?.thisWeek || '').split('\n').filter(Boolean), { width: 3700 }),
-              mc((aiSummaries[t]?.nextWeek || '').split('\n').filter(Boolean), { width: 3700 }),
-            ] })),
-          ] }),
-        ] }],
+          // ── Title ──
+          new Paragraph({
+            alignment: AlignmentType.CENTER, spacing: { after: 160 },
+            children: [new TextRun({ text: 'Pathway Intermediates USA \u2014 Weekly Report', bold: true, size: 36, font: 'Arial', color: '1a4731' })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER, spacing: { after: 320 },
+            children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })],
+          }),
+
+          // ── Section 1: Focus Activities ──
+          new Table({
+            width: { size: 14400, type: WidthType.DXA },
+            rows: [
+              new TableRow({
+                children: [new TableCell({
+                  borders, width: { size: 14400, type: WidthType.DXA },
+                  shading: { fill: '1a4731', type: ShadingType.CLEAR },
+                  margins: { top: 100, bottom: 100, left: 160, right: 160 },
+                  children: [new Paragraph({
+                    children: [new TextRun({ text: "This Month's Focus Activities, Goals and Sales Performance", bold: true, size: 22, font: 'Arial', color: 'FFFFFF' })],
+                  })],
+                })],
+              }),
+              new TableRow({
+                children: [new TableCell({
+                  borders, width: { size: 14400, type: WidthType.DXA },
+                  shading: { fill: 'F0F7EE', type: ShadingType.CLEAR },
+                  margins: { top: 120, bottom: 120, left: 200, right: 200 },
+                  children: focusParagraphs,
+                })],
+              }),
+            ],
+          }),
+
+          new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }),
+
+          // ── Section 2: Sales Performance ──
+          new Paragraph({
+            spacing: { before: 100, after: 120 },
+            children: [new TextRun({ text: 'Sales Performance', bold: true, size: 24, font: 'Arial', color: '1a4731' })],
+          }),
+          new Table({
+            width: { size: sTotal, type: WidthType.DXA },
+            rows: [
+              // Header
+              new TableRow({
+                tableHeader: true,
+                children: [
+                  cell('(USD)', { bold: true, bg: '1a4731', color: 'FFFFFF', width: sColW[0] }),
+                  cell(m1Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[1] }),
+                  cell(m2Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[2] }),
+                  cell(m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[3] }),
+                  cell('Budget\nin ' + m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[4] }),
+                  cell('Monthly\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5] }),
+                  cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[6] }),
+                  cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7] }),
+                  cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8] }),
+                  cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9] }),
+                  cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[10] }),
+                ],
+              }),
+              ...salesTableRows,
+            ],
+          }),
+
+          new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }),
+
+          // ── Section 3: Team Activities ──
+          new Paragraph({
+            spacing: { before: 100, after: 120 },
+            children: [new TextRun({ text: 'Team Weekly Activities Summary', bold: true, size: 24, font: 'Arial', color: '1a4731' })],
+          }),
+          new Table({
+            width: { size: actTotal, type: WidthType.DXA },
+            rows: [
+              new TableRow({
+                tableHeader: true,
+                children: [
+                  cell('Activities', { bold: true, bg: '1a4731', color: 'FFFFFF', width: actColW[0] }),
+                  cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1] }),
+                  cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2] }),
+                ],
+              }),
+              ...activityTableRows,
+            ],
+          }),
+
+          new Paragraph({ spacing: { before: 120 }, children: [] }),
+        ],
+      }],
     });
 
     const buffer = await Packer.toBuffer(doc);
     return new Response(buffer as unknown as BodyInit, {
-      headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="PI_USA_Weekly_Report_${now.toISOString().split('T')[0]}.docx"` },
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="PI_USA_Weekly_Report_${now.toISOString().split('T')[0]}.docx"`,
+      },
     });
   } catch (err) {
     console.error('[REPORT] Error:', err);

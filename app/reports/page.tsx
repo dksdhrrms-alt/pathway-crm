@@ -186,21 +186,21 @@ export default function ReportsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeUsers, filteredActivities]);
 
-  // Build team summaries using the same logic as By Team view (already works)
+  // Build team summaries — split monogastrics into poultry + swine
   const teamSummariesForReport = useMemo(() => {
     const result: Record<string, { teamName: string; activities: typeof allActivities; tasks: typeof allTasks; opportunities: typeof allOpps }> = {};
     const teams = [
-      { id: 'monogastrics', label: 'Monogastric' },
-      { id: 'ruminants', label: 'Ruminant' },
-      { id: 'latam', label: 'LATAM' },
-      { id: 'management', label: 'Management' },
+      { id: 'poultry', teamFilter: 'monogastrics', label: 'Poultry' },
+      { id: 'swine', teamFilter: 'swine', label: 'Swine' },
+      { id: 'ruminants', teamFilter: 'ruminants', label: 'Ruminant' },
+      { id: 'latam', teamFilter: 'latam', label: 'LATAM' },
+      { id: 'management', teamFilter: 'management', label: 'Management' },
     ];
-    teams.forEach(({ id, label }) => {
+    teams.forEach(({ id, teamFilter, label }) => {
       const members = activeUsers.filter((u) => {
         const uTeam = (u as { team?: string }).team;
-        if (id === 'monogastrics') return MONO_GROUP.includes(uTeam || '');
         if (id === 'management') return uTeam === 'management' || (!uTeam && ['admin', 'administrative_manager', 'ceo'].includes(u.role));
-        return uTeam === id;
+        return uTeam === teamFilter;
       });
       const memberIds = new Set(members.map((u) => u.id));
       result[id] = {
