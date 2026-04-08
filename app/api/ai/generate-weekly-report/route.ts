@@ -50,8 +50,26 @@ function multiCell(lines: string[], o: { width?: number; bg?: string } = {}) {
   });
 }
 
-function fmtUSD(n: number) { return n > 0 ? '$' + Math.round(n).toLocaleString('en-US') : '—'; }
+function fmtUSD(n: number) { return n > 0 ? '$' + Math.round(n).toLocaleString('en-US') : '--'; }
 function achColor(p: number) { return p >= 100 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
+
+// Sanitize text for Claude API — strip non-ASCII that causes ByteString errors
+function sanitize(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2022/g, '-')
+    .replace(/\u00B7/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u2013/g, '-')
+    .replace(/\u2014/g, '--')
+    .replace(/\u2192/g, '->')
+    .replace(/\u2190/g, '<-')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[^\x00-\x7F]/g, ' ')
+    .trim();
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -130,10 +148,10 @@ export async function POST(request: Request) {
     const hasAI = apiKey && !apiKey.includes('placeholder');
 
     let focusSummary: Record<string, string> = {
-      poultry: 'Poultry:\n\u2022 Key account development and product trials\n\u2022 Lipidol Prime and EndoPower focus',
-      swine: 'Swine:\n\u2022 Developing swine market opportunities',
-      ruminants: 'Ruminants:\n\u2022 Dairy distribution and LP trials',
-      latam: 'LATAM:\n\u2022 Mexico, Colombia, Peru distributor development',
+      poultry: 'Poultry:\n- Key account development and product trials\n- Lipidol Prime and EndoPower focus',
+      swine: 'Swine:\n- Developing swine market opportunities',
+      ruminants: 'Ruminants:\n- Dairy distribution and LP trials',
+      latam: 'LATAM:\n- Mexico, Colombia, Peru distributor development',
     };
 
     if (hasAI) {
@@ -141,18 +159,22 @@ export async function POST(request: Request) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const oppsSample = Object.values(teamSummaries || {}).flatMap((t: any) =>
           (t.opportunities || []).slice(0, 5).map((o: { name?: string; stage?: string; amount?: number }) => ({
-            name: o.name, stage: o.stage, amount: o.amount,
+            name: sanitize(String(o.name || '')), stage: sanitize(String(o.stage || '')), amount: o.amount,
           })),
         ).slice(0, 20);
+
+        const focusPrompt = sanitize(`Write monthly focus points for Pathway Intermediates USA (livestock feed additives company) weekly report.\n\nOpen opportunities:\n${JSON.stringify(oppsSample)}\n\nWrite 2-3 bullet points for each team section.\nRespond ONLY with JSON (no markdown):\n{"poultry":"Poultry:\\n- bullet1\\n- bullet2","swine":"Swine:\\n- bullet1","ruminants":"Ruminants:\\n- bullet1\\n- bullet2","latam":"LATAM:\\n- bullet1\\n- bullet2"}`);
 
         const focusRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({
             model: 'claude-sonnet-4-20250514', max_tokens: 600,
-            messages: [{ role: 'user', content: `Write monthly focus points for Pathway Intermediates USA (livestock feed additives company) weekly report.\n\nOpen opportunities:\n${JSON.stringify(oppsSample)}\n\nWrite 2-3 bullet points for each team section.\nRespond ONLY with JSON (no markdown):\n{"poultry":"Poultry:\\n\\u2022 bullet1\\n\\u2022 bullet2","swine":"Swine:\\n\\u2022 bullet1","ruminants":"Ruminants:\\n\\u2022 bullet1\\n\\u2022 bullet2","latam":"LATAM:\\n\\u2022 bullet1\\n\\u2022 bullet2"}` }],
+            messages: [{ role: 'user', content: focusPrompt }],
           }),
         });
+        console.log('[REPORT] Focus AI status:', focusRes.status);
+        if (!focusRes.ok) { console.error('[REPORT] Focus AI error:', await focusRes.text()); throw new Error('Focus AI failed'); }
         const focusData = await focusRes.json();
         const focusText = (focusData.content?.[0]?.text || '{}').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         focusSummary = { ...focusSummary, ...JSON.parse(focusText) };
@@ -174,32 +196,35 @@ export async function POST(request: Request) {
       if (hasAI && (actCount > 0 || taskCount > 0)) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const actText = (data.activities || []).slice(0, 15).map((a: any) => `- [${a.type || 'Note'}] ${a.subject || ''}`).join('\n') || 'None';
+          const actText = (data.activities || []).slice(0, 15).map((a: any) => `- [${sanitize(a.type || 'Note')}] ${sanitize(a.subject || '')}`).join('\n') || 'None';
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const oppText = (data.opportunities || []).slice(0, 8).map((o: any) => `- ${o.name || ''} $${Number(o.amount) || 0} ${o.stage || ''}`).join('\n') || 'None';
+          const oppText = (data.opportunities || []).slice(0, 8).map((o: any) => `- ${sanitize(o.name || '')} $${Number(o.amount) || 0} ${sanitize(o.stage || '')}`).join('\n') || 'None';
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const taskText = (data.tasks || []).slice(0, 8).map((t: any) => `- ${t.subject || ''} due ${t.dueDate || ''}`).join('\n') || 'None';
+          const taskText = (data.tasks || []).slice(0, 8).map((t: any) => `- ${sanitize(t.subject || '')} due ${t.dueDate || ''}`).join('\n') || 'None';
 
-          const prompt = `Summarize CRM data for Pathway Intermediates USA, ${TEAM_DISPLAY[team]} team.\nActivities:\n${actText}\nOpportunities:\n${oppText}\nTasks:\n${taskText}\nReply ONLY JSON: {"thisWeek":"\\u2022 pt1\\n\\u2022 pt2","nextWeek":"\\u2022 pt1\\n\\u2022 pt2"} (3-5 bullets, under 15 words each)`;
+          const prompt = sanitize(`Summarize CRM data for Pathway Intermediates USA, ${TEAM_DISPLAY[team]} team.\nActivities:\n${actText}\nOpportunities:\n${oppText}\nTasks:\n${taskText}\nReply ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-5 bullets, under 15 words each)`);
 
           const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400, messages: [{ role: 'user', content: prompt }] }),
           });
+          console.log(`[REPORT] ${team} AI status:`, res.status);
+          if (!res.ok) { console.error(`[REPORT] ${team} AI error:`, await res.text()); throw new Error(`${team} AI failed`); }
           const cData = await res.json();
-          const parsed = JSON.parse((cData.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim());
-          aiSummaries[team] = { thisWeek: parsed.thisWeek || '\u2022 No data', nextWeek: parsed.nextWeek || '\u2022 No tasks' };
-        } catch {
+          const aiParsed = JSON.parse((cData.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim());
+          aiSummaries[team] = { thisWeek: aiParsed.thisWeek || '- No data', nextWeek: aiParsed.nextWeek || '- No tasks' };
+        } catch (e) {
+          console.error(`[REPORT] ${team} AI error:`, e);
           aiSummaries[team] = {
-            thisWeek: `\u2022 ${actCount} activities logged`,
-            nextWeek: `\u2022 ${taskCount} tasks pending, ${oppCount} opportunities open`,
+            thisWeek: `- ${actCount} activities logged`,
+            nextWeek: `- ${taskCount} tasks pending, ${oppCount} opportunities open`,
           };
         }
       } else {
         aiSummaries[team] = {
-          thisWeek: actCount > 0 ? `\u2022 ${actCount} activities logged` : '\u2022 No activities recorded',
-          nextWeek: taskCount > 0 ? `\u2022 ${taskCount} tasks pending` : '\u2022 No tasks scheduled',
+          thisWeek: actCount > 0 ? `- ${actCount} activities logged` : '- No activities recorded',
+          nextWeek: taskCount > 0 ? `- ${taskCount} tasks pending` : '- No tasks scheduled',
         };
       }
     }
@@ -228,10 +253,10 @@ export async function POST(request: Request) {
           cell(fmtUSD(r.m3), { center: true, bg, width: sColW[3] }),
           cell(fmtUSD(r.bgt), { center: true, bg, width: sColW[4] }),
           cell(fmtUSD(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[5] }),
-          cell(r.ach > 0 ? r.ach + '%' : '\u2014', { center: true, bg, width: sColW[6], color: achColor(r.ach), bold: true }),
+          cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[6], color: achColor(r.ach), bold: true }),
           cell(fmtUSD(r.annBgt), { center: true, bg, width: sColW[7] }),
           cell(fmtUSD(r.cum), { center: true, bg, width: sColW[8] }),
-          cell(r.cumAch > 0 ? r.cumAch + '%' : '\u2014', { center: true, bg, width: sColW[9], color: achColor(r.cumAch), bold: true }),
+          cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[9], color: achColor(r.cumAch), bold: true }),
           cell('', { bg, width: sColW[10] }),
         ],
       });
@@ -292,7 +317,7 @@ export async function POST(request: Request) {
           // ── Title ──
           new Paragraph({
             alignment: AlignmentType.CENTER, spacing: { after: 160 },
-            children: [new TextRun({ text: 'Pathway Intermediates USA \u2014 Weekly Report', bold: true, size: 36, font: 'Arial', color: '1a4731' })],
+            children: [new TextRun({ text: 'Pathway Intermediates USA - Weekly Report', bold: true, size: 36, font: 'Arial', color: '1a4731' })],
           }),
           new Paragraph({
             alignment: AlignmentType.CENTER, spacing: { after: 320 },
