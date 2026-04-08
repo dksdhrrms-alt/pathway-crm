@@ -24,34 +24,57 @@ const TEAM_DISPLAY: Record<string, string> = {
 const brd = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
 const borders = { top: brd, bottom: brd, left: brd, right: brd };
 
-function cell(text: string, o: { bold?: boolean; bg?: string; color?: string; center?: boolean; width?: number; size?: number } = {}) {
-  const lines = String(text || '').split('\n');
+function cell(text: string, o: { bold?: boolean; bg?: string; color?: string; center?: boolean; width?: number; size?: number; header?: boolean } = {}) {
+  const lines = String(text || '--').split('\n').filter(Boolean);
+  const fontSize = o.size || (o.header ? 16 : 15);
   return new TableCell({
     borders, width: { size: o.width || 1000, type: WidthType.DXA },
     shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
     verticalAlign: VerticalAlign.CENTER,
-    margins: { top: 80, bottom: 80, left: 120, right: 120 },
-    children: lines.map((line, i) => new Paragraph({
-      alignment: o.center ? AlignmentType.CENTER : AlignmentType.LEFT,
-      spacing: i < lines.length - 1 ? { after: 60 } : {},
-      children: [new TextRun({ text: line, bold: o.bold || false, size: o.size || 18, color: o.color || '000000', font: 'Arial' })],
-    })),
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: lines.length === 0
+      ? [new Paragraph({ children: [new TextRun({ text: '--', size: fontSize, font: 'Arial' })] })]
+      : lines.map((line, i) => new Paragraph({
+          alignment: o.center ? AlignmentType.CENTER : AlignmentType.LEFT,
+          spacing: { before: 0, after: i < lines.length - 1 ? 40 : 0 },
+          children: [new TextRun({ text: String(line || ''), bold: o.bold || false, size: fontSize, color: o.color || '000000', font: 'Arial' })],
+        })),
   });
 }
 
-function multiCell(lines: string[], o: { width?: number; bg?: string } = {}) {
+function activityCell(text: string, o: { width?: number; bg?: string } = {}) {
+  const lines = String(text || '').split('\n').filter((l) => l.trim());
+  if (lines.length === 0) lines.push('No activities recorded');
   return new TableCell({
-    borders, width: { size: o.width || 4000, type: WidthType.DXA },
+    borders, width: { size: o.width || 6200, type: WidthType.DXA },
     shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
-    children: (lines.length > 0 ? lines : ['']).map((l) => new Paragraph({
-      spacing: { after: 40 },
-      children: [new TextRun({ text: l, size: 18, font: 'Arial' })],
+    children: lines.map((l, i) => new Paragraph({
+      spacing: { before: 0, after: i < lines.length - 1 ? 60 : 0 },
+      children: [new TextRun({ text: l.trim(), size: 15, font: 'Arial' })],
     })),
   });
 }
 
-function fmtUSD(n: number) { return n > 0 ? '$' + Math.round(n).toLocaleString('en-US') : '--'; }
+function teamCell(text: string, o: { width?: number; bg?: string; color?: string } = {}) {
+  const lines = text.split('\n');
+  return new TableCell({
+    borders, width: { size: o.width || 2000, type: WidthType.DXA },
+    shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    verticalAlign: VerticalAlign.CENTER,
+    children: lines.map((line) => new Paragraph({
+      children: [new TextRun({ text: line, bold: true, size: 16, font: 'Arial', color: o.color || '000000' })],
+    })),
+  });
+}
+
+function fmtCompact(n: number) {
+  if (!n || n === 0) return '--';
+  if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '$' + Math.round(n / 1000) + 'K';
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
 function achColor(p: number) { return p >= 100 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
 
 // Sanitize text for Claude API — strip non-ASCII that causes ByteString errors
@@ -304,9 +327,8 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
     const m2Name = MONTH_NAMES[months[1].m - 1];
     const m3Name = MONTH_NAMES[months[2].m - 1];
 
-    // Sales table column widths (landscape)
-    const sColW = [1200, 900, 900, 900, 1000, 900, 700, 1100, 1100, 700, 760];
-    const sTotal = sColW.reduce((a, b) => a + b, 0);
+    // Sales table column widths — sum = 14400 (fits landscape with 0.5" margins)
+    const sColW = [1440, 980, 980, 980, 1080, 1080, 680, 1300, 1300, 680, 900];
 
     // Build sales table data rows
     const salesTableRows = allRows.map((r) => {
@@ -315,25 +337,25 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       const isSwine = r.label === 'Swine';
       const bg = isTotal ? 'D6E4D0' : (isPoultry || isSwine) ? 'E6F1FB' : undefined;
       return new TableRow({
+        height: { value: 380, rule: 'atLeast' as const },
         children: [
           cell(r.label, { bold: isTotal, bg, width: sColW[0] }),
-          cell(fmtUSD(r.m1), { center: true, bg, width: sColW[1] }),
-          cell(fmtUSD(r.m2), { center: true, bg, width: sColW[2] }),
-          cell(fmtUSD(r.m3), { center: true, bg, width: sColW[3] }),
-          cell(fmtUSD(r.bgt), { center: true, bg, width: sColW[4] }),
-          cell(fmtUSD(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[5] }),
+          cell(fmtCompact(r.m1), { center: true, bg, width: sColW[1] }),
+          cell(fmtCompact(r.m2), { center: true, bg, width: sColW[2] }),
+          cell(fmtCompact(r.m3), { center: true, bg, width: sColW[3] }),
+          cell(fmtCompact(r.bgt), { center: true, bg, width: sColW[4] }),
+          cell(fmtCompact(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[5] }),
           cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[6], color: achColor(r.ach), bold: true }),
-          cell(fmtUSD(r.annBgt), { center: true, bg, width: sColW[7] }),
-          cell(fmtUSD(r.cum), { center: true, bg, width: sColW[8] }),
+          cell(fmtCompact(r.annBgt), { center: true, bg, width: sColW[7] }),
+          cell(fmtCompact(r.cum), { center: true, bg, width: sColW[8] }),
           cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[9], color: achColor(r.cumAch), bold: true }),
           cell('', { bg, width: sColW[10] }),
         ],
       });
     });
 
-    // Activity table column widths (landscape)
-    const actColW = [1800, 5500, 5500];
-    const actTotal = actColW.reduce((a, b) => a + b, 0);
+    // Activity table column widths — sum = 14400
+    const actColW = [2000, 6200, 6200];
 
     // Activity table rows: Poultry, Swine, Ruminant, LATAM, Marketing, HR, Others, Travel
     const activityTeamRows = [
@@ -341,7 +363,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       { key: 'swine', label: 'Swine', bg: 'E6F1FB' },
       { key: 'ruminants', label: 'Ruminant', bg: 'E1F5EE' },
       { key: 'latam', label: 'LATAM', bg: 'FAEEDA' },
-      { key: 'marketing', label: 'Marketing\n(Tech & R&D)', bg: 'F1EFE8' },
+      { key: 'marketing', label: 'Marketing\n(Tech & R&D)', bg: 'FBEAF0' },
       { key: 'hr', label: 'HR', bg: 'F1EFE8' },
       { key: 'others', label: 'Others', bg: 'F1EFE8' },
       { key: 'travel', label: 'Travel', bg: 'F1EFE8' },
@@ -350,10 +372,11 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
     const activityTableRows = activityTeamRows.map((t) => {
       const summary = aiSummaries[t.key] || {};
       return new TableRow({
+        height: { value: 600, rule: 'atLeast' as const },
         children: [
-          cell(t.label, { bold: true, bg: t.bg, width: actColW[0] }),
-          multiCell((summary.thisWeek || '').split('\n').filter(Boolean), { width: actColW[1] }),
-          multiCell((summary.nextWeek || '').split('\n').filter(Boolean), { width: actColW[2] }),
+          teamCell(t.label, { bg: t.bg, width: actColW[0] }),
+          activityCell(summary.thisWeek || '', { width: actColW[1] }),
+          activityCell(summary.nextWeek || '', { width: actColW[2] }),
         ],
       });
     });
@@ -365,12 +388,11 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       text.split('\n').filter(Boolean).forEach((line) => {
         const isHeader = /^(Poultry|Swine|Ruminants|LATAM):/.test(line);
         focusParagraphs.push(new Paragraph({
-          spacing: { after: isHeader ? 40 : 60 },
-          children: [new TextRun({ text: line, size: 18, font: 'Arial', bold: isHeader })],
+          spacing: { after: isHeader ? 30 : 50 },
+          children: [new TextRun({ text: line, size: 17, font: 'Arial', bold: isHeader })],
         }));
       });
-      // Add spacing between sections
-      focusParagraphs.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
+      focusParagraphs.push(new Paragraph({ spacing: { after: 60 }, children: [] }));
     }
 
     const doc = new Document({
@@ -411,7 +433,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
                 children: [new TableCell({
                   borders, width: { size: 14400, type: WidthType.DXA },
                   shading: { fill: 'F0F7EE', type: ShadingType.CLEAR },
-                  margins: { top: 120, bottom: 120, left: 200, right: 200 },
+                  margins: { top: 100, bottom: 100, left: 160, right: 160 },
                   children: focusParagraphs,
                 })],
               }),
@@ -426,23 +448,23 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
             children: [new TextRun({ text: 'Sales Performance', bold: true, size: 24, font: 'Arial', color: '1a4731' })],
           }),
           new Table({
-            width: { size: sTotal, type: WidthType.DXA },
+            width: { size: 14400, type: WidthType.DXA },
             rows: [
               // Header
               new TableRow({
                 tableHeader: true,
                 children: [
-                  cell('(USD)', { bold: true, bg: '1a4731', color: 'FFFFFF', width: sColW[0] }),
-                  cell(m1Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[1] }),
-                  cell(m2Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[2] }),
-                  cell(m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[3] }),
-                  cell('Budget\nin ' + m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[4] }),
-                  cell('Monthly\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5] }),
-                  cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[6] }),
-                  cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7] }),
-                  cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8] }),
-                  cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9] }),
-                  cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[10] }),
+                  cell('(USD)', { bold: true, bg: '1a4731', color: 'FFFFFF', width: sColW[0], header: true }),
+                  cell(m1Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[1], header: true }),
+                  cell(m2Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[2], header: true }),
+                  cell(m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[3], header: true }),
+                  cell('Budget\nin ' + m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[4], header: true }),
+                  cell('Monthly\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5], header: true }),
+                  cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
+                  cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7], header: true }),
+                  cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8], header: true }),
+                  cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9], header: true }),
+                  cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[10], header: true }),
                 ],
               }),
               ...salesTableRows,
@@ -457,14 +479,14 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
             children: [new TextRun({ text: 'Team Weekly Activities Summary', bold: true, size: 24, font: 'Arial', color: '1a4731' })],
           }),
           new Table({
-            width: { size: actTotal, type: WidthType.DXA },
+            width: { size: 14400, type: WidthType.DXA },
             rows: [
               new TableRow({
                 tableHeader: true,
                 children: [
-                  cell('Activities', { bold: true, bg: '1a4731', color: 'FFFFFF', width: actColW[0] }),
-                  cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1] }),
-                  cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2] }),
+                  cell('Activities', { bold: true, bg: '1a4731', color: 'FFFFFF', width: actColW[0], header: true }),
+                  cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1], header: true }),
+                  cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2], header: true }),
                 ],
               }),
               ...activityTableRows,
