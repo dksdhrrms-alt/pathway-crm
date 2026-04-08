@@ -135,19 +135,38 @@ export default function SalesUploadPage() {
     setStep('done');
   }
 
-  function handleDeleteSingle(entry: UploadHistoryEntry) {
-    const remaining = salesData.filter((r) => r.uploadBatchId !== entry.id);
-    saveSalesData(remaining);
-    saveHistory(uploadHistory.filter((h) => h.id !== entry.id));
-    setDeleteConfirm(null);
-    setToast(`Upload deleted — ${entry.recordCount} records removed`);
+  async function handleDeleteSingle(entry: UploadHistoryEntry) {
+    try {
+      if (supabaseEnabled) {
+        const { dbDeleteSaleRecordsByBatch, dbDeleteUploadHistory } = await import('@/lib/db');
+        await dbDeleteSaleRecordsByBatch(entry.id);
+        await dbDeleteUploadHistory(entry.id);
+      }
+      setSalesData((prev) => prev.filter((r) => r.uploadBatchId !== entry.id));
+      setUploadHistory((prev) => prev.filter((h) => h.id !== entry.id));
+      setDeleteConfirm(null);
+      setToast(`Upload deleted — ${entry.recordCount} records removed`);
+    } catch (err) {
+      console.error('Delete error:', err);
+      setToast('Failed to delete. Please try again.');
+    }
   }
 
-  function handleDeleteAll() {
-    saveSalesData([]);
-    saveHistory([]);
-    setDeleteConfirm(null);
-    setToast('All sales data cleared');
+  async function handleDeleteAll() {
+    try {
+      if (supabaseEnabled) {
+        const { dbDeleteAllSaleRecords, dbDeleteAllUploadHistory } = await import('@/lib/db');
+        await dbDeleteAllSaleRecords();
+        await dbDeleteAllUploadHistory();
+      }
+      setSalesData([]);
+      setUploadHistory([]);
+      setDeleteConfirm(null);
+      setToast('All sales data cleared');
+    } catch (err) {
+      console.error('Clear all error:', err);
+      setToast('Failed to clear. Please try again.');
+    }
   }
 
   function handleDownloadTemplate() {
