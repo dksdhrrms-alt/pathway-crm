@@ -316,6 +316,198 @@ async function generateMonogastricReport(
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateRuminantReport(
+  records: any[], budgets: any[], teamSummaries: any,
+  now: Date, months: { m: number; y: number }[], curMonth: number, curYear: number,
+) {
+  const m1 = months[0], m2 = months[1], m3 = months[2];
+
+  // Fetch account budgets
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const sbKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let acctBudgets: any[] = [];
+  try { const abSb = createClient(sbUrl, sbKey); const { data } = await abSb.from('account_budgets').select('*').eq('year', curYear); acctBudgets = data || []; } catch { /* */ }
+
+  // Initialize from budget accounts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rumBudgetAccts = acctBudgets.filter((b: any) => b.category === 'ruminants');
+  const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [...new Set(rumBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
+    byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  });
+
+  // Fill in sales
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  records.filter((r: { category?: string }) => r.category === 'ruminants').forEach((r: any) => {
+    const acct = r.account_name || r.accountName || 'Unknown';
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+    const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
+    const amt = Number(r.amount) || 0;
+    if (yr === curYear - 1) byAccount[acct].prev += amt;
+    if (yr === m1.y && mo === m1.m) byAccount[acct].v1 += amt;
+    if (yr === m2.y && mo === m2.m) byAccount[acct].v2 += amt;
+    if (yr === m3.y && mo === m3.m) byAccount[acct].v3 += amt;
+    if (yr === curYear && mo <= curMonth) byAccount[acct].cum += amt;
+  });
+
+  // Apply budgets
+  Object.values(byAccount).forEach((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mb = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
+    a.bgt = Number(mb?.budget_amount || mb?.budgetAmount) || 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  });
+
+  const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt > 0)
+    .sort((a, b) => { if (b.annBgt !== a.annBgt) return b.annBgt - a.annBgt; return (b.cum || b.prev) - (a.cum || a.prev); });
+  const totBudget = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && b.category === 'ruminants').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const annBdg = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && b.category === 'ruminants').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
+
+  // AI summary
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const hasAI = apiKey && !apiKey.includes('placeholder');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rumData = (teamSummaries?.ruminants || { activities: [], tasks: [], opportunities: [] }) as any;
+  const actCount = rumData.activities?.length || 0;
+  const taskCount = rumData.tasks?.length || 0;
+  let rumSummary = { thisWeek: '- No activities recorded', nextWeek: '- No tasks scheduled' };
+
+  if (hasAI && (actCount > 0 || taskCount > 0)) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const actText = (rumData.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const taskText = (rumData.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
+      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRespond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-4 bullets each)`);
+      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] }) });
+      if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); rumSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
+      else { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+    } catch { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+  }
+
+  // Build Word doc
+  const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const mn = MONTH_NAMES;
+  const sColW = [1500, 1100, 900, 900, 1050, 1000, 650, 1150, 1150, 650, 810];
+  const sTotal = sColW.reduce((a, b) => a + b, 0);
+  const actColW = [1500, 5730, 5730];
+  const RUM_GREEN = '0F6E56';
+
+  // Account rows
+  const acctRows = acctList.map((a) => {
+    const ach = a.bgt > 0 ? Math.round((a.v3 / a.bgt) * 100) : 0;
+    const cumAch = a.annBgt > 0 ? Math.round((a.cum / a.annBgt) * 100) : 0;
+    return new TableRow({ height: { value: 340, rule: 'atLeast' as const }, children: [
+      cell(a.name, { width: sColW[0] }),
+      cell(fmtCompact(a.prev), { center: true, width: sColW[1] }),
+      cell(fmtCompact(a.v1), { center: true, width: sColW[2] }),
+      cell(fmtCompact(a.v2), { center: true, width: sColW[3] }),
+      cell(fmtCompact(a.bgt), { center: true, width: sColW[4] }),
+      cell(fmtCompact(a.v3), { center: true, bg: 'E8F5E9', width: sColW[5] }),
+      cell(ach > 0 ? ach + '%' : '--', { center: true, bold: true, color: achColor(ach), width: sColW[6] }),
+      cell(fmtCompact(a.annBgt), { center: true, width: sColW[7] }),
+      cell(fmtCompact(a.cum), { center: true, width: sColW[8] }),
+      cell(cumAch > 0 ? cumAch + '%' : '--', { center: true, bold: true, color: achColor(cumAch), width: sColW[9] }),
+      cell('', { width: sColW[10] }),
+    ] });
+  });
+
+  const ttAch = totBudget > 0 ? Math.round((teamTotal.v3 / totBudget) * 100) : 0;
+  const ttCumAch = annBdg > 0 ? Math.round((teamTotal.cum / annBdg) * 100) : 0;
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
+    sections: [{
+      properties: { page: { size: { width: 15840, height: 12240, orientation: PageOrientation.LANDSCAPE }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
+      children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - Ruminant Weekly Report', bold: true, size: 32, font: 'Arial', color: RUM_GREEN })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })] }),
+
+        // Focus box (single column)
+        new Table({ width: { size: 13680, type: WidthType.DXA }, rows: [
+          new TableRow({ children: [new TableCell({ borders, width: { size: 13680, type: WidthType.DXA }, shading: { fill: RUM_GREEN, type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 160, right: 160 }, children: [new Paragraph({ children: [new TextRun({ text: "This Month's Focus Activities, Goals and Sales Performance", bold: true, size: 20, font: 'Arial', color: 'FFFFFF' })] })] })] }),
+          new TableRow({ children: [new TableCell({ borders, width: { size: 13680, type: WidthType.DXA }, shading: { fill: 'E1F5EE', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 160, right: 160 }, children: [
+            new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Ruminant: Dairy and beef cattle nutrition - Lipidol Protect trials and distribution expansion', size: 17, font: 'Arial', bold: true })] }),
+          ] })] }),
+        ] }),
+        new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }),
+
+        // Sales by Account
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Sales Performance - Ruminant Team', bold: true, size: 22, font: 'Arial', color: RUM_GREEN })] }),
+        new Table({ width: { size: sTotal, type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Account', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', width: sColW[0], header: true }),
+            cell(`${curYear - 1}\nRevenue`, { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[1], header: true }),
+            cell(mn[m1.m - 1], { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[2], header: true }),
+            cell(mn[m2.m - 1], { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[3], header: true }),
+            cell(`Budget\nin ${mn[m3.m - 1]}`, { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[4], header: true }),
+            cell('Monthly\nActual', { bold: true, bg: '085041', color: 'FFFFFF', center: true, width: sColW[5], header: true }),
+            cell('Ach%', { bold: true, bg: '085041', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
+            cell('Annual\nBudget', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[7], header: true }),
+            cell('Cumulative', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[8], header: true }),
+            cell('Cum%', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[9], header: true }),
+            cell('Remark', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: sColW[10], header: true }),
+          ] }),
+          ...acctRows,
+          new TableRow({ children: [
+            cell('Ruminant Team:', { bold: true, bg: 'E1F5EE', color: RUM_GREEN, width: sColW[0] }),
+            cell(fmtCompact(teamTotal.prev), { center: true, bold: true, bg: 'E1F5EE', width: sColW[1] }),
+            cell(fmtCompact(teamTotal.v1), { center: true, bold: true, bg: 'E1F5EE', width: sColW[2] }),
+            cell(fmtCompact(teamTotal.v2), { center: true, bold: true, bg: 'E1F5EE', width: sColW[3] }),
+            cell(fmtCompact(totBudget), { center: true, bold: true, bg: 'E1F5EE', width: sColW[4] }),
+            cell(fmtCompact(teamTotal.v3), { center: true, bold: true, bg: 'E1F5EE', width: sColW[5] }),
+            cell(ttAch > 0 ? ttAch + '%' : '--', { center: true, bold: true, bg: 'E1F5EE', color: achColor(ttAch), width: sColW[6] }),
+            cell(fmtCompact(annBdg), { center: true, bold: true, bg: 'E1F5EE', width: sColW[7] }),
+            cell(fmtCompact(teamTotal.cum), { center: true, bold: true, bg: 'E1F5EE', width: sColW[8] }),
+            cell(ttCumAch > 0 ? ttCumAch + '%' : '--', { center: true, bold: true, bg: 'E1F5EE', color: achColor(ttCumAch), width: sColW[9] }),
+            cell('', { bg: 'E1F5EE', width: sColW[10] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 240, after: 120 }, children: [] }),
+
+        // Activities (Ruminant / Trial / Travel)
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Team Weekly Activities', bold: true, size: 22, font: 'Arial', color: RUM_GREEN })] }),
+        new Table({ width: { size: actColW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Activities', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', width: actColW[0], header: true }),
+            cell('This week', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: actColW[1], header: true }),
+            cell('Next week', { bold: true, bg: RUM_GREEN, color: 'FFFFFF', center: true, width: actColW[2], header: true }),
+          ] }),
+          new TableRow({ height: { value: 600, rule: 'atLeast' as const }, children: [
+            teamCell('Ruminant', { bg: 'E1F5EE', width: actColW[0], color: RUM_GREEN }),
+            activityCell(rumSummary.thisWeek || '', { width: actColW[1] }),
+            activityCell(rumSummary.nextWeek || '', { width: actColW[2] }),
+          ] }),
+          new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
+            teamCell('Trial', { bg: 'FAEEDA', width: actColW[0], color: '854F0B' }),
+            activityCell('', { width: actColW[1] }),
+            activityCell('', { width: actColW[2] }),
+          ] }),
+          new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
+            teamCell('Travel', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }),
+            activityCell('', { width: actColW[1] }),
+            activityCell('', { width: actColW[2] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 120 }, children: [] }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return new Response(buffer as unknown as BodyInit, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="PI_Ruminant_Report_${now.toISOString().split('T')[0]}.docx"`,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -346,9 +538,12 @@ export async function POST(request: Request) {
     const months: { m: number; y: number }[] = [];
     for (let i = 2; i >= 0; i--) { let m = curMonth - i, y = curYear; if (m <= 0) { m += 12; y--; } months.push({ m, y }); }
 
-    // ── Monogastric-specific report ──
+    // ── Team-specific reports ──
     if (reportType === 'monogastrics') {
       return generateMonogastricReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+    }
+    if (reportType === 'ruminants') {
+      return generateRuminantReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
     }
 
     // ── Sales helpers ──
