@@ -633,6 +633,19 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr style={{ borderTop: '2px solid #1a4731', background: '#f0f7ee', fontWeight: 600 }}>
+                <td style={{ padding: '8px 10px', fontSize: '12px', color: '#1a4731', fontWeight: 700 }}>Total</td>
+                {MONTHS.map((_, i) => {
+                  const mo = i + 1;
+                  const moTotal = accounts.reduce((s, acct) => s + (parseFloat(inputs[acct]?.[mo] || '') || 0), 0);
+                  return <td key={i} style={{ padding: '8px 4px', textAlign: 'center', fontSize: '11px', color: moTotal > 0 ? '#1a4731' : '#ccc', fontWeight: 600 }}>{moTotal > 0 ? '$' + Math.round(moTotal).toLocaleString() : '--'}</td>;
+                })}
+                <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', color: '#1a4731', fontWeight: 700 }}>
+                  {(() => { const gt = accounts.reduce((s, acct) => s + Object.values(inputs[acct] || {}).reduce((ss, v) => ss + (parseFloat(v) || 0), 0), 0); return gt > 0 ? '$' + Math.round(gt).toLocaleString() : '--'; })()}
+                </td>
+              </tr>
+            </tfoot>
           </table>
           </div>
         </div>
