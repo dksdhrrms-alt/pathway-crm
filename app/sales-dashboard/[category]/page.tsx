@@ -52,7 +52,7 @@ export default function SalesDashboardPage() {
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
-  const { saleRecords: salesData, salesBudgets: ctxBudgets, accountBudgets, setAccountBudgets } = useCRM();
+  const { saleRecords: salesData, salesBudgets: ctxBudgets, accountBudgets, setAccountBudgets, accounts: crmAccounts } = useCRM();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -512,7 +512,7 @@ export default function SalesDashboardPage() {
 
       {/* Account Budget Modal */}
       {showAcctBudgetModal && (
-        <AcctBudgetModal year={year} category={category} salesData={salesData} accountBudgets={accountBudgets} setAccountBudgets={setAccountBudgets}
+        <AcctBudgetModal year={year} category={category} salesData={salesData} accountBudgets={accountBudgets} setAccountBudgets={setAccountBudgets} crmAccounts={crmAccounts}
           onClose={() => setShowAcctBudgetModal(false)} onSaved={() => { setToast('Account budgets saved'); setShowAcctBudgetModal(false); }} />
       )}
 
@@ -523,20 +523,37 @@ export default function SalesDashboardPage() {
 
 // ── Account Budget Modal ────────────────────────────────────────────────────
 
-function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccountBudgets, onClose, onSaved }: {
+function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccountBudgets, crmAccounts, onClose, onSaved }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   year: number; category: string; salesData: any[]; accountBudgets: import('@/lib/data').AccountBudget[];
-  setAccountBudgets: React.Dispatch<React.SetStateAction<import('@/lib/data').AccountBudget[]>>; onClose: () => void; onSaved: () => void;
+  setAccountBudgets: React.Dispatch<React.SetStateAction<import('@/lib/data').AccountBudget[]>>;
+  crmAccounts: import('@/lib/data').Account[]; onClose: () => void; onSaved: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [inputs, setInputs] = useState<Record<string, Record<number, string>>>({});
 
-  const accounts = [...new Set(
+  // Merge accounts from 3 sources: sales records, existing budgets, CRM accounts
+  const CAT_INDUSTRIES: Record<string, string[]> = {
+    monogastrics: ['poultry', 'swine'], ruminants: ['beef', 'dairy', 'ruminant'],
+    latam: ['latam', 'distributor'], familyb2b: ['family', 'b2b', 'distribution', 'feed mill'],
+  };
+  const salesNames = [...new Set(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     salesData.filter((r: any) => category === 'all' || r.category === category)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((r: any) => r.account_name || r.accountName || '').filter(Boolean),
-  )].sort();
+  )];
+  const budgetNames = [...new Set(
+    accountBudgets.filter((b) => category === 'all' || b.category === category).map((b) => b.accountName).filter(Boolean),
+  )];
+  const crmNames = crmAccounts
+    .filter((a) => {
+      if (category === 'all') return true;
+      const kws = CAT_INDUSTRIES[category] || [];
+      return kws.some((k) => (a.industry || '').toLowerCase().includes(k) || (a.category || '') === category);
+    })
+    .map((a) => a.name).filter(Boolean);
+  const accounts = [...new Set([...salesNames, ...budgetNames, ...crmNames])].sort();
 
   useEffect(() => {
     const init: Record<string, Record<number, string>> = {};
