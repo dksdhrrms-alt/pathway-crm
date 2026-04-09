@@ -26,12 +26,12 @@ const borders = { top: brd, bottom: brd, left: brd, right: brd };
 
 function cell(text: string, o: { bold?: boolean; bg?: string; color?: string; center?: boolean; width?: number; size?: number; header?: boolean } = {}) {
   const lines = String(text || '--').split('\n').filter(Boolean);
-  const fontSize = o.size || (o.header ? 16 : 15);
+  const fontSize = o.size || (o.header ? 14 : 13);
   return new TableCell({
     borders, width: { size: o.width || 1000, type: WidthType.DXA },
     shading: o.bg ? { fill: o.bg, type: ShadingType.CLEAR } : undefined,
     verticalAlign: VerticalAlign.CENTER,
-    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    margins: { top: 50, bottom: 50, left: 80, right: 80 },
     children: lines.length === 0
       ? [new Paragraph({ children: [new TextRun({ text: '--', size: fontSize, font: 'Arial' })] })]
       : lines.map((line, i) => new Paragraph({
@@ -942,8 +942,8 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
     const m3Name = MONTH_NAMES[months[2].m - 1];
 
     // Sales table — 10 columns, sum = 14400
-    // (USD) | M1 | M2 | M3 | Budget | Ach% | Ann.Budget | Cumulative | Cum% | Remark
-    const sColW = [2000, 1300, 1300, 1300, 1400, 900, 2100, 2100, 900, 1100];
+    // (USD) | M1 | M2 | M3 Actual | Budget | Ach% | Ann.Budget | Cumulative | Cum% | Remark
+    const sColW = [2500, 1200, 1200, 1200, 1300, 800, 1900, 1900, 800, 600];
 
     // Build sales table data rows
     const salesTableRows = allRows.map((r) => {
@@ -954,15 +954,15 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       return new TableRow({
         height: { value: 380, rule: 'atLeast' as const },
         children: [
-          cell(r.label, { bold: isTotal, bg, width: sColW[0], size: 14 }),
-          cell(fmtCompact(r.m1), { center: true, bg, width: sColW[1], size: 14 }),
-          cell(fmtCompact(r.m2), { center: true, bg, width: sColW[2], size: 14 }),
-          cell(fmtCompact(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[3], size: 14 }),
-          cell(fmtCompact(r.bgt), { center: true, bg, width: sColW[4], size: 14 }),
-          cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[5], color: achColor(r.ach), bold: true, size: 14 }),
-          cell(fmtCompact(r.annBgt), { center: true, bg, width: sColW[6], size: 14 }),
-          cell(fmtCompact(r.cum), { center: true, bg, width: sColW[7], size: 14 }),
-          cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[8], color: achColor(r.cumAch), bold: true, size: 14 }),
+          cell(r.label, { bold: isTotal, bg, width: sColW[0], size: 13 }),
+          cell(fmtCompact(r.m1), { center: true, bg, width: sColW[1], size: 13 }),
+          cell(fmtCompact(r.m2), { center: true, bg, width: sColW[2], size: 13 }),
+          cell(fmtCompact(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[3], size: 13 }),
+          cell(fmtCompact(r.bgt), { center: true, bg, width: sColW[4], size: 13 }),
+          cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[5], color: achColor(r.ach), bold: true, size: 13 }),
+          cell(fmtCompact(r.annBgt), { center: true, bg, width: sColW[6], size: 13 }),
+          cell(fmtCompact(r.cum), { center: true, bg, width: sColW[7], size: 13 }),
+          cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[8], color: achColor(r.cumAch), bold: true, size: 13 }),
           cell('', { bg, width: sColW[9] }),
         ],
       });
