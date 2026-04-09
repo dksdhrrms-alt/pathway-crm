@@ -633,23 +633,24 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
                 );
               })}
             </tbody>
-            <tfoot>
-              <tr style={{ borderTop: '2px solid #1a4731', background: '#f0f7ee', fontWeight: 600 }}>
-                <td style={{ padding: '8px 10px', fontSize: '12px', color: '#1a4731', fontWeight: 700 }}>Total</td>
-                {MONTHS.map((_, i) => {
-                  const mo = i + 1;
-                  const moTotal = accounts.reduce((s, acct) => s + (parseFloat(inputs[acct]?.[mo] || '') || 0), 0);
-                  return <td key={i} style={{ padding: '8px 4px', textAlign: 'center', fontSize: '11px', color: moTotal > 0 ? '#1a4731' : '#ccc', fontWeight: 600 }}>{moTotal > 0 ? '$' + Math.round(moTotal).toLocaleString() : '--'}</td>;
-                })}
-                <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '13px', color: '#1a4731', fontWeight: 700 }}>
-                  {(() => { const gt = accounts.reduce((s, acct) => s + Object.values(inputs[acct] || {}).reduce((ss, v) => ss + (parseFloat(v) || 0), 0), 0); return gt > 0 ? '$' + Math.round(gt).toLocaleString() : '--'; })()}
-                </td>
-              </tr>
-            </tfoot>
           </table>
           </div>
         </div>
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexShrink: 0 }}>
+        {/* Totals bar — fixed above footer */}
+        <div style={{ padding: '10px 16px', background: '#f0f7ee', borderTop: '2px solid #1a4731', borderBottom: '0.5px solid #e5e7eb', flexShrink: 0, overflowX: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: '800px' }}>
+            <div style={{ width: '150px', flexShrink: 0, fontSize: '12px', fontWeight: 700, color: '#1a4731', padding: '0 10px' }}>Total Budget</div>
+            {MONTHS.map((_, i) => {
+              const mo = i + 1;
+              const moTotal = accounts.reduce((s, acct) => s + (parseFloat(inputs[acct]?.[mo] || '') || 0), 0);
+              return <div key={i} style={{ minWidth: '58px', padding: '0 2px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: moTotal > 0 ? '#1a4731' : '#aaa' }}>{moTotal > 0 ? '$' + Math.round(moTotal / 1000) + 'K' : '--'}</div>;
+            })}
+            <div style={{ marginLeft: 'auto', padding: '0 10px', fontSize: '13px', fontWeight: 700, color: '#1a4731', whiteSpace: 'nowrap' }}>
+              {(() => { const gt = accounts.reduce((s, acct) => s + Object.values(inputs[acct] || {}).reduce((ss, v) => ss + (parseFloat(v) || 0), 0), 0); return gt > 0 ? '$' + Math.round(gt).toLocaleString() : '--'; })()}
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexShrink: 0 }}>
           <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
           <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: saving ? '#e5e7eb' : '#1a4731', color: saving ? '#888' : 'white', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>
             {saving ? 'Saving...' : 'Save All'}
