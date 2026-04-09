@@ -590,90 +590,88 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
   );
 }
 
-// ── Account Breakdown Component ─────────────────────────────────────────────
+// ── Account Manager Breakdown ───────────────────────────────────────────────
 
-const CAT_BADGE: Record<string, { bg: string; color: string }> = {
-  monogastrics: { bg: '#E6F1FB', color: '#185FA5' },
-  ruminants: { bg: '#E1F5EE', color: '#0F6E56' },
-  latam: { bg: '#FAEEDA', color: '#854F0B' },
-  familyb2b: { bg: '#EEEDFE', color: '#534AB7' },
-};
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AccountBreakdown({ month, year, category, salesData }: { month: number; year: number; category: string; salesData: any[] }) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monthRecords = salesData.filter((r: any) => r.date?.startsWith(prefix) && (category === 'all' || r.category === category));
 
-  // Group by account → product
-  const byAccount: Record<string, { name: string; totalAmount: number; cat: string; products: Record<string, { name: string; amount: number; volumeKg: number }> }> = {};
+  // Group by account manager
+  const byManager: Record<string, { managerName: string; amount: number; volumeKg: number }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monthRecords.forEach((r: any) => {
-    const acct = r.account_name || r.accountName || 'Unknown';
-    const prod = r.product_name || r.productName || 'Unknown';
+    const mgr = r.owner_name || r.ownerName || 'Unassigned';
     const amt = Number(r.amount) || 0;
     const vol = Number(r.volume_kg || r.volumeKg) || 0;
-    if (!byAccount[acct]) byAccount[acct] = { name: acct, totalAmount: 0, cat: r.category || '', products: {} };
-    byAccount[acct].totalAmount += amt;
-    if (!byAccount[acct].products[prod]) byAccount[acct].products[prod] = { name: prod, amount: 0, volumeKg: 0 };
-    byAccount[acct].products[prod].amount += amt;
-    byAccount[acct].products[prod].volumeKg += vol;
+    if (!byManager[mgr]) byManager[mgr] = { managerName: mgr, amount: 0, volumeKg: 0 };
+    byManager[mgr].amount += amt;
+    byManager[mgr].volumeKg += vol;
   });
 
-  const sorted = Object.values(byAccount).sort((a, b) => b.totalAmount - a.totalAmount);
-  const grandTotal = sorted.reduce((s, a) => s + a.totalAmount, 0);
+  const sorted = Object.values(byManager).sort((a, b) => b.amount - a.amount);
+  const totalAmount = sorted.reduce((s, m) => s + m.amount, 0);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalVol = monthRecords.reduce((s: number, r: any) => s + (Number(r.volume_kg || r.volumeKg) || 0), 0);
-  const showCat = category === 'all';
 
   if (sorted.length === 0) return <div className="px-10 py-4 text-sm text-gray-400">No sales records for this month.</div>;
 
   return (
-    <div className="px-4 py-3 pl-10">
-      <p className="text-xs font-medium mb-2" style={{ color: '#1a4731' }}>Account Breakdown — {sorted.length} accounts</p>
-      <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
-        <thead><tr className="border-b border-gray-200">
-          {showCat && <th className="text-left p-2 text-gray-500 font-medium">Cat.</th>}
-          <th className="text-left p-2 text-gray-500 font-medium">Account</th>
-          <th className="text-left p-2 text-gray-500 font-medium">Product</th>
-          <th className="text-right p-2 text-gray-500 font-medium">Volume (KG)</th>
-          <th className="text-right p-2 text-gray-500 font-medium">Amount</th>
-          <th className="text-right p-2 text-gray-500 font-medium">% of Month</th>
-        </tr></thead>
+    <div style={{ padding: '12px 16px 12px 40px' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+            <th style={{ textAlign: 'left', padding: '6px 12px', color: '#888', fontWeight: 500, width: '35%' }}>Account Manager</th>
+            <th style={{ textAlign: 'right', padding: '6px 12px', color: '#888', fontWeight: 500, width: '20%' }}>Volume (KG)</th>
+            <th style={{ textAlign: 'right', padding: '6px 12px', color: '#888', fontWeight: 500, width: '25%' }}>Amount</th>
+            <th style={{ textAlign: 'right', padding: '6px 12px', color: '#888', fontWeight: 500, width: '20%' }}>% of Month</th>
+          </tr>
+        </thead>
         <tbody>
-          {sorted.map((acct, accIdx) => {
-            const prods = Object.values(acct.products).sort((a, b) => b.amount - a.amount);
-            const pct = grandTotal > 0 ? ((acct.totalAmount / grandTotal) * 100).toFixed(1) : '0';
-            const badge = CAT_BADGE[acct.cat] || { bg: '#F1EFE8', color: '#5F5E5A' };
-            return prods.map((prod, pIdx) => {
-              const isFirst = pIdx === 0;
-              const rowCount = prods.length;
-              return (
-                <tr key={`${acct.name}-${prod.name}`} className={accIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} style={{ borderBottom: pIdx === rowCount - 1 ? '1px solid #e5e7eb' : '0.5px solid #f3f4f6' }}>
-                  {showCat && isFirst && <td rowSpan={rowCount} className="p-2 align-top"><span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: badge.bg, color: badge.color }}>{acct.cat}</span></td>}
-                  {isFirst && <td rowSpan={rowCount} className="p-2 align-top font-semibold" style={{ color: '#1a4731', borderRight: '0.5px solid #e5e7eb' }}>{acct.name}<div className="text-[10px] text-gray-400 font-normal mt-0.5">${Math.round(acct.totalAmount).toLocaleString()} total</div></td>}
-                  <td className="p-2 text-gray-700">{prod.name}</td>
-                  <td className="p-2 text-right text-gray-500">{prod.volumeKg > 0 ? Math.round(prod.volumeKg).toLocaleString() + ' kg' : '—'}</td>
-                  <td className="p-2 text-right font-medium">${Math.round(prod.amount).toLocaleString()}</td>
-                  {isFirst && <td rowSpan={rowCount} className="p-2 text-right align-middle">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${Math.min(Number(pct), 100)}%`, backgroundColor: '#1a4731' }} /></div>
-                      <span className="text-gray-500 min-w-[30px] text-right">{pct}%</span>
+          {sorted.map((mgr, idx) => {
+            const pct = totalAmount > 0 ? ((mgr.amount / totalAmount) * 100).toFixed(1) : '0';
+            return (
+              <tr key={mgr.managerName} style={{ borderBottom: '0.5px solid #f3f4f6', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                <td style={{ padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '28px', height: '28px', borderRadius: '50%', background: '#1a4731',
+                      color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '10px', fontWeight: 600, flexShrink: 0,
+                    }}>
+                      {mgr.managerName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
                     </div>
-                  </td>}
-                </tr>
-              );
-            });
+                    <span style={{ fontWeight: 500 }}>{mgr.managerName}</span>
+                  </div>
+                </td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', color: '#666', fontSize: '12px' }}>
+                  {mgr.volumeKg > 0 ? Math.round(mgr.volumeKg).toLocaleString() + ' kg' : '--'}
+                </td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600 }}>
+                  ${Math.round(mgr.amount).toLocaleString()}
+                </td>
+                <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                    <div style={{ width: '60px', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(Number(pct), 100)}%`, height: '100%', background: '#1a4731', borderRadius: '2px' }} />
+                    </div>
+                    <span style={{ color: '#666', minWidth: '36px', textAlign: 'right', fontSize: '12px' }}>{pct}%</span>
+                  </div>
+                </td>
+              </tr>
+            );
           })}
         </tbody>
-        <tfoot><tr className="border-t border-gray-200" style={{ backgroundColor: '#f0f7ee' }}>
-          {showCat && <td className="p-2"></td>}
-          <td className="p-2 font-semibold" style={{ color: '#1a4731' }}>Total ({sorted.length} accounts)</td>
-          <td className="p-2"></td>
-          <td className="p-2 text-right text-gray-600 font-medium">{Math.round(totalVol).toLocaleString()} kg</td>
-          <td className="p-2 text-right font-semibold" style={{ color: '#1a4731' }}>${Math.round(grandTotal).toLocaleString()}</td>
-          <td className="p-2 text-right font-medium" style={{ color: '#1a4731' }}>100%</td>
-        </tr></tfoot>
+        <tfoot>
+          <tr style={{ borderTop: '1px solid #e5e7eb', background: '#E1F5EE' }}>
+            <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1a4731', fontSize: '12px' }}>Total ({sorted.length} managers)</td>
+            <td style={{ padding: '8px 12px', textAlign: 'right', color: '#666', fontSize: '12px', fontWeight: 500 }}>{Math.round(totalVol).toLocaleString()} kg</td>
+            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#1a4731' }}>${Math.round(totalAmount).toLocaleString()}</td>
+            <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1a4731', fontWeight: 600 }}>100%</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
