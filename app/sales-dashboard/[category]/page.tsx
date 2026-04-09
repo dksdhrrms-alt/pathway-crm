@@ -401,6 +401,7 @@ export default function SalesDashboardPage() {
                     {expandedMonth === mo && (
                       <tr><td colSpan={8} className="p-0 bg-gray-50/30">
                         <AccountBreakdown month={mo} year={year} category={category} salesData={salesData} />
+                        <ManagerBreakdown month={mo} year={year} category={category} salesData={salesData} />
                       </td></tr>
                     )}
                     </React.Fragment>
@@ -590,11 +591,86 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
   );
 }
 
+// ── Account Breakdown (by account + product) ────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function AccountBreakdown({ month, year, category, salesData }: { month: number; year: number; category: string; salesData: any[] }) {
+  const prefix = `${year}-${String(month).padStart(2, '0')}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const monthRecords = salesData.filter((r: any) => r.date?.startsWith(prefix) && (category === 'all' || r.category === category));
+
+  const byAccount: Record<string, { name: string; totalAmount: number; products: Record<string, { name: string; amount: number; volumeKg: number }> }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  monthRecords.forEach((r: any) => {
+    const acct = r.account_name || r.accountName || 'Unknown';
+    const prod = r.product_name || r.productName || 'Unknown';
+    const amt = Number(r.amount) || 0;
+    const vol = Number(r.volume_kg || r.volumeKg) || 0;
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, totalAmount: 0, products: {} };
+    byAccount[acct].totalAmount += amt;
+    if (!byAccount[acct].products[prod]) byAccount[acct].products[prod] = { name: prod, amount: 0, volumeKg: 0 };
+    byAccount[acct].products[prod].amount += amt;
+    byAccount[acct].products[prod].volumeKg += vol;
+  });
+
+  const sorted = Object.values(byAccount).sort((a, b) => b.totalAmount - a.totalAmount);
+  const grandTotal = sorted.reduce((s, a) => s + a.totalAmount, 0);
+
+  if (sorted.length === 0) return <div className="px-10 py-4 text-sm text-gray-400">No sales records for this month.</div>;
+
+  return (
+    <div style={{ padding: '12px 16px 4px 40px' }}>
+      <p style={{ fontSize: '12px', fontWeight: 600, color: '#1a4731', marginBottom: '8px' }}>Account Breakdown ({sorted.length} accounts)</p>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+        <thead>
+          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+            <th style={{ textAlign: 'left', padding: '5px 10px', color: '#888', fontWeight: 500 }}>Account</th>
+            <th style={{ textAlign: 'left', padding: '5px 10px', color: '#888', fontWeight: 500 }}>Product</th>
+            <th style={{ textAlign: 'right', padding: '5px 10px', color: '#888', fontWeight: 500 }}>Volume (KG)</th>
+            <th style={{ textAlign: 'right', padding: '5px 10px', color: '#888', fontWeight: 500 }}>Amount</th>
+            <th style={{ textAlign: 'right', padding: '5px 10px', color: '#888', fontWeight: 500 }}>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((acct, accIdx) => {
+            const prods = Object.values(acct.products).sort((a, b) => b.amount - a.amount);
+            const pct = grandTotal > 0 ? ((acct.totalAmount / grandTotal) * 100).toFixed(1) : '0';
+            return prods.map((prod, pIdx) => (
+              <tr key={`${acct.name}-${prod.name}`} style={{ borderBottom: pIdx === prods.length - 1 ? '1px solid #e5e7eb' : '0.5px solid #f3f4f6', background: accIdx % 2 === 0 ? 'white' : '#fafafa' }}>
+                {pIdx === 0 && (
+                  <td rowSpan={prods.length} style={{ padding: '8px 10px', fontWeight: 500, color: '#1a4731', verticalAlign: 'top', borderRight: '0.5px solid #e5e7eb' }}>
+                    {acct.name}
+                    <div style={{ fontSize: '10px', color: '#888', fontWeight: 400, marginTop: '2px' }}>${Math.round(acct.totalAmount).toLocaleString()}</div>
+                  </td>
+                )}
+                <td style={{ padding: '6px 10px', color: '#444' }}>{prod.name}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', color: '#666' }}>{prod.volumeKg > 0 ? Math.round(prod.volumeKg).toLocaleString() + ' kg' : '--'}</td>
+                <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500 }}>${Math.round(prod.amount).toLocaleString()}</td>
+                {pIdx === 0 && (
+                  <td rowSpan={prods.length} style={{ padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
+                    <span style={{ color: '#666', fontSize: '11px' }}>{pct}%</span>
+                  </td>
+                )}
+              </tr>
+            ));
+          })}
+        </tbody>
+        <tfoot>
+          <tr style={{ borderTop: '1px solid #e5e7eb', background: '#f0f7ee' }}>
+            <td colSpan={3} style={{ padding: '6px 10px', fontWeight: 600, color: '#1a4731', fontSize: '11px' }}>Total ({sorted.length} accounts)</td>
+            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#1a4731' }}>${Math.round(grandTotal).toLocaleString()}</td>
+            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#1a4731' }}>100%</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 // ── Account Manager Breakdown ───────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function AccountBreakdown({ month, year, category, salesData }: { month: number; year: number; category: string; salesData: any[] }) {
+function ManagerBreakdown({ month, year, category, salesData }: { month: number; year: number; category: string; salesData: any[] }) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monthRecords = salesData.filter((r: any) => r.date?.startsWith(prefix) && (category === 'all' || r.category === category));
