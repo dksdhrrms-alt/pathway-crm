@@ -1032,6 +1032,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
           // ── Section 1: Focus Activities ──
           new Table({
             width: { size: 14400, type: WidthType.DXA },
+            columnWidths: [14400],
             rows: [
               new TableRow({
                 children: [new TableCell({
@@ -1063,6 +1064,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
           }),
           new Table({
             width: { size: 14400, type: WidthType.DXA },
+            columnWidths: sColW,
             rows: [
               // Header
               new TableRow({
@@ -1093,6 +1095,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
           }),
           new Table({
             width: { size: 14400, type: WidthType.DXA },
+            columnWidths: actColW,
             rows: [
               new TableRow({
                 tableHeader: true,
