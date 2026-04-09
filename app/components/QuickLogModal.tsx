@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { generateId, ActivityType } from '@/lib/data';
-import AccountSearchSelect from './AccountSearchSelect';
 
 const ACTIVITY_TYPES: { id: ActivityType; emoji: string; label: string }[] = [
   { id: 'Call', emoji: '📞', label: 'Call' },
@@ -20,87 +19,109 @@ interface Props {
 
 export default function QuickLogModal({ onClose, initialType }: Props) {
   const { data: session } = useSession();
-  const { addActivity } = useCRM();
+  const { accounts, contacts, addActivity } = useCRM();
 
   const [type, setType] = useState<ActivityType>(initialType || 'Call');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
-  const [accountName, setAccountName] = useState('');
+
+  // Account search
+  const [accountSearch, setAccountSearch] = useState('');
   const [accountId, setAccountId] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [accountName, setAccountName] = useState('');
+  const [showAccountDD, setShowAccountDD] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
+
+  // Contact search
+  const [contactSearch, setContactSearch] = useState('');
+  const [contactId, setContactId] = useState('');
+  const [showContactDD, setShowContactDD] = useState(false);
+  const contactRef = useRef<HTMLDivElement>(null);
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(e.target as Node)) setShowAccountDD(false);
+      if (contactRef.current && !contactRef.current.contains(e.target as Node)) setShowContactDD(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const filteredAccounts = accounts
+    .filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+    .slice(0, 8);
+
+  const filteredContacts = contacts
+    .filter((c) => {
+      const name = `${c.firstName} ${c.lastName}`.toLowerCase();
+      if (!name.includes(contactSearch.toLowerCase())) return false;
+      if (accountId) return c.accountId === accountId;
+      return true;
+    })
+    .slice(0, 8);
 
   function handleSave() {
     if (!subject.trim() || saving) return;
     setSaving(true);
 
-    const activity = {
+    addActivity({
       id: generateId(),
       type,
       subject: subject.trim(),
       description: description.trim(),
-      date,
+      date: new Date().toISOString().split('T')[0],
       ownerId: session?.user?.id || '',
       accountId: accountId || '',
-      contactId: '',
-    };
+      contactId: contactId || '',
+    });
 
-    addActivity(activity);
     setSaved(true);
     setTimeout(() => onClose(), 1200);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleSave();
-    }
-    if (e.key === 'Escape') onClose();
-  }
-
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-0 md:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      onKeyDown={handleKeyDown}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+        zIndex: 10000, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '16px',
+      }}
     >
-      <div className="bg-white w-full md:max-w-[480px] md:rounded-2xl rounded-t-2xl p-5 pb-8 md:pb-5 border-t md:border border-gray-200 shadow-xl animate-slideUp">
+      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px' }}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 className="text-[15px] font-semibold text-gray-900">Quick Log</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {session?.user?.name} &middot;{' '}
-              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }}>Quick Log</h3>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }}>
+              {session?.user?.name} &middot; {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-lg p-1 transition-colors"
-          >
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#888' }}>
             ✕
           </button>
         </div>
 
-        {/* Activity Type selector */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        {/* Type selector */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px' }}>
           {ACTIVITY_TYPES.map((t) => (
             <button
               key={t.id}
               onClick={() => setType(t.id)}
-              className={`py-2.5 px-1 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
-                type === t.id
-                  ? 'border-[#1a4731] bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
+              style={{
+                padding: '10px 4px', borderRadius: '10px',
+                border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
+                background: type === t.id ? '#f0f7ee' : 'white',
+                cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: '4px',
+              }}
             >
-              <span className="text-xl">{t.emoji}</span>
-              <span
-                className={`text-[11px] ${
-                  type === t.id ? 'font-semibold text-[#1a4731]' : 'text-gray-500'
-                }`}
-              >
+              <span style={{ fontSize: '20px' }}>{t.emoji}</span>
+              <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }}>
                 {t.label}
               </span>
             </button>
@@ -113,71 +134,201 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          placeholder={`${type} subject... (required)`}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !showAccountDD && !showContactDD) handleSave();
+            if (e.key === 'Escape') onClose();
+          }}
+          placeholder="Subject (required)"
+          style={{
+            width: '100%', padding: '10px 12px', fontSize: '14px',
+            border: '1px solid #e5e7eb', borderRadius: '8px',
+            marginBottom: '10px', boxSizing: 'border-box',
+          }}
         />
 
-        {/* Account search */}
-        <div className="mb-3">
-          <AccountSearchSelect
-            value={accountName}
-            onChange={(name, id) => {
-              setAccountName(name);
-              setAccountId(id);
+        {/* Account Search */}
+        <div ref={accountRef} style={{ position: 'relative', marginBottom: '10px' }}>
+          <input
+            type="text"
+            value={accountSearch}
+            onChange={(e) => { setAccountSearch(e.target.value); setAccountName(e.target.value); setAccountId(''); setShowAccountDD(true); }}
+            onFocus={() => { if (accountSearch) setShowAccountDD(true); }}
+            placeholder="Search account (optional)..."
+            style={{
+              width: '100%', padding: '10px 12px', paddingRight: accountName ? '32px' : '12px',
+              fontSize: '14px',
+              border: accountId ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
+              borderRadius: '8px', boxSizing: 'border-box',
+              background: accountId ? '#f0f7ee' : 'white',
             }}
-            placeholder="Related account (optional)..."
           />
+          {accountName && (
+            <button
+              onClick={() => { setAccountSearch(''); setAccountName(''); setAccountId(''); setContactSearch(''); setContactId(''); }}
+              style={{
+                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '18px',
+              }}
+            >
+              ×
+            </button>
+          )}
+          {showAccountDD && accountSearch && filteredAccounts.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
+              background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10001,
+              maxHeight: '220px', overflowY: 'auto',
+            }}>
+              {filteredAccounts.map((a) => (
+                <div
+                  key={a.id}
+                  onClick={() => { setAccountName(a.name); setAccountId(a.id); setAccountSearch(a.name); setShowAccountDD(false); setContactSearch(''); setContactId(''); }}
+                  style={{
+                    padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    borderBottom: '0.5px solid #f3f4f6',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                >
+                  <div style={{
+                    width: '30px', height: '30px', borderRadius: '6px', background: '#1a4731',
+                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '11px', fontWeight: 600, flexShrink: 0,
+                  }}>
+                    {a.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{a.name}</div>
+                    {a.industry && <div style={{ fontSize: '11px', color: '#888' }}>{a.industry}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Contact Search */}
+        <div ref={contactRef} style={{ position: 'relative', marginBottom: '10px' }}>
+          <input
+            type="text"
+            value={contactSearch}
+            onChange={(e) => { setContactSearch(e.target.value); setContactId(''); setShowContactDD(true); }}
+            onFocus={() => { if (contactSearch) setShowContactDD(true); }}
+            placeholder={accountId ? `Search contact at ${accountName}...` : 'Search contact (optional)...'}
+            style={{
+              width: '100%', padding: '10px 12px', paddingRight: contactSearch ? '32px' : '12px',
+              fontSize: '14px',
+              border: contactId ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
+              borderRadius: '8px', boxSizing: 'border-box',
+              background: contactId ? '#f0f7ee' : 'white',
+            }}
+          />
+          {contactSearch && (
+            <button
+              onClick={() => { setContactSearch(''); setContactId(''); }}
+              style={{
+                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '18px',
+              }}
+            >
+              ×
+            </button>
+          )}
+          {showContactDD && contactSearch && filteredContacts.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
+              background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10001,
+              maxHeight: '220px', overflowY: 'auto',
+            }}>
+              {filteredContacts.map((c) => {
+                const fullName = `${c.firstName} ${c.lastName}`;
+                const acctName = c.accountName || accounts.find((a) => a.id === c.accountId)?.name || '';
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setContactSearch(fullName);
+                      setContactId(c.id);
+                      setShowContactDD(false);
+                      if (!accountId && c.accountId) {
+                        setAccountName(acctName);
+                        setAccountId(c.accountId);
+                        setAccountSearch(acctName);
+                      }
+                    }}
+                    style={{
+                      padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
+                      display: 'flex', alignItems: 'center', gap: '10px',
+                      borderBottom: '0.5px solid #f3f4f6',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                  >
+                    <div style={{
+                      width: '30px', height: '30px', borderRadius: '50%', background: '#185FA5',
+                      color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '11px', fontWeight: 600, flexShrink: 0,
+                    }}>
+                      {c.firstName?.[0]}{c.lastName?.[0]}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 500 }}>
+                        {fullName}
+                        {c.isKeyMan && <span style={{ color: '#f59e0b', marginLeft: '4px' }}>★</span>}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#888' }}>
+                        {c.title ? `${c.title} · ` : ''}{acctName}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Notes */}
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Quick notes... (optional)"
+          placeholder="Notes (optional)"
           rows={3}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          style={{
+            width: '100%', padding: '10px 12px', fontSize: '13px',
+            border: '1px solid #e5e7eb', borderRadius: '8px',
+            marginBottom: '16px', resize: 'none', boxSizing: 'border-box',
+            fontFamily: 'inherit',
+          }}
         />
 
-        {/* Date */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-xs text-gray-400">Date:</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
         {/* Footer */}
-        <div className="flex justify-between items-center">
-          <span className="text-[11px] text-gray-300 hidden md:inline">
-            Ctrl + Enter to save
-          </span>
-          <span className="md:hidden" />
-
-          {saved ? (
-            <span className="text-sm font-semibold text-[#1a4731] flex items-center gap-1.5">
-              ✓ Logged!
-            </span>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!subject.trim() || saving}
-                className="px-5 py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: subject.trim() && !saving ? '#1a4731' : '#9ca3af' }}
-              >
-                {saving ? 'Saving...' : 'Log Activity'}
-              </button>
-            </div>
-          )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px', borderRadius: '8px',
+              border: '1px solid #e5e7eb', background: 'white',
+              cursor: 'pointer', fontSize: '13px',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!subject.trim() || saving || saved}
+            style={{
+              padding: '8px 20px', borderRadius: '8px', border: 'none',
+              background: saved ? '#1D9E75' : subject.trim() ? '#1a4731' : '#e5e7eb',
+              color: subject.trim() || saved ? 'white' : '#aaa',
+              cursor: subject.trim() ? 'pointer' : 'not-allowed',
+              fontSize: '13px', fontWeight: 500,
+            }}
+          >
+            {saved ? '✓ Logged!' : saving ? 'Saving...' : 'Log Activity'}
+          </button>
         </div>
       </div>
     </div>
