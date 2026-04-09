@@ -71,8 +71,6 @@ function teamCell(text: string, o: { width?: number; bg?: string; color?: string
 
 function fmtCompact(n: number) {
   if (!n || n === 0) return '--';
-  if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return '$' + Math.round(n / 1000) + 'K';
   return '$' + Math.round(n).toLocaleString('en-US');
 }
 function achColor(p: number) { return p >= 100 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
