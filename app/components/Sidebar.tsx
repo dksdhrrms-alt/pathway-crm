@@ -100,6 +100,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [salesDashOpen, setSalesDashOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(pathname.startsWith('/reports'));
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const { canAccess } = useMenuAccess();
@@ -144,7 +145,7 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {items.map(({ href, label, icon: Icon }) => (
+        {items.filter((i) => i.href !== '/reports').map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -164,6 +165,45 @@ export default function Sidebar() {
             )}
           </Link>
         ))}
+
+        {/* Reports — expandable sub-menu */}
+        {canAccess('reports') && (
+          <div>
+            <button
+              onClick={() => setReportsOpen(!reportsOpen)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                pathname.startsWith('/reports') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <ReportsIcon />
+              <span>Reports</span>
+              <span className="ml-auto text-[10px] opacity-70" style={{ transform: reportsOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+            </button>
+            {reportsOpen && (
+              <div className="ml-4 mt-1 space-y-0.5">
+                {[
+                  { href: '/reports/ceo', label: 'CEO Report', icon: '🏢', adminOnly: true },
+                  { href: '/reports/monogastrics', label: 'Monogastrics', icon: '🐔', adminOnly: false },
+                  { href: '/reports/ruminants', label: 'Ruminants', icon: '🐄', adminOnly: false },
+                  { href: '/reports/latam', label: 'LATAM', icon: '🌎', adminOnly: false },
+                ].filter((item) => !item.adminOnly || isAdminRole)
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-[13px] transition-all ${
+                      pathname === item.href ? 'bg-white/20 text-white font-medium' : 'text-white/60 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <span style={{ fontSize: '14px' }}>{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Sales Dashboard — collapsible */}
         {canAccess('sales_dashboard') && <div>

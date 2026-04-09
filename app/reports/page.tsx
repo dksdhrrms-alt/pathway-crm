@@ -61,20 +61,37 @@ function downloadCSV(activities: Activity[], getUserName: (id: string) => string
   URL.revokeObjectURL(url);
 }
 
-export default function ReportsPage() {
+export type ReportTeamFilter = 'all' | 'monogastrics' | 'ruminants' | 'latam';
+
+const REPORT_TITLES: Record<ReportTeamFilter, { title: string; subtitle: string }> = {
+  all: { title: 'CEO Report', subtitle: 'Company-wide activity across all teams' },
+  monogastrics: { title: 'Monogastric Report', subtitle: 'Poultry & Swine team activity' },
+  ruminants: { title: 'Ruminant Report', subtitle: 'Ruminants team activity' },
+  latam: { title: 'LATAM Report', subtitle: 'LATAM team activity' },
+};
+
+export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: ReportTeamFilter }) {
   const { data: session } = useSession();
   const role = session?.user?.role ?? 'sales';
   const userId = session?.user?.id ?? '';
 
   const canViewAll = ['administrative_manager','admin','ceo','sales_director','coo'].includes(role ?? '');
+  const MONO_GROUP = ['monogastrics', 'swine'];
 
   const { activities: allActivities, accounts, contacts, tasks: allTasks, opportunities: allOpps, saleRecords, salesBudgets, loading } = useCRM();
   const { users: allUsers } = useUsers();
 
-  const activeUsers = useMemo(
-    () => allUsers.filter((u) => u.status === 'active'),
-    [allUsers]
-  );
+  const activeUsers = useMemo(() => {
+    const active = allUsers.filter((u) => u.status === 'active');
+    if (teamFilter === 'all') return active;
+    return active.filter((u) => {
+      const uTeam = (u as { team?: string }).team ?? '';
+      if (teamFilter === 'monogastrics') return MONO_GROUP.includes(uTeam);
+      return uTeam === teamFilter;
+    });
+  }, [allUsers, teamFilter]);
+
+  const { title: reportTitle, subtitle: reportSubtitle } = REPORT_TITLES[teamFilter];
 
   // Filters
   const [dateRange, setDateRange] = useState<DateRange>('30d');
@@ -103,11 +120,16 @@ export default function ReportsPage() {
 
   const toDate = dateRange === 'custom' ? customTo : TODAY_STR;
 
+  // Team member IDs for scoping
+  const teamMemberIds = useMemo(() => new Set(activeUsers.map((u) => u.id)), [activeUsers]);
+
   // Scoped activities
   const filteredActivities = useMemo(() => {
     let acts = [...allActivities];
+    // Team scoping
+    if (teamFilter !== 'all') acts = acts.filter((a) => teamMemberIds.has(a.ownerId));
     // Role scoping
-    if (!canViewAll) acts = acts.filter((a) => a.ownerId === userId);
+    else if (!canViewAll) acts = acts.filter((a) => a.ownerId === userId);
     // Date filter
     if (fromDate) acts = acts.filter((a) => a.date >= fromDate);
     acts = acts.filter((a) => a.date <= toDate);
@@ -163,8 +185,6 @@ export default function ReportsPage() {
     { key: 'marketing', label: 'Marketing', color: '#993556' },
     { key: 'management', label: 'Management', color: '#6b7280' },
   ];
-
-  const MONO_GROUP = ['monogastrics', 'swine'];
 
   const teamStats = useMemo(() => {
     return TEAMS.map(({ key, label, color }) => {
@@ -242,10 +262,8 @@ export default function ReportsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {canViewAll ? 'All team activity' : 'Your activity'}
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">{reportTitle}</h1>
+              <p className="text-sm text-gray-500 mt-0.5">{reportSubtitle}</p>
             </div>
             <div className="flex items-center gap-3">
               {/* View toggle */}
