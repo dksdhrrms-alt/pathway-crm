@@ -319,15 +319,18 @@ export default function SalesDashboardPage() {
             <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900">Monthly Detail</h2>
             </div>
-            <table className="w-full text-sm">
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="w-full text-sm" style={{ minWidth: '820px' }}>
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase">Month</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase">Budget</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase">Actual</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase">Achievement</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 text-xs uppercase">vs Last Year</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase">Status</th>
+                <tr className="border-b-2 border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase">Month</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Budget</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Actual</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Ach%</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">vs LY</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase" style={{ borderLeft: '2px solid #e5e7eb' }}>YTD Budget</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YTD Actual</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YTD%</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,20 +342,25 @@ export default function SalesDashboardPage() {
                   const ly = lastYearActuals[i];
                   const lyDiff = ly > 0 ? Math.round(((act - ly) / ly) * 100) : null;
                   const hasData = act > 0;
-                  const badge = statusBadge(pct, hasData);
                   const isCurrent = mo === CURRENT_MONTH && year === CURRENT_YEAR;
+                  const isFuture = year === CURRENT_YEAR && mo > CURRENT_MONTH;
+
+                  // YTD cumulative
+                  const ytdBgt = budgets.filter((b) => b.month <= mo).reduce((s, b) => s + b.budgetAmount, 0);
+                  const ytdAct = monthlyActuals.slice(0, mo).reduce((s, a) => s + a, 0);
+                  const ytdPct = ytdBgt > 0 ? Math.round((ytdAct / ytdBgt) * 100) : 0;
 
                   return (
                     <React.Fragment key={mo}>
                     <tr onClick={() => setExpandedMonth(expandedMonth === mo ? null : mo)}
                       className={`border-b border-gray-50 cursor-pointer transition-colors ${expandedMonth === mo ? 'bg-green-50/40' : isCurrent ? 'bg-green-50/20' : 'hover:bg-gray-50/60'}`}>
-                      <td className="px-5 py-3 font-medium text-gray-900">
+                      <td className="px-4 py-3 font-medium text-gray-900">
                         <span className="inline-flex items-center gap-2">
                           <span className={`text-xs text-gray-400 transition-transform ${expandedMonth === mo ? 'rotate-90' : ''}`} style={{ display: 'inline-block' }}>▶</span>
                           {m}{isCurrent && <span className="ml-1 text-xs text-green-600">(current)</span>}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-4 py-3 text-right">
                         {editingMonth === mo && category !== 'all' ? (
                           <input type="text" value={editValue} autoFocus
                             onChange={(e) => setEditValue(e.target.value)}
@@ -369,23 +377,29 @@ export default function SalesDashboardPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{hasData ? fmt(act) : '—'}</td>
-                      <td className="px-5 py-3 text-right">
-                        <span className="font-semibold" style={{ color: hasData ? pctColor(pct) : '#9ca3af' }}>{hasData ? `${pct}%` : '—'}</span>
+                      <td className="px-4 py-3 text-right font-medium" style={{ color: isFuture ? '#ccc' : '#1a4731' }}>{hasData && !isFuture ? fmt(act) : '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-semibold" style={{ color: hasData && !isFuture ? pctColor(pct) : '#9ca3af' }}>{hasData && !isFuture ? `${pct}%` : '—'}</span>
                       </td>
-                      <td className="px-5 py-3 text-right">
-                        {lyDiff !== null ? (
-                          <span className={lyDiff >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            {lyDiff >= 0 ? '↑' : '↓'} {Math.abs(lyDiff)}%
+                      <td className="px-4 py-3 text-right">
+                        {lyDiff !== null && !isFuture ? (
+                          <span style={{ color: lyDiff >= 0 ? '#0F6E56' : '#E24B4A', fontWeight: 500 }}>
+                            {lyDiff >= 0 ? '↑' : '↓'}{Math.abs(lyDiff)}%
                           </span>
                         ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="px-5 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
+                      <td className="px-4 py-3 text-right text-gray-700" style={{ borderLeft: '2px solid #e5e7eb', background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
+                        {ytdBgt > 0 && !isFuture ? fmt(ytdBgt) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium" style={{ color: isFuture ? '#ccc' : '#1a4731', background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
+                        {ytdAct > 0 && !isFuture ? fmt(ytdAct) : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right" style={{ background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
+                        <span className="font-semibold" style={{ color: ytdAct > 0 && !isFuture ? pctColor(ytdPct) : '#9ca3af' }}>{ytdAct > 0 && !isFuture ? `${ytdPct}%` : '—'}</span>
                       </td>
                     </tr>
                     {expandedMonth === mo && (
-                      <tr><td colSpan={6} className="p-0 bg-gray-50/30">
+                      <tr><td colSpan={8} className="p-0 bg-gray-50/30">
                         <AccountBreakdown month={mo} year={year} category={category} salesData={salesData} />
                       </td></tr>
                     )}
@@ -393,16 +407,27 @@ export default function SalesDashboardPage() {
                   );
                 })}
                 {/* Total row */}
-                <tr className="bg-gray-50 font-semibold">
-                  <td className="px-5 py-3 text-gray-900">TOTAL</td>
-                  <td className="px-5 py-3 text-right text-gray-700">{fmt(totalBudget)}</td>
-                  <td className="px-5 py-3 text-right" style={{ color: '#1a4731' }}>{fmt(totalActual)}</td>
-                  <td className="px-5 py-3 text-right" style={{ color: pctColor(totalPct) }}>{totalPct}%</td>
-                  <td className="px-5 py-3 text-right text-gray-400">—</td>
-                  <td className="px-5 py-3"></td>
-                </tr>
+                {(() => {
+                  const ytdIdx = year === CURRENT_YEAR ? CURRENT_MONTH - 1 : 11;
+                  const ytdBgt = budgets.filter((b) => b.month <= ytdIdx + 1).reduce((s, b) => s + b.budgetAmount, 0);
+                  const ytdAct = monthlyActuals.slice(0, ytdIdx + 1).reduce((s, a) => s + a, 0);
+                  const ytdPct = ytdBgt > 0 ? Math.round((ytdAct / ytdBgt) * 100) : 0;
+                  return (
+                    <tr style={{ background: '#1a4731', color: 'white', fontWeight: 600 }}>
+                      <td className="px-4 py-3">TOTAL</td>
+                      <td className="px-4 py-3 text-right">{fmt(totalBudget)}</td>
+                      <td className="px-4 py-3 text-right">{fmt(totalActual)}</td>
+                      <td className="px-4 py-3 text-right" style={{ color: totalPct >= 100 ? '#9FE1CB' : totalPct >= 80 ? '#FAC775' : '#F09595' }}>{totalPct}%</td>
+                      <td className="px-4 py-3 text-right" style={{ opacity: 0.6 }}>—</td>
+                      <td className="px-4 py-3 text-right" style={{ borderLeft: '2px solid rgba(255,255,255,0.2)' }}>{fmt(ytdBgt)}</td>
+                      <td className="px-4 py-3 text-right">{fmt(ytdAct)}</td>
+                      <td className="px-4 py-3 text-right" style={{ color: ytdPct >= 100 ? '#9FE1CB' : ytdPct >= 80 ? '#FAC775' : '#F09595' }}>{ytdPct}%</td>
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Category Breakdown (only for 'all') */}
