@@ -113,12 +113,17 @@ async function generateMonogastricReport(
     acctBudgets = data || [];
   } catch { /* table might not exist */ }
 
-  // Group sales by account (monogastrics + swine only)
-  const monoRecords = records.filter((r: { category?: string }) =>
-    r.category === 'monogastrics' || r.category === 'swine',
-  );
+  // Initialize accounts from budget table first (ensures all budget accounts appear)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const monoBudgetAccts = acctBudgets.filter((b: any) => b.category === 'monogastrics' || b.category === 'swine');
   const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [...new Set(monoBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
+    byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  });
+
+  // Fill in sales data (monogastrics + swine)
+  const monoRecords = records.filter((r: { category?: string }) => r.category === 'monogastrics' || r.category === 'swine');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monoRecords.forEach((r: any) => {
     const acct = r.account_name || r.accountName || 'Unknown';
@@ -139,7 +144,10 @@ async function generateMonogastricReport(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   });
-  const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 > 0).sort((a, b) => (b.cum || b.prev) - (a.cum || a.prev));
+  // Include accounts with budget OR sales, sort by budget first then revenue
+  const acctList = Object.values(byAccount)
+    .filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt > 0)
+    .sort((a, b) => { if (b.annBgt !== a.annBgt) return b.annBgt - a.annBgt; return (b.cum || b.prev) - (a.cum || a.prev); });
   const totBudget = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const annBudget = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
