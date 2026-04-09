@@ -60,6 +60,7 @@ export default function AccountDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showAllTx, setShowAllTx] = useState(false);
 
   // --- Related data ---
   const accountContacts = useMemo(
@@ -432,7 +433,7 @@ export default function AccountDetailPage() {
                       <div style={{ fontSize: '12px', fontWeight: 500, color: '#888', marginBottom: '8px' }}>
                         Recent Transactions
                       </div>
-                      {sortedSales.slice(0, 5).map((sale, idx) => (
+                      {(showAllTx ? sortedSales : sortedSales.slice(0, 5)).map((sale, idx) => (
                         <div
                           key={idx}
                           style={{
@@ -451,9 +452,16 @@ export default function AccountDetailPage() {
                         </div>
                       ))}
                       {sortedSales.length > 5 && (
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '8px', textAlign: 'center' }}>
-                          + {sortedSales.length - 5} more transactions
-                        </div>
+                        <button
+                          onClick={() => setShowAllTx(!showAllTx)}
+                          style={{
+                            marginTop: '10px', width: '100%', padding: '8px',
+                            background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px',
+                            cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500,
+                          }}
+                        >
+                          {showAllTx ? 'Show less' : `+ ${sortedSales.length - 5} more transactions`}
+                        </button>
                       )}
                     </div>
                   </>
