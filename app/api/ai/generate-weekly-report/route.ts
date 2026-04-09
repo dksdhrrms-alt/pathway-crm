@@ -95,12 +95,207 @@ function sanitize(text: string): string {
     .trim();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateMonogastricReport(
+  records: any[], budgets: any[], teamSummaries: any,
+  now: Date, months: { m: number; y: number }[], curMonth: number, curYear: number,
+) {
+  const m1 = months[0], m2 = months[1], m3 = months[2];
+
+  // Group sales by account (monogastrics + swine only)
+  const monoRecords = records.filter((r: { category?: string }) =>
+    r.category === 'monogastrics' || r.category === 'swine',
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  monoRecords.forEach((r: any) => {
+    const acct = r.account_name || r.accountName || 'Unknown';
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0 };
+    const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
+    const amt = Number(r.amount) || 0;
+    if (yr === curYear - 1) byAccount[acct].prev += amt;
+    if (yr === m1.y && mo === m1.m) byAccount[acct].v1 += amt;
+    if (yr === m2.y && mo === m2.m) byAccount[acct].v2 += amt;
+    if (yr === m3.y && mo === m3.m) byAccount[acct].v3 += amt;
+    if (yr === curYear && mo <= curMonth) byAccount[acct].cum += amt;
+  });
+  const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 > 0).sort((a, b) => (b.cum || b.prev) - (a.cum || a.prev));
+  const totBudget = budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const annBudget = budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
+
+  // AI summaries for poultry + swine
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const hasAI = apiKey && !apiKey.includes('placeholder');
+  const aiSummaries: Record<string, { thisWeek: string; nextWeek: string }> = {};
+
+  for (const team of ['poultry', 'swine']) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (teamSummaries?.[team] || { activities: [], tasks: [], opportunities: [] }) as any;
+    const actCount = data.activities?.length || 0;
+    const taskCount = data.tasks?.length || 0;
+    if (hasAI && (actCount > 0 || taskCount > 0)) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const actText = (data.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const taskText = (data.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
+        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRespond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-4 bullets each)`);
+        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] }) });
+        if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
+        else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+      } catch { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+    } else { aiSummaries[team] = { thisWeek: actCount > 0 ? `- ${actCount} activities logged` : '- No activities', nextWeek: taskCount > 0 ? `- ${taskCount} tasks pending` : '- No tasks' }; }
+  }
+
+  // Build Word document
+  const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const mn = MONTH_NAMES;
+  const sColW = [1500, 1100, 900, 900, 1050, 1000, 650, 1150, 1150, 650, 810]; // sum ~10860
+  const sTotal = sColW.reduce((a, b) => a + b, 0);
+  const actColW = [1500, 5730, 5730]; // sum = 12960
+
+  // Account rows
+  const acctRows = acctList.map((a) => {
+    const ach = totBudget > 0 && a.v3 > 0 ? Math.round((a.v3 / (totBudget * a.cum / teamTotal.cum)) * 100) : 0;
+    return new TableRow({
+      height: { value: 340, rule: 'atLeast' as const },
+      children: [
+        cell(a.name, { width: sColW[0] }),
+        cell(fmtCompact(a.prev), { center: true, width: sColW[1] }),
+        cell(fmtCompact(a.v1), { center: true, width: sColW[2] }),
+        cell(fmtCompact(a.v2), { center: true, width: sColW[3] }),
+        cell('--', { center: true, width: sColW[4] }),
+        cell(fmtCompact(a.v3), { center: true, bg: 'E8F5E9', width: sColW[5] }),
+        cell(ach > 0 ? ach + '%' : '--', { center: true, bold: true, color: achColor(ach), width: sColW[6] }),
+        cell('--', { center: true, width: sColW[7] }),
+        cell(fmtCompact(a.cum), { center: true, width: sColW[8] }),
+        cell('--', { center: true, width: sColW[9] }),
+        cell('', { width: sColW[10] }),
+      ],
+    });
+  });
+
+  const ttAch = totBudget > 0 ? Math.round((teamTotal.v3 / totBudget) * 100) : 0;
+  const ttCumAch = annBudget > 0 ? Math.round((teamTotal.cum / annBudget) * 100) : 0;
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
+    sections: [{
+      properties: { page: { size: { width: 15840, height: 12240, orientation: PageOrientation.LANDSCAPE }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
+      children: [
+        // Title
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - Monogastric Weekly Report', bold: true, size: 32, font: 'Arial', color: '1a4731' })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })] }),
+
+        // Focus Activities box (2 columns)
+        new Table({ width: { size: 13680, type: WidthType.DXA }, rows: [
+          new TableRow({ children: [new TableCell({ borders, columnSpan: 2, width: { size: 13680, type: WidthType.DXA }, shading: { fill: '1a4731', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 160, right: 160 }, children: [new Paragraph({ children: [new TextRun({ text: "This Month's Focus Activities, Goals and Sales Performance", bold: true, size: 20, font: 'Arial', color: 'FFFFFF' })] })] })] }),
+          new TableRow({ children: [
+            new TableCell({ borders, width: { size: 6840, type: WidthType.DXA }, shading: { fill: 'F0F7EE', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 140, right: 140 }, children: [
+              new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Poultry: Key account development', size: 17, font: 'Arial', bold: true })] }),
+              new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Swine: Market expansion activities', size: 17, font: 'Arial', bold: true })] }),
+            ] }),
+            new TableCell({ borders, width: { size: 6840, type: WidthType.DXA }, shading: { fill: 'F0F7EE', type: ShadingType.CLEAR }, margins: { top: 80, bottom: 80, left: 140, right: 140 }, children: [
+              new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'B2B (Distribution): Channel updates', size: 17, font: 'Arial', bold: true })] }),
+              new Paragraph({ spacing: { after: 40 }, children: [new TextRun({ text: 'Other: Team updates', size: 17, font: 'Arial', bold: true })] }),
+            ] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }),
+
+        // Sales by Account
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Sales Performance - Monogastric Team', bold: true, size: 22, font: 'Arial', color: '1a4731' })] }),
+        new Table({ width: { size: sTotal, type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Account', { bold: true, bg: '1a4731', color: 'FFFFFF', width: sColW[0], header: true }),
+            cell(`${curYear - 1}\nRevenue`, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[1], header: true }),
+            cell(mn[m1.m - 1], { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[2], header: true }),
+            cell(mn[m2.m - 1], { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[3], header: true }),
+            cell(`Budget\nin ${mn[m3.m - 1]}`, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[4], header: true }),
+            cell('Monthly\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5], header: true }),
+            cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
+            cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7], header: true }),
+            cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8], header: true }),
+            cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9], header: true }),
+            cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[10], header: true }),
+          ] }),
+          ...acctRows,
+          // Team total row
+          new TableRow({ children: [
+            cell('Poultry Team:', { bold: true, bg: 'D6E4D0', width: sColW[0] }),
+            cell(fmtCompact(teamTotal.prev), { center: true, bold: true, bg: 'D6E4D0', width: sColW[1] }),
+            cell(fmtCompact(teamTotal.v1), { center: true, bold: true, bg: 'D6E4D0', width: sColW[2] }),
+            cell(fmtCompact(teamTotal.v2), { center: true, bold: true, bg: 'D6E4D0', width: sColW[3] }),
+            cell(fmtCompact(totBudget), { center: true, bold: true, bg: 'D6E4D0', width: sColW[4] }),
+            cell(fmtCompact(teamTotal.v3), { center: true, bold: true, bg: 'D6E4D0', width: sColW[5] }),
+            cell(ttAch > 0 ? ttAch + '%' : '--', { center: true, bold: true, bg: 'D6E4D0', color: achColor(ttAch), width: sColW[6] }),
+            cell(fmtCompact(annBudget), { center: true, bold: true, bg: 'D6E4D0', width: sColW[7] }),
+            cell(fmtCompact(teamTotal.cum), { center: true, bold: true, bg: 'D6E4D0', width: sColW[8] }),
+            cell(ttCumAch > 0 ? ttCumAch + '%' : '--', { center: true, bold: true, bg: 'D6E4D0', color: achColor(ttCumAch), width: sColW[9] }),
+            cell('', { bg: 'D6E4D0', width: sColW[10] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 240, after: 120 }, children: [] }),
+
+        // Team Activities
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Team Weekly Activities', bold: true, size: 22, font: 'Arial', color: '1a4731' })] }),
+        new Table({ width: { size: actColW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Activities', { bold: true, bg: '1a4731', color: 'FFFFFF', width: actColW[0], header: true }),
+            cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1], header: true }),
+            cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2], header: true }),
+          ] }),
+          new TableRow({ height: { value: 600, rule: 'atLeast' as const }, children: [
+            teamCell('Poultry', { bg: 'E6F1FB', width: actColW[0], color: '185FA5' }),
+            activityCell(aiSummaries.poultry?.thisWeek || '', { width: actColW[1] }),
+            activityCell(aiSummaries.poultry?.nextWeek || '', { width: actColW[2] }),
+          ] }),
+          new TableRow({ height: { value: 600, rule: 'atLeast' as const }, children: [
+            teamCell('Swine', { bg: 'E6F1FB', width: actColW[0], color: '185FA5' }),
+            activityCell(aiSummaries.swine?.thisWeek || '', { width: actColW[1] }),
+            activityCell(aiSummaries.swine?.nextWeek || '', { width: actColW[2] }),
+          ] }),
+          new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
+            teamCell('(B2B)\nDistribution', { bg: 'EEEDFE', width: actColW[0], color: '534AB7' }),
+            activityCell('', { width: actColW[1] }),
+            activityCell('', { width: actColW[2] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 200, after: 120 }, children: [] }),
+
+        // Additional Activities
+        new Table({ width: { size: actColW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Activities', { bold: true, bg: '1a4731', color: 'FFFFFF', width: actColW[0], header: true }),
+            cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1], header: true }),
+            cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2], header: true }),
+          ] }),
+          new TableRow({ children: [teamCell('Trials', { bg: 'FAEEDA', width: actColW[0], color: '854F0B' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
+          new TableRow({ children: [teamCell('Travel', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
+          new TableRow({ children: [teamCell('Other', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
+        ] }),
+        new Paragraph({ spacing: { before: 120 }, children: [] }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return new Response(buffer as unknown as BodyInit, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="PI_Monogastric_Report_${now.toISOString().split('T')[0]}.docx"`,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const { teamSummaries } = await request.json();
+    const { teamSummaries, reportType } = await request.json();
 
     // ── Fetch sales + budgets from Supabase ──
     const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -124,6 +319,11 @@ export async function POST(request: Request) {
     // Last 3 months
     const months: { m: number; y: number }[] = [];
     for (let i = 2; i >= 0; i--) { let m = curMonth - i, y = curYear; if (m <= 0) { m += 12; y--; } months.push({ m, y }); }
+
+    // ── Monogastric-specific report ──
+    if (reportType === 'monogastrics') {
+      return generateMonogastricReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+    }
 
     // ── Sales helpers ──
     const getMonthSales = (cat: string, y: number, m: number) => {

@@ -241,13 +241,14 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       const res = await fetch('/api/ai/generate-weekly-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamSummaries: teamSummariesForReport }),
+        body: JSON.stringify({ teamSummaries: teamSummariesForReport, reportType: teamFilter }),
       });
       if (!res.ok) throw new Error('Failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url;
-      a.download = `PI_USA_Weekly_Report_${new Date().toISOString().split('T')[0]}.docx`;
+      const teamName = teamFilter === 'all' ? 'CEO' : teamFilter.charAt(0).toUpperCase() + teamFilter.slice(1);
+      a.download = `PI_USA_${teamName}_Report_${new Date().toISOString().split('T')[0]}.docx`;
       a.click(); URL.revokeObjectURL(url);
     } catch (err) { console.error(err); alert('Failed to generate report.'); }
     finally { setIsGenerating(false); }
