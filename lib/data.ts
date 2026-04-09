@@ -92,6 +92,15 @@ export interface Task {
   description?: string;
 }
 
+export interface AccountBudget {
+  id: string;
+  accountName: string;
+  year: number;
+  month: number;
+  budgetAmount: number;
+  category: string;
+}
+
 export const initialAccounts: Account[] = [
   {
     id: 'acc-001',

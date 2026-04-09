@@ -102,16 +102,27 @@ async function generateMonogastricReport(
 ) {
   const m1 = months[0], m2 = months[1], m3 = months[2];
 
+  // Fetch account budgets from Supabase
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const sbKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let acctBudgets: any[] = [];
+  try {
+    const abSb = createClient(sbUrl, sbKey);
+    const { data } = await abSb.from('account_budgets').select('*').eq('year', curYear);
+    acctBudgets = data || [];
+  } catch { /* table might not exist */ }
+
   // Group sales by account (monogastrics + swine only)
   const monoRecords = records.filter((r: { category?: string }) =>
     r.category === 'monogastrics' || r.category === 'swine',
   );
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number }> = {};
+  const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monoRecords.forEach((r: any) => {
     const acct = r.account_name || r.accountName || 'Unknown';
-    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0 };
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
     const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
     const amt = Number(r.amount) || 0;
     if (yr === curYear - 1) byAccount[acct].prev += amt;
@@ -120,9 +131,17 @@ async function generateMonogastricReport(
     if (yr === m3.y && mo === m3.m) byAccount[acct].v3 += amt;
     if (yr === curYear && mo <= curMonth) byAccount[acct].cum += amt;
   });
+  // Apply account-level budgets
+  Object.values(byAccount).forEach((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const monthBgt = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
+    a.bgt = Number(monthBgt?.budget_amount || monthBgt?.budgetAmount) || 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  });
   const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 > 0).sort((a, b) => (b.cum || b.prev) - (a.cum || a.prev));
-  const totBudget = budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
-  const annBudget = budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const totBudget = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const annBudget = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
 
   // AI summaries for poultry + swine
@@ -158,7 +177,8 @@ async function generateMonogastricReport(
 
   // Account rows
   const acctRows = acctList.map((a) => {
-    const ach = totBudget > 0 && a.v3 > 0 ? Math.round((a.v3 / (totBudget * a.cum / teamTotal.cum)) * 100) : 0;
+    const ach = a.bgt > 0 ? Math.round((a.v3 / a.bgt) * 100) : 0;
+    const cumAch = a.annBgt > 0 ? Math.round((a.cum / a.annBgt) * 100) : 0;
     return new TableRow({
       height: { value: 340, rule: 'atLeast' as const },
       children: [
@@ -166,12 +186,12 @@ async function generateMonogastricReport(
         cell(fmtCompact(a.prev), { center: true, width: sColW[1] }),
         cell(fmtCompact(a.v1), { center: true, width: sColW[2] }),
         cell(fmtCompact(a.v2), { center: true, width: sColW[3] }),
-        cell('--', { center: true, width: sColW[4] }),
+        cell(fmtCompact(a.bgt), { center: true, width: sColW[4] }),
         cell(fmtCompact(a.v3), { center: true, bg: 'E8F5E9', width: sColW[5] }),
         cell(ach > 0 ? ach + '%' : '--', { center: true, bold: true, color: achColor(ach), width: sColW[6] }),
-        cell('--', { center: true, width: sColW[7] }),
+        cell(fmtCompact(a.annBgt), { center: true, width: sColW[7] }),
         cell(fmtCompact(a.cum), { center: true, width: sColW[8] }),
-        cell('--', { center: true, width: sColW[9] }),
+        cell(cumAch > 0 ? cumAch + '%' : '--', { center: true, bold: true, color: achColor(cumAch), width: sColW[9] }),
         cell('', { width: sColW[10] }),
       ],
     });

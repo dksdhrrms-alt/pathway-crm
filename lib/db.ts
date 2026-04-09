@@ -1,5 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
-import type { Account, Contact, Opportunity, Activity, Task } from './data';
+import type { Account, Contact, Opportunity, Activity, Task, AccountBudget } from './data';
 import type { AppUser } from './users';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import type { BudgetEntry } from './budgetStore';
@@ -303,6 +303,24 @@ export async function dbGetBudgets(year: number, category: string): Promise<Budg
 export async function dbUpsertBudget(entry: BudgetEntry): Promise<void> {
   if (!supabaseEnabled) return;
   const { error } = await supabase.from('sales_budgets').upsert(toSnake(entry), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+// ── Account Budgets ─────────────────────────────────────────────────────────
+
+export async function dbGetAccountBudgets(): Promise<AccountBudget[]> {
+  if (!supabaseEnabled) return [];
+  const { data, error } = await supabase.from('account_budgets').select('*');
+  if (error) { console.error('[DB] account_budgets error:', error.message); return []; }
+  return mapRows<AccountBudget>(data || []);
+}
+
+export async function dbUpsertAccountBudget(accountName: string, year: number, month: number, amount: number, category: string): Promise<void> {
+  if (!supabaseEnabled) return;
+  const id = `ab-${accountName}-${year}-${month}`.replace(/[^a-zA-Z0-9-]/g, '_');
+  const { error } = await supabase.from('account_budgets').upsert({
+    id, account_name: accountName, year, month, budget_amount: amount, category,
+  }, { onConflict: 'id' });
   if (error) throw error;
 }
 

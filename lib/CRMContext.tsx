@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { Account, Contact, Opportunity, Activity, Task, Stage, generateId } from './data';
+import { Account, Contact, Opportunity, Activity, Task, Stage, AccountBudget, generateId } from './data';
 import {
   dbGetAccounts, dbCreateAccount, dbUpdateAccount, dbDeleteAccounts,
   dbGetContacts, dbCreateContact, dbUpdateContact, dbDeleteContacts,
   dbGetOpportunities, dbCreateOpportunity, dbUpdateOpportunity, dbDeleteOpportunity,
   dbGetTasks, dbCreateTask, dbUpdateTask, dbDeleteTask,
   dbGetActivities, dbCreateActivity, dbDeleteActivity,
-  dbGetSaleRecords, dbGetUploadHistory,
+  dbGetSaleRecords, dbGetUploadHistory, dbGetAccountBudgets,
 } from './db';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 
@@ -22,6 +22,8 @@ interface CRMContextType {
   uploadHistory: UploadHistoryEntry[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   salesBudgets: any[];
+  accountBudgets: AccountBudget[];
+  setAccountBudgets: React.Dispatch<React.SetStateAction<AccountBudget[]>>;
   loading: boolean;
   error: string | null;
   addAccount: (account: Account) => void;
@@ -62,6 +64,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [salesBudgets, setSalesBudgets] = useState<any[]>([]);
+  const [accountBudgets, setAccountBudgets] = useState<AccountBudget[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,11 +77,15 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
         dbGetAccounts(), dbGetContacts(), dbGetOpportunities(),
         dbGetTasks(), dbGetActivities(), dbGetSaleRecords(), dbGetUploadHistory(),
       ]);
-      // Load budgets separately (table might not exist)
+      // Load budgets separately (tables might not exist)
       try {
         const { supabase: sb } = await import('./supabase');
         const { data: budgets } = await sb.from('sales_budgets').select('*');
         setSalesBudgets(budgets || []);
+      } catch { /* */ }
+      try {
+        const ab = await dbGetAccountBudgets();
+        setAccountBudgets(ab);
       } catch { /* */ }
       console.log('[CRM] Loaded: accounts=' + accs.length + ' contacts=' + cons.length + ' opps=' + opps.length + ' tasks=' + tsks.length + ' activities=' + acts.length + ' sales=' + sales.length);
       setAccounts(accs);
@@ -227,7 +234,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   return (
     <CRMContext.Provider value={{
       accounts, contacts, opportunities, activities, tasks,
-      saleRecords, uploadHistory, salesBudgets, loading, error,
+      saleRecords, uploadHistory, salesBudgets, accountBudgets, setAccountBudgets, loading, error,
       addAccount, updateAccount, addContact, updateContact,
       addOpportunity, addActivity, addTask,
       updateOpportunityStage, updateOpportunityOwner, updateTask, toggleTask,

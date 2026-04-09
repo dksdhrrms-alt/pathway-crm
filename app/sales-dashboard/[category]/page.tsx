@@ -52,10 +52,11 @@ export default function SalesDashboardPage() {
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
-  const { saleRecords: salesData, salesBudgets: ctxBudgets } = useCRM();
+  const { saleRecords: salesData, salesBudgets: ctxBudgets, accountBudgets, setAccountBudgets } = useCRM();
   const [year, setYear] = useState(CURRENT_YEAR);
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [showAcctBudgetModal, setShowAcctBudgetModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
@@ -247,10 +248,17 @@ export default function SalesDashboardPage() {
                 ))}
               </div>
               {isAdmin && category !== 'all' && (
-                <button onClick={() => setShowBudgetModal(true)}
-                  className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                  Set Annual Budget
-                </button>
+                <>
+                  <button onClick={() => setShowBudgetModal(true)}
+                    className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    Set Annual Budget
+                  </button>
+                  <button onClick={() => setShowAcctBudgetModal(true)}
+                    className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90"
+                    style={{ backgroundColor: '#1a4731', color: 'white' }}>
+                    Account Budgets
+                  </button>
+                </>
               )}
               {/* Export dropdown */}
               <div className="relative group">
@@ -502,7 +510,122 @@ export default function SalesDashboardPage() {
           onSave={() => { loadBudgets(); setToast(`Budget saved for ${CATEGORY_LABELS[category]} ${year}`); setShowBudgetModal(false); }} />
       )}
 
+      {/* Account Budget Modal */}
+      {showAcctBudgetModal && (
+        <AcctBudgetModal year={year} category={category} salesData={salesData} accountBudgets={accountBudgets} setAccountBudgets={setAccountBudgets}
+          onClose={() => setShowAcctBudgetModal(false)} onSaved={() => { setToast('Account budgets saved'); setShowAcctBudgetModal(false); }} />
+      )}
+
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+// ── Account Budget Modal ────────────────────────────────────────────────────
+
+function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccountBudgets, onClose, onSaved }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  year: number; category: string; salesData: any[]; accountBudgets: import('@/lib/data').AccountBudget[];
+  setAccountBudgets: React.Dispatch<React.SetStateAction<import('@/lib/data').AccountBudget[]>>; onClose: () => void; onSaved: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [inputs, setInputs] = useState<Record<string, Record<number, string>>>({});
+
+  const accounts = [...new Set(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    salesData.filter((r: any) => category === 'all' || r.category === category)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any) => r.account_name || r.accountName || '').filter(Boolean),
+  )].sort();
+
+  useEffect(() => {
+    const init: Record<string, Record<number, string>> = {};
+    accounts.forEach((acct) => {
+      init[acct] = {};
+      for (let m = 1; m <= 12; m++) {
+        const existing = accountBudgets.find((b) => b.accountName === acct && b.year === year && b.month === m);
+        init[acct][m] = existing ? String(existing.budgetAmount) : '';
+      }
+    });
+    setInputs(init);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts.length, year]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const { dbUpsertAccountBudget, dbGetAccountBudgets } = await import('@/lib/db');
+      const promises: Promise<void>[] = [];
+      Object.entries(inputs).forEach(([acct, months]) => {
+        Object.entries(months).forEach(([mo, val]) => {
+          const amount = parseFloat(val) || 0;
+          if (amount > 0) promises.push(dbUpsertAccountBudget(acct, year, parseInt(mo), amount, category));
+        });
+      });
+      await Promise.all(promises);
+      const fresh = await dbGetAccountBudgets();
+      setAccountBudgets(fresh);
+      onSaved();
+    } catch (err) { console.error('Save account budgets error:', err); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '950px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Account Budgets - {year}</h2>
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#888' }}>Set monthly budget targets per account ({accounts.length} accounts)</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#888' }}>✕</button>
+        </div>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '16px' }}>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '800px' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white', minWidth: '140px' }}>Account</th>
+                {MONTHS.map((m, i) => <th key={i} style={{ padding: '8px 2px', textAlign: 'center', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white', minWidth: '56px' }}>{m}</th>)}
+                <th style={{ padding: '8px 10px', textAlign: 'right', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white' }}>Annual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((acct, idx) => {
+                const annual = Object.values(inputs[acct] || {}).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+                return (
+                  <tr key={acct} style={{ borderBottom: '0.5px solid #f3f4f6', background: idx % 2 === 0 ? 'white' : '#fafafa' }}>
+                    <td style={{ padding: '6px 10px', fontWeight: 500, fontSize: '11px' }}>{acct}</td>
+                    {MONTHS.map((_, i) => {
+                      const mo = i + 1;
+                      const val = inputs[acct]?.[mo] || '';
+                      return (
+                        <td key={i} style={{ padding: '3px 2px' }}>
+                          <input type="number" value={val} placeholder="0"
+                            onChange={(e) => setInputs((p) => ({ ...p, [acct]: { ...(p[acct] || {}), [mo]: e.target.value } }))}
+                            style={{ width: '54px', padding: '3px 4px', fontSize: '11px', border: val ? '1px solid #1a4731' : '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'right', background: val ? '#f0f7ee' : 'white' }}
+                          />
+                        </td>
+                      );
+                    })}
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontSize: '11px', color: annual > 0 ? '#1a4731' : '#ccc' }}>
+                      {annual > 0 ? '$' + Math.round(annual).toLocaleString() : '--'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexShrink: 0 }}>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: saving ? '#e5e7eb' : '#1a4731', color: saving ? '#888' : 'white', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>
+            {saving ? 'Saving...' : 'Save All'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
