@@ -508,6 +508,196 @@ async function generateRuminantReport(
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function generateLATAMReport(
+  records: any[], budgets: any[], teamSummaries: any,
+  now: Date, months: { m: number; y: number }[], curMonth: number, curYear: number,
+) {
+  const m2 = months[1], m3 = months[2];
+  const LATAM_COLOR = '854F0B';
+
+  // Fetch account budgets
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const sbKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let acctBudgets: any[] = [];
+  try { const abSb = createClient(sbUrl, sbKey); const { data } = await abSb.from('account_budgets').select('*').eq('year', curYear); acctBudgets = data || []; } catch { /* */ }
+
+  // Initialize from budget accounts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const latBudgetAccts = acctBudgets.filter((b: any) => b.category === 'latam');
+  const byAccount: Record<string, { name: string; ytd: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [...new Set(latBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
+    byAccount[acct] = { name: acct, ytd: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  });
+
+  // Fill in sales
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  records.filter((r: { category?: string }) => r.category === 'latam').forEach((r: any) => {
+    const acct = r.account_name || r.accountName || 'Unknown';
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, ytd: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+    const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
+    const amt = Number(r.amount) || 0;
+    if (yr === m2.y && mo === m2.m) byAccount[acct].v2 += amt;
+    if (yr === m3.y && mo === m3.m) byAccount[acct].v3 += amt;
+    if (yr === curYear && mo <= curMonth) { byAccount[acct].cum += amt; byAccount[acct].ytd += amt; }
+  });
+
+  // Apply budgets
+  Object.values(byAccount).forEach((a) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mb = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
+    a.bgt = Number(mb?.budget_amount || mb?.budgetAmount) || 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  });
+
+  const acctList = Object.values(byAccount).filter((a) => a.ytd + a.annBgt > 0)
+    .sort((a, b) => { if (b.annBgt !== a.annBgt) return b.annBgt - a.annBgt; return b.cum - a.cum; });
+  const totBgt = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && b.category === 'latam').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const annBdg = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && b.category === 'latam').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+  const teamTot = { ytd: acctList.reduce((s, a) => s + a.ytd, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
+
+  // AI summary
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const hasAI = apiKey && !apiKey.includes('placeholder');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const latData = (teamSummaries?.latam || { activities: [], tasks: [], opportunities: [] }) as any;
+  const actCount = latData.activities?.length || 0;
+  const taskCount = latData.tasks?.length || 0;
+  let latSummary = { thisWeek: '- No activities recorded', nextWeek: '- No tasks scheduled' };
+
+  if (hasAI && (actCount > 0 || taskCount > 0)) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const actText = (latData.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const taskText = (latData.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
+      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nOrganize by country when possible. Respond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (4-5 bullets each)`);
+      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 600, messages: [{ role: 'user', content: prompt }] }) });
+      if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); latSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
+      else { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+    } catch { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
+  }
+
+  // Build Word doc
+  const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const mn = MONTH_NAMES;
+  // 12 columns: Account | YTD | Bgt(m2) | Sales(m2) | Ach% | Bgt(m3) | Sales(m3) | Ach% | AnnBgt | Cum | Cum% | Remark
+  const sColW = [1400, 900, 900, 900, 650, 900, 900, 650, 1050, 1050, 650, 810];
+  const sTotal = sColW.reduce((a, b) => a + b, 0);
+  const actColW = [1500, 5730, 5730];
+
+  const acctRows = acctList.map((a) => {
+    const m2Ach = a.bgt > 0 ? Math.round((a.v2 / a.bgt) * 100) : 0;
+    const m3Ach = a.bgt > 0 ? Math.round((a.v3 / a.bgt) * 100) : 0;
+    const cumAch = a.annBgt > 0 ? Math.round((a.cum / a.annBgt) * 100) : 0;
+    return new TableRow({ height: { value: 340, rule: 'atLeast' as const }, children: [
+      cell(a.name, { width: sColW[0] }),
+      cell(fmtCompact(a.ytd), { center: true, width: sColW[1] }),
+      cell(fmtCompact(a.bgt), { center: true, width: sColW[2] }),
+      cell(fmtCompact(a.v2), { center: true, width: sColW[3] }),
+      cell(m2Ach > 0 ? m2Ach + '%' : '--', { center: true, bold: true, color: achColor(m2Ach), width: sColW[4] }),
+      cell(fmtCompact(a.bgt), { center: true, width: sColW[5] }),
+      cell(fmtCompact(a.v3), { center: true, bg: 'E8F5E9', width: sColW[6] }),
+      cell(m3Ach > 0 ? m3Ach + '%' : '--', { center: true, bold: true, color: achColor(m3Ach), width: sColW[7] }),
+      cell(fmtCompact(a.annBgt), { center: true, width: sColW[8] }),
+      cell(fmtCompact(a.cum), { center: true, width: sColW[9] }),
+      cell(cumAch > 0 ? cumAch + '%' : '--', { center: true, bold: true, color: achColor(cumAch), width: sColW[10] }),
+      cell('', { width: sColW[11] }),
+    ] });
+  });
+
+  const ttM2Ach = totBgt > 0 ? Math.round((teamTot.v2 / totBgt) * 100) : 0;
+  const ttM3Ach = totBgt > 0 ? Math.round((teamTot.v3 / totBgt) * 100) : 0;
+  const ttCumAch = annBdg > 0 ? Math.round((teamTot.cum / annBdg) * 100) : 0;
+
+  // Country rows for activities
+  const countryLabels = ['Mexico', 'Colombia', 'Peru / Bolivia', 'Central America', 'Panama / Costa R.', 'Ecuador', 'Chile', 'Venezuela', 'Other Countries', 'MKT / Trials', 'Market News', 'Registration', 'Travel'];
+  const countryRows = countryLabels.map((label, idx) => new TableRow({
+    height: { value: idx === 0 ? 600 : 340, rule: 'atLeast' as const },
+    children: [
+      teamCell(label, { bg: idx === 0 ? 'FAEEDA' : idx % 2 === 0 ? 'FAFAFA' : 'FFFFFF', width: actColW[0], color: idx === 0 ? LATAM_COLOR : '444444' }),
+      activityCell(idx === 0 ? (latSummary.thisWeek || '') : '', { width: actColW[1] }),
+      activityCell(idx === 0 ? (latSummary.nextWeek || '') : '', { width: actColW[2] }),
+    ],
+  }));
+
+  const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
+    sections: [{
+      properties: { page: { size: { width: 15840, height: 12240, orientation: PageOrientation.LANDSCAPE }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
+      children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - LATAM Weekly Report', bold: true, size: 32, font: 'Arial', color: LATAM_COLOR })] }),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })] }),
+
+        // Focus title only
+        new Table({ width: { size: 13680, type: WidthType.DXA }, rows: [
+          new TableRow({ children: [new TableCell({ borders, width: { size: 13680, type: WidthType.DXA }, shading: { fill: LATAM_COLOR, type: ShadingType.CLEAR }, margins: { top: 100, bottom: 100, left: 160, right: 160 }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "This Month's Focus Activities, Goals and Sales Performance", bold: true, size: 20, font: 'Arial', color: 'FFFFFF' })] })] })] }),
+        ] }),
+        new Paragraph({ spacing: { before: 200, after: 100 }, children: [] }),
+
+        // Sales by Account
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Sales Performance - LATAM Team', bold: true, size: 22, font: 'Arial', color: LATAM_COLOR })] }),
+        new Table({ width: { size: sTotal, type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('(USD)', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', width: sColW[0], header: true }),
+            cell(`${curYear}\nRevenue`, { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[1], header: true }),
+            cell(`Budget\n${mn[m2.m - 1]}`, { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[2], header: true }),
+            cell('Monthly\nSales', { bold: true, bg: '633806', color: 'FFFFFF', center: true, width: sColW[3], header: true }),
+            cell('Ach%', { bold: true, bg: '633806', color: 'FFFFFF', center: true, width: sColW[4], header: true }),
+            cell(`Budget\n${mn[m3.m - 1]}`, { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[5], header: true }),
+            cell('Monthly\nSales', { bold: true, bg: '633806', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
+            cell('Ach%', { bold: true, bg: '633806', color: 'FFFFFF', center: true, width: sColW[7], header: true }),
+            cell('Annual\nBudget', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[8], header: true }),
+            cell('Cumulative\nSales', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[9], header: true }),
+            cell('Cum%', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[10], header: true }),
+            cell('Remark', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: sColW[11], header: true }),
+          ] }),
+          ...acctRows,
+          // Total row
+          new TableRow({ children: [
+            cell('LATAM Total:', { bold: true, bg: 'FAEEDA', color: '633806', width: sColW[0] }),
+            cell(fmtCompact(teamTot.ytd), { center: true, bold: true, bg: 'FAEEDA', width: sColW[1] }),
+            cell(fmtCompact(totBgt), { center: true, bold: true, bg: 'FAEEDA', width: sColW[2] }),
+            cell(fmtCompact(teamTot.v2), { center: true, bold: true, bg: 'FAEEDA', width: sColW[3] }),
+            cell(ttM2Ach > 0 ? ttM2Ach + '%' : '--', { center: true, bold: true, bg: 'FAEEDA', color: achColor(ttM2Ach), width: sColW[4] }),
+            cell(fmtCompact(totBgt), { center: true, bold: true, bg: 'FAEEDA', width: sColW[5] }),
+            cell(fmtCompact(teamTot.v3), { center: true, bold: true, bg: 'FAEEDA', width: sColW[6] }),
+            cell(ttM3Ach > 0 ? ttM3Ach + '%' : '--', { center: true, bold: true, bg: 'FAEEDA', color: achColor(ttM3Ach), width: sColW[7] }),
+            cell(fmtCompact(annBdg), { center: true, bold: true, bg: 'FAEEDA', width: sColW[8] }),
+            cell(fmtCompact(teamTot.cum), { center: true, bold: true, bg: 'FAEEDA', width: sColW[9] }),
+            cell(ttCumAch > 0 ? ttCumAch + '%' : '--', { center: true, bold: true, bg: 'FAEEDA', color: achColor(ttCumAch), width: sColW[10] }),
+            cell('', { bg: 'FAEEDA', width: sColW[11] }),
+          ] }),
+        ] }),
+        new Paragraph({ spacing: { before: 240, after: 120 }, children: [] }),
+
+        // Activities by Country
+        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'Team Weekly Activities by Country', bold: true, size: 22, font: 'Arial', color: LATAM_COLOR })] }),
+        new Table({ width: { size: actColW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows: [
+          new TableRow({ tableHeader: true, children: [
+            cell('Activities', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', width: actColW[0], header: true }),
+            cell('This week', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: actColW[1], header: true }),
+            cell('Next Week', { bold: true, bg: LATAM_COLOR, color: 'FFFFFF', center: true, width: actColW[2], header: true }),
+          ] }),
+          ...countryRows,
+        ] }),
+        new Paragraph({ spacing: { before: 120 }, children: [] }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return new Response(buffer as unknown as BodyInit, {
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="PI_LATAM_Report_${now.toISOString().split('T')[0]}.docx"`,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -544,6 +734,9 @@ export async function POST(request: Request) {
     }
     if (reportType === 'ruminants') {
       return generateRuminantReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+    }
+    if (reportType === 'latam') {
+      return generateLATAMReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
     }
 
     // ── Sales helpers ──
