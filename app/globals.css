@@ -91,8 +91,10 @@ body {
   .kanban-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 16px !important; }
   .kanban-col { min-width: 260px !important; flex-shrink: 0 !important; }
 
-  /* Charts: reduced height */
+  /* Charts: reduced height + scrollable */
   .recharts-responsive-container { min-height: 200px; }
+  .chart-scroll-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 8px !important; }
+  .recharts-cartesian-axis-tick-value { font-size: 10px !important; }
 
   /* Account 360: stack columns */
   .account-360-grid { grid-template-columns: 1fr !important; }

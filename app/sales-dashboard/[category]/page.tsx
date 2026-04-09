@@ -295,20 +295,22 @@ export default function SalesDashboardPage() {
           {/* Chart */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
             <h2 className="text-base font-semibold text-gray-900 mb-4">{CATEGORY_LABELS[category]} Budget vs Actual — {year}</h2>
-            <div style={{ height: 360 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ left: 10, right: 30, top: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="left" tickFormatter={fmtCompact} tick={{ fontSize: 11 }} />
-                  <YAxis yAxisId="right" orientation="right" domain={[0, 150]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value, name) => name === 'Achievement %' ? `${value}%` : fmt(Number(value))} />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="Budget" fill="#94a3b8" radius={[2, 2, 0, 0]} barSize={20} />
-                  <Bar yAxisId="left" dataKey="Actual" fill="#1a4731" radius={[2, 2, 0, 0]} barSize={20} />
-                  <Line yAxisId="right" type="monotone" dataKey="Achievement %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4, fill: '#f59e0b' }} />
-                </ComposedChart>
-              </ResponsiveContainer>
+            <div className="chart-scroll-wrapper" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ minWidth: '500px', width: '100%', height: 360 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 50, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis yAxisId="left" tickFormatter={fmtCompact} width={55} tick={{ fontSize: 11 }} />
+                    <YAxis yAxisId="right" orientation="right" domain={[0, 150]} tickFormatter={(v) => `${v}%`} width={45} tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(value, name) => name === 'Achievement %' ? `${value}%` : fmt(Number(value))} />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="Budget" fill="#94a3b8" radius={[2, 2, 0, 0]} barSize={20} />
+                    <Bar yAxisId="left" dataKey="Actual" fill="#1a4731" radius={[2, 2, 0, 0]} barSize={20} />
+                    <Line yAxisId="right" type="monotone" dataKey="Achievement %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4, fill: '#f59e0b' }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
