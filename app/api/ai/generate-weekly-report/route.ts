@@ -941,8 +941,9 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
     const m2Name = MONTH_NAMES[months[1].m - 1];
     const m3Name = MONTH_NAMES[months[2].m - 1];
 
-    // Sales table column widths — sum = 14400 (fits landscape with 0.5" margins)
-    const sColW = [1440, 980, 980, 980, 1080, 1080, 680, 1300, 1300, 680, 900];
+    // Sales table — 10 columns, sum = 14400
+    // (USD) | M1 | M2 | M3 | Budget | Ach% | Ann.Budget | Cumulative | Cum% | Remark
+    const sColW = [2000, 1300, 1300, 1300, 1400, 900, 2100, 2100, 900, 1100];
 
     // Build sales table data rows
     const salesTableRows = allRows.map((r) => {
@@ -953,17 +954,16 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       return new TableRow({
         height: { value: 380, rule: 'atLeast' as const },
         children: [
-          cell(r.label, { bold: isTotal, bg, width: sColW[0] }),
-          cell(fmtCompact(r.m1), { center: true, bg, width: sColW[1] }),
-          cell(fmtCompact(r.m2), { center: true, bg, width: sColW[2] }),
-          cell(fmtCompact(r.m3), { center: true, bg, width: sColW[3] }),
-          cell(fmtCompact(r.bgt), { center: true, bg, width: sColW[4] }),
-          cell(fmtCompact(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[5] }),
-          cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[6], color: achColor(r.ach), bold: true }),
-          cell(fmtCompact(r.annBgt), { center: true, bg, width: sColW[7] }),
-          cell(fmtCompact(r.cum), { center: true, bg, width: sColW[8] }),
-          cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[9], color: achColor(r.cumAch), bold: true }),
-          cell('', { bg, width: sColW[10] }),
+          cell(r.label, { bold: isTotal, bg, width: sColW[0], size: 14 }),
+          cell(fmtCompact(r.m1), { center: true, bg, width: sColW[1], size: 14 }),
+          cell(fmtCompact(r.m2), { center: true, bg, width: sColW[2], size: 14 }),
+          cell(fmtCompact(r.m3), { center: true, bg: isTotal ? 'D6E4D0' : 'E8F5E9', width: sColW[3], size: 14 }),
+          cell(fmtCompact(r.bgt), { center: true, bg, width: sColW[4], size: 14 }),
+          cell(r.ach > 0 ? r.ach + '%' : '--', { center: true, bg, width: sColW[5], color: achColor(r.ach), bold: true, size: 14 }),
+          cell(fmtCompact(r.annBgt), { center: true, bg, width: sColW[6], size: 14 }),
+          cell(fmtCompact(r.cum), { center: true, bg, width: sColW[7], size: 14 }),
+          cell(r.cumAch > 0 ? r.cumAch + '%' : '--', { center: true, bg, width: sColW[8], color: achColor(r.cumAch), bold: true, size: 14 }),
+          cell('', { bg, width: sColW[9] }),
         ],
       });
     });
@@ -1071,14 +1071,13 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
                   cell('(USD)', { bold: true, bg: '1a4731', color: 'FFFFFF', width: sColW[0], header: true }),
                   cell(m1Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[1], header: true }),
                   cell(m2Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[2], header: true }),
-                  cell(m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[3], header: true }),
+                  cell(m3Name + '\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[3], header: true }),
                   cell('Budget\nin ' + m3Name, { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[4], header: true }),
-                  cell('Monthly\nActual', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5], header: true }),
-                  cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
-                  cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7], header: true }),
-                  cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8], header: true }),
-                  cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9], header: true }),
-                  cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[10], header: true }),
+                  cell('Ach%', { bold: true, bg: '2d6a4f', color: 'FFFFFF', center: true, width: sColW[5], header: true }),
+                  cell('Annual\nBudget', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[6], header: true }),
+                  cell('Cumulative', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[7], header: true }),
+                  cell('Cum%', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[8], header: true }),
+                  cell('Remark', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: sColW[9], header: true }),
                 ],
               }),
               ...salesTableRows,
