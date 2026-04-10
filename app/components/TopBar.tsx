@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import NotificationBell from './NotificationBell';
@@ -31,6 +32,10 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const { currentUser } = useUsers();
+  const pathname = usePathname();
+
+  // Show search on mobile for list pages
+  const showMobileSearch = ['/accounts', '/contacts', '/opportunities', '/tasks'].includes(pathname);
 
   const value = searchValue !== undefined ? searchValue : localSearch;
   const onChange = onSearchChange ?? setLocalSearch;
@@ -69,8 +74,8 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
     <div
       className="fixed top-0 right-0 z-20 flex items-center justify-between px-4 md:px-6 py-3 bg-white border-b border-gray-200 shadow-sm left-0 md:left-60"
     >
-      {/* Search — hidden on mobile */}
-      <div className="relative w-72 hidden md:block">
+      {/* Search — visible on mobile for list pages */}
+      <div className={`relative ${showMobileSearch ? 'flex-1 max-w-xs mr-2 md:max-w-none md:w-72 md:flex-none md:mr-0' : 'w-72 hidden md:block'}`}>
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
