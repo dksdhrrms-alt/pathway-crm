@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -107,6 +107,22 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const { canAccess } = useMenuAccess();
+
+  // Swipe right to open sidebar on mobile
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    function onTouchStart(e: TouchEvent) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }
+    function onTouchEnd(e: TouchEvent) {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      if (startX < 30 && dx > 60 && dy < 50) setMobileOpen(true);
+      if (mobileOpen && dx < -60 && dy < 50) setMobileOpen(false);
+    }
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => { window.removeEventListener('touchstart', onTouchStart); window.removeEventListener('touchend', onTouchEnd); };
+  }, [mobileOpen]);
 
   const isAdminRole = ['admin', 'administrative_manager', 'ceo'].includes(role);
 
