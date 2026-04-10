@@ -61,6 +61,7 @@ export default function AccountDetailPage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
+  const [showAllContacts, setShowAllContacts] = useState(false);
 
   // --- Related data ---
   const accountContacts = useMemo(
@@ -484,7 +485,7 @@ export default function AccountDetailPage() {
                 ) : (
                   accountContacts
                     .sort((a, b) => (b.isKeyMan ? 1 : 0) - (a.isKeyMan ? 1 : 0))
-                    .slice(0, 5)
+                    .slice(0, showAllContacts ? undefined : 5)
                     .map((c) => (
                       <div
                         key={c.id}
@@ -536,9 +537,16 @@ export default function AccountDetailPage() {
                     ))
                 )}
                 {accountContacts.length > 5 && (
-                  <div style={{ fontSize: '12px', color: '#888', marginTop: '8px' }}>
-                    + {accountContacts.length - 5} more contacts
-                  </div>
+                  <button
+                    onClick={() => setShowAllContacts(!showAllContacts)}
+                    style={{
+                      marginTop: '10px', width: '100%', padding: '8px',
+                      background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px',
+                      cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500,
+                    }}
+                  >
+                    {showAllContacts ? 'Show less' : `+ ${accountContacts.length - 5} more contacts`}
+                  </button>
                 )}
               </div>
 
