@@ -209,7 +209,7 @@ async function generateMonogastricReport(
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
     sections: [{
-      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 15840, height: 12240 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 12240, height: 15840 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
       children: [
         // Title
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - Monogastric Weekly Report', bold: true, size: 32, font: 'Arial', color: '1a4731' })] }),
@@ -423,7 +423,7 @@ async function generateRuminantReport(
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
     sections: [{
-      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 15840, height: 12240 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 12240, height: 15840 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
       children: [
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - Ruminant Weekly Report', bold: true, size: 32, font: 'Arial', color: RUM_GREEN })] }),
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })] }),
@@ -627,7 +627,7 @@ async function generateLATAMReport(
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
     sections: [{
-      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 15840, height: 12240 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+      properties: { page: { size: { orientation: PageOrientation.LANDSCAPE, width: 12240, height: 15840 }, margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
       children: [
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Pathway Intermediates USA - LATAM Weekly Report', bold: true, size: 32, font: 'Arial', color: LATAM_COLOR })] }),
         new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [new TextRun({ text: reportDate, size: 20, font: 'Arial', color: '888888' })] }),
@@ -1014,7 +1014,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation:
       sections: [{
         properties: {
           page: {
-            size: { orientation: PageOrientation.LANDSCAPE, width: 15840, height: 12240 },
+            size: { orientation: PageOrientation.LANDSCAPE, width: 12240, height: 15840 },
             margin: { top: 720, right: 720, bottom: 720, left: 720 },
           },
         },
