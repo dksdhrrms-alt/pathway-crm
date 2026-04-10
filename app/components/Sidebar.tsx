@@ -137,7 +137,7 @@ export default function Sidebar() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full" style={{ backgroundColor: PRIMARY_COLOR }}>
+    <div className="flex flex-col h-screen" style={{ backgroundColor: PRIMARY_COLOR }}>
       {/* Logo / Brand */}
       <div className="px-4 py-5 border-b border-white/10 flex items-center justify-center">
         <div className="text-center">
@@ -148,7 +148,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.filter((i) => i.href !== '/reports').map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
