@@ -135,7 +135,7 @@ export default function Sidebar() {
   const menuMap: Record<string, string> = {
     '/dashboard': 'home', '/accounts': 'accounts', '/contacts': 'contacts',
     '/opportunities': 'opportunities', '/tasks': 'tasks', '/reports': 'reports',
-    '/insights': 'reports', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
+    '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
   };
 
   const allItems = [

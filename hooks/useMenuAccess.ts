@@ -5,13 +5,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase, supabaseEnabled } from '@/lib/supabase';
 
 const ROLE_DEFAULTS: Record<string, Set<string>> = {
-  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'sales', 'sales_dashboard', 'admin']),
-  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'sales', 'sales_dashboard', 'admin']),
-  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'sales', 'sales_dashboard', 'admin']),
-  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'sales', 'sales_dashboard']),
-  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'sales', 'sales_dashboard']),
+  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard']),
+  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard']),
   sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks']),
-  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports']),
+  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights']),
 };
 
 const FULL_ACCESS = ['admin', 'administrative_manager', 'ceo'];

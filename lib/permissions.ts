@@ -2,7 +2,7 @@ import { UserRole } from './users';
 
 export const MENU_ITEMS = [
   'Home', 'Accounts', 'Contacts', 'Opportunities', 'Tasks',
-  'Reports', 'Sales', 'Sales Dashboard', 'Admin',
+  'Reports', 'Insights', 'Sales', 'Sales Dashboard', 'Admin',
 ] as const;
 
 export type MenuItem = (typeof MENU_ITEMS)[number];
@@ -17,19 +17,19 @@ const FULL_ACCESS_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo']
 const DEFAULT_PERMISSIONS: PermissionsMap = {
   sales: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: false, Sales: false, 'Sales Dashboard': false, Admin: false,
+    Tasks: true, Reports: false, Insights: false, Sales: false, 'Sales Dashboard': false, Admin: false,
   },
   marketing: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Sales: false, 'Sales Dashboard': false, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false, Admin: false,
   },
   sales_director: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Sales: true, 'Sales Dashboard': true, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true, Admin: false,
   },
   coo: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Sales: true, 'Sales Dashboard': true, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true, Admin: false,
   },
 };
 
