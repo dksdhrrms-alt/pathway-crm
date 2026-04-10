@@ -8,6 +8,7 @@ import { useUsers } from '@/lib/UserContext';
 
 interface NewOpportunityModalProps {
   defaultAccountId?: string;
+  defaultStage?: Stage;
   onClose: () => void;
   onSave: (opportunity: Opportunity) => void;
 }
@@ -23,7 +24,7 @@ const DEFAULT_PROBABILITY: Record<Stage, number> = {
   'Closed Lost': 0,
 };
 
-export default function NewOpportunityModal({ defaultAccountId = '', onClose, onSave }: NewOpportunityModalProps) {
+export default function NewOpportunityModal({ defaultAccountId = '', defaultStage, onClose, onSave }: NewOpportunityModalProps) {
   const { data: session } = useSession();
   const { accounts: allAccounts, addOpportunity } = useCRM();
 
@@ -35,10 +36,11 @@ export default function NewOpportunityModal({ defaultAccountId = '', onClose, on
 
   const [name, setName] = useState('');
   const [accountId, setAccountId] = useState(defaultAccountId);
-  const [stage, setStage] = useState<Stage>('Prospecting');
+  const initialStage = defaultStage || 'Prospecting';
+  const [stage, setStage] = useState<Stage>(initialStage);
   const [amount, setAmount] = useState('');
   const [closeDate, setCloseDate] = useState('2026-06-30');
-  const [probability, setProbability] = useState(DEFAULT_PROBABILITY['Prospecting']);
+  const [probability, setProbability] = useState(DEFAULT_PROBABILITY[initialStage]);
   const [ownerId, setOwnerId] = useState(userId);
   const [nextStep, setNextStep] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});

@@ -71,7 +71,7 @@ const columnTitleStyle: Record<Stage, string> = {
 };
 
 export default function OpportunitiesPage() {
-  const { opportunities: allOpps, accounts, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
+  const { opportunities: allOpps, accounts, activities, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
 
@@ -80,19 +80,42 @@ export default function OpportunitiesPage() {
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
   const [oppList, setOppList] = useState<Opportunity[]>([]);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [quickAddStage, setQuickAddStage] = useState<Stage | null>(null);
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editOppId, setEditOppId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  // Apply owner filter on top of view filter
+  const filteredOpps = useMemo(() => {
+    if (ownerFilter === 'all') return scopedOpps;
+    return scopedOpps.filter((o) => o.ownerId === ownerFilter);
+  }, [scopedOpps, ownerFilter]);
+
   useEffect(() => {
-    setOppList([...scopedOpps]);
-  }, [scopedOpps]);
+    setOppList([...filteredOpps]);
+  }, [filteredOpps]);
 
   // Stats for current view
-  const openOpps = scopedOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+  const openOpps = filteredOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
   const totalPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-  const closedWonCount = scopedOpps.filter((o) => o.stage === 'Closed Won').length;
+  const STAGE_PROB: Record<string, number> = { Prospecting: 10, Qualification: 25, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
+  const weightedPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0) * ((STAGE_PROB[o.stage] || 0) / 100), 0);
+  const closedWonCount = filteredOpps.filter((o) => o.stage === 'Closed Won').length;
+
+  // Unique owners for filter dropdown
+  const ownerOptions = useMemo(() => {
+    const ids = [...new Set(scopedOpps.map((o) => o.ownerId))];
+    return ids.map((id) => ({ id, name: users.find((u) => u.id === id)?.name || id })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [scopedOpps, users]);
+
+  // Last activity per account (for deal aging)
+  const lastActivityByAccount = useMemo(() => {
+    const map: Record<string, string> = {};
+    activities.forEach((a) => { if (!map[a.accountId] || a.date > map[a.accountId]) map[a.accountId] = a.date; });
+    return map;
+  }, [activities]);
 
   function getAccountName(accountId: string): string {
     return accounts.find((a) => a.id === accountId)?.name ?? '';
@@ -180,20 +203,34 @@ export default function OpportunitiesPage() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN OPPORTUNITIES</div>
+          {/* Stats + Owner Filter */}
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'stretch' }}>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN DEALS</div>
               <div style={{ fontSize: '22px', fontWeight: 500 }}>{openOpps.length}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>PIPELINE VALUE</div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>PIPELINE</div>
               <div style={{ fontSize: '22px', fontWeight: 500 }}>{formatCurrency(totalPipeline)}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>CLOSED WON</div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WEIGHTED</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: '#185FA5' }}>{formatCurrency(weightedPipeline)}</div>
+            </div>
+            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
+              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WON</div>
               <div style={{ fontSize: '22px', fontWeight: 500, color: '#0F6E56' }}>{closedWonCount}</div>
             </div>
+            {ownerOptions.length > 1 && (
+              <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 140px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>FILTER BY OWNER</div>
+                <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                  <option value="all">All Owners</option>
+                  {ownerOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Kanban View */}
@@ -222,6 +259,15 @@ export default function OpportunitiesPage() {
                             {formatCurrency(stageTotal)}
                           </p>
                         )}
+                        {stage !== 'Closed Won' && stage !== 'Closed Lost' && (
+                          <button
+                            onClick={() => setQuickAddStage(stage)}
+                            className={`mt-1.5 w-full text-center text-[10px] font-medium py-0.5 rounded border border-dashed opacity-60 hover:opacity-100 transition-opacity ${columnTitleStyle[stage]}`}
+                            style={{ borderColor: 'currentColor' }}
+                          >
+                            + Quick Add
+                          </button>
+                        )}
                       </div>
 
                       <Droppable droppableId={stage}>
@@ -236,6 +282,10 @@ export default function OpportunitiesPage() {
                             {stageOpps.map((opp, index) => {
                               const days = daysUntil(opp.closeDate);
                               const accountName = getAccountName(opp.accountId);
+                              const createdDays = opp.createdDate ? Math.floor((Date.now() - new Date(opp.createdDate + 'T00:00:00').getTime()) / 86400000) : 0;
+                              const lastAct = lastActivityByAccount[opp.accountId];
+                              const daysSinceAct = lastAct ? Math.floor((Date.now() - new Date(lastAct + 'T00:00:00').getTime()) / 86400000) : 999;
+                              const isStale = daysSinceAct > 14;
                               return (
                                 <Draggable key={opp.id} draggableId={opp.id} index={index}>
                                   {(drag, dragSnapshot) => (
@@ -243,8 +293,8 @@ export default function OpportunitiesPage() {
                                       ref={drag.innerRef}
                                       {...drag.draggableProps}
                                       {...drag.dragHandleProps}
-                                      className={`bg-white rounded-lg border border-gray-200 p-3 shadow-sm cursor-grab active:cursor-grabbing transition-shadow ${
-                                        dragSnapshot.isDragging ? 'shadow-lg ring-2 ring-green-400' : ''
+                                      className={`bg-white rounded-lg border p-3 shadow-sm cursor-grab active:cursor-grabbing transition-shadow ${
+                                        dragSnapshot.isDragging ? 'shadow-lg ring-2 ring-green-400' : isStale ? 'border-amber-300' : 'border-gray-200'
                                       }`}
                                     >
                                       <div className="flex items-start justify-between gap-1 mb-0.5">
@@ -300,6 +350,15 @@ export default function OpportunitiesPage() {
                                             : days === 0
                                             ? 'Due today'
                                             : `${days}d`}
+                                        </span>
+                                      </div>
+                                      {/* Deal aging + last activity */}
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${createdDays > 60 ? 'bg-red-50 text-red-600' : createdDays > 30 ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-500'}`}>
+                                          {createdDays}d old
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isStale ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>
+                                          {daysSinceAct === 999 ? 'No activity' : daysSinceAct === 0 ? 'Today' : `${daysSinceAct}d ago`}
                                         </span>
                                       </div>
                                       <div className="flex items-center justify-between mt-1">
@@ -423,6 +482,14 @@ export default function OpportunitiesPage() {
         <NewOpportunityModal
           onClose={() => setShowNewModal(false)}
           onSave={handleOppSaved}
+        />
+      )}
+
+      {quickAddStage && (
+        <NewOpportunityModal
+          defaultStage={quickAddStage}
+          onClose={() => setQuickAddStage(null)}
+          onSave={(opp) => { handleOppSaved(opp); setQuickAddStage(null); }}
         />
       )}
 
