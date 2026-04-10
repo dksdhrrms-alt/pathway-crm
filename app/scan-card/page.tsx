@@ -19,10 +19,36 @@ export default function ScanCardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  function compressImage(dataUrl: string, maxWidth: number, quality: number): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = dataUrl;
+    });
+  }
+
   function handleFile(file: File) {
-    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
+    if (!file.type.startsWith('image/')) { setError('Please select an image file (JPG, PNG, HEIC)'); return; }
+    if (file.size > 20 * 1024 * 1024) { setError('Image too large. Maximum 20MB.'); return; }
     const reader = new FileReader();
-    reader.onload = (e) => { setImage(e.target?.result as string); setResult(null); setError(null); setSaved(false); };
+    reader.onload = async (e) => {
+      const raw = e.target?.result as string;
+      // Compress to max 1200px wide, 80% quality to stay under API limits
+      const compressed = await compressImage(raw, 1200, 0.8);
+      setImage(compressed);
+      setResult(null);
+      setError(null);
+      setSaved(false);
+    };
     reader.readAsDataURL(file);
   }
 
@@ -36,14 +62,24 @@ export default function ScanCardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image }),
       });
+      if (!res.ok) {
+        const status = res.status;
+        if (status === 401) { setError('Please log in to use card scanning.'); return; }
+        if (status === 413) { setError('Image too large. Please use a smaller image.'); return; }
+        if (status === 500) { setError('Server error. The AI service may be unavailable. Try again later.'); return; }
+        setError(`Scan failed (error ${status}). Please try again.`);
+        return;
+      }
       const data = await res.json();
       if (data.success && data.contact) {
+        const hasData = Object.values(data.contact).some((v) => v);
+        if (!hasData) { setError('Could not read any text from the image. Try a clearer photo with good lighting.'); return; }
         setResult(data.contact);
       } else {
-        setError(data.error || 'Failed to scan card');
+        setError(data.error || 'Failed to extract contact info. Try a different angle or lighting.');
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError('Network error. Check your connection and try again.');
     } finally {
       setScanning(false);
     }

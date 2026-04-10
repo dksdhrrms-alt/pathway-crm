@@ -4,16 +4,30 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user) return Response.json({ error: 'Please log in to scan business cards.' }, { status: 401 });
 
   try {
-    const { image } = await request.json();
-    if (!image) return Response.json({ error: 'No image provided' }, { status: 400 });
+    const body = await request.json();
+    const { image } = body;
+    if (!image) return Response.json({ error: 'No image provided. Please take a photo or upload an image.' }, { status: 400 });
+
+    // Validate base64 size (rough check — 5MB base64 ~ 3.7MB image)
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    if (base64Data.length > 7 * 1024 * 1024) {
+      return Response.json({ error: 'Image too large after encoding. Please use a smaller or lower-resolution image.' }, { status: 413 });
+    }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return Response.json({ error: 'API key not configured' }, { status: 500 });
+    if (!apiKey || apiKey.includes('placeholder')) {
+      return Response.json({ error: 'AI service not configured. Please contact your administrator.' }, { status: 500 });
+    }
 
-    // Send to Claude Vision API
+    // Detect media type from data URL
+    const mediaMatch = image.match(/^data:(image\/\w+);base64,/);
+    const mediaType = mediaMatch ? mediaMatch[1] : 'image/jpeg';
+
+    console.log(`[SCAN] Processing card scan, image size: ${Math.round(base64Data.length / 1024)}KB, type: ${mediaType}`);
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -29,7 +43,7 @@ export async function POST(request: Request) {
           content: [
             {
               type: 'image',
-              source: { type: 'base64', media_type: 'image/jpeg', data: image.replace(/^data:image\/\w+;base64,/, '') },
+              source: { type: 'base64', media_type: mediaType, data: base64Data },
             },
             {
               type: 'text',
@@ -41,23 +55,28 @@ export async function POST(request: Request) {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error('[SCAN] Claude API error:', err);
-      return Response.json({ error: 'Failed to process image' }, { status: 500 });
+      const errText = await res.text();
+      console.error(`[SCAN] Claude API error (${res.status}):`, errText);
+      if (res.status === 429) return Response.json({ error: 'AI service rate limited. Please wait a moment and try again.' }, { status: 429 });
+      if (res.status === 400) return Response.json({ error: 'Image format not supported or corrupted. Try taking a new photo.' }, { status: 400 });
+      return Response.json({ error: `AI service error (${res.status}). Please try again later.` }, { status: 500 });
     }
 
     const data = await res.json();
     const text = data.content?.[0]?.text || '{}';
     const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
+    console.log('[SCAN] Extracted text:', clean.substring(0, 200));
+
     try {
       const contact = JSON.parse(clean);
       return Response.json({ success: true, contact });
     } catch {
-      return Response.json({ success: true, contact: {}, rawText: text });
+      console.error('[SCAN] Failed to parse JSON:', clean);
+      return Response.json({ error: 'Could not parse card data. The image may not contain a business card.' }, { status: 422 });
     }
   } catch (err) {
     console.error('[SCAN] Error:', err);
-    return Response.json({ error: 'Internal error' }, { status: 500 });
+    return Response.json({ error: 'An unexpected error occurred. Please try again.' }, { status: 500 });
   }
 }
