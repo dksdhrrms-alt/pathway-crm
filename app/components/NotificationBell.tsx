@@ -7,7 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -16,7 +16,7 @@ interface Notification {
 
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -110,6 +110,23 @@ export default function NotificationBell() {
         }
       });
     }
+
+    // 4. Follow-up reminders from localStorage (set by cron)
+    try {
+      const reminders = JSON.parse(localStorage.getItem('followup_reminders') || '[]');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      reminders.forEach((r: any) => {
+        const id = `follow_up_${r.accountId || r.account_id}`;
+        if (!dismissed.has(id)) {
+          result.push({
+            id, type: 'follow_up', priority: 'medium',
+            title: 'Follow-up Reminder',
+            body: r.message || `Follow up with ${r.accountName || r.account_name}`,
+            link: r.accountId ? `/accounts/${r.accountId}` : '/accounts',
+          });
+        }
+      });
+    } catch { /* */ }
 
     return result.sort((a, b) => {
       const order = { high: 0, medium: 1, low: 2 };
@@ -276,7 +293,7 @@ export default function NotificationBell() {
           {notifications.length > 0 && (
             <div style={{ padding: '10px 16px', borderTop: '0.5px solid #e5e7eb', flexShrink: 0 }}>
               <div style={{ fontSize: '11px', color: '#888', textAlign: 'center' }}>
-                &#9888;&#65039; Overdue tasks &middot; &#127919; Closing deals &middot; &#128237; No contact 30d+
+                Overdue &middot; Closing deals &middot; No contact &middot; Follow-ups
               </div>
             </div>
           )}
