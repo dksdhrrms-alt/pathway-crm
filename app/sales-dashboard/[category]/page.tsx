@@ -749,6 +749,7 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AccountBreakdown({ month, year, category, salesData }: { month: number; year: number; category: string; salesData: any[] }) {
+  const { accounts: crmAccts } = useCRM();
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monthRecords = salesData.filter((r: any) => r.date?.startsWith(prefix) && (category === 'all' || r.category === category));
@@ -792,8 +793,10 @@ function AccountBreakdown({ month, year, category, salesData }: { month: number;
             return prods.map((prod, pIdx) => (
               <tr key={`${acct.name}-${prod.name}`} style={{ borderBottom: pIdx === prods.length - 1 ? '1px solid #e5e7eb' : '0.5px solid #f3f4f6', background: accIdx % 2 === 0 ? 'white' : '#fafafa' }}>
                 {pIdx === 0 && (
-                  <td rowSpan={prods.length} style={{ padding: '8px 10px', fontWeight: 500, color: '#1a4731', verticalAlign: 'top', borderRight: '0.5px solid #e5e7eb' }}>
-                    {acct.name}
+                  <td rowSpan={prods.length} style={{ padding: '8px 10px', fontWeight: 500, verticalAlign: 'top', borderRight: '0.5px solid #e5e7eb' }}>
+                    {(() => { const match = crmAccts.find((a) => a.name === acct.name); return match ? (
+                      <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }} onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}>{acct.name}</a>
+                    ) : <span style={{ color: '#1a4731' }}>{acct.name}</span>; })()}
                     <div style={{ fontSize: '10px', color: '#888', fontWeight: 400, marginTop: '2px' }}>${Math.round(acct.totalAmount).toLocaleString()}</div>
                   </td>
                 )}
