@@ -62,6 +62,8 @@ export default function AccountDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAllContacts, setShowAllContacts] = useState(false);
+  const [purchasePeriod, setPurchasePeriod] = useState<'all' | '6m' | '1y'>('all');
+  const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
 
   // --- Related data ---
   const accountContacts = useMemo(
@@ -399,73 +401,111 @@ export default function AccountDetailPage() {
                   borderRadius: '12px', padding: '20px',
                 }}
               >
-                <h3 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
+                <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
 
                 {accountSales.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px', padding: '16px 0' }}>
                     No purchase records yet.
                   </div>
                 ) : (
-                  <>
-                    {/* Product breakdown bars */}
-                    {productBreakdown.map(([product, amount]) => {
-                      const pct = maxProductAmount > 0 ? (amount / maxProductAmount) * 100 : 0;
-                      return (
-                        <div key={product} style={{ marginBottom: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                            <span style={{ fontWeight: 500 }}>{product}</span>
-                            <span style={{ color: '#666' }}>{formatCurrency(Math.round(amount))}</span>
-                          </div>
-                          <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${pct}%`, height: '100%',
-                                background: '#1a4731', borderRadius: '3px',
-                                transition: 'width 0.5s ease',
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+                  (() => {
+                    // Apply period filter
+                    const now = Date.now();
+                    const periodFiltered = purchasePeriod === 'all' ? sortedSales
+                      : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= (purchasePeriod === '6m' ? 180 : 365));
+                    // Apply product filter
+                    const filtered = purchaseProduct === 'all' ? periodFiltered
+                      : periodFiltered.filter((s) => (s.productName || 'Unknown') === purchaseProduct);
+                    // Unique products for filter
+                    const products = [...new Set(sortedSales.map((s) => s.productName || 'Unknown'))];
+                    // Product breakdown from filtered
+                    const pBrkFiltered: Record<string, { amount: number; kg: number }> = {};
+                    filtered.forEach((s) => {
+                      const p = s.productName || 'Unknown';
+                      if (!pBrkFiltered[p]) pBrkFiltered[p] = { amount: 0, kg: 0 };
+                      pBrkFiltered[p].amount += Number(s.amount) || 0;
+                      pBrkFiltered[p].kg += Number(s.volumeKg) || 0;
+                    });
+                    const pBrkArr = Object.entries(pBrkFiltered).sort(([, a], [, b]) => b.amount - a.amount);
+                    const maxAmt = pBrkArr.length > 0 ? pBrkArr[0][1].amount : 0;
+                    const totalKg = filtered.reduce((s, r) => s + (Number(r.volumeKg) || 0), 0);
+                    const totalAmt = filtered.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-                    {/* Recent transactions */}
-                    <div style={{ marginTop: '16px', borderTop: '0.5px solid #e5e7eb', paddingTop: '16px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 500, color: '#888', marginBottom: '8px' }}>
-                        Recent Transactions
-                      </div>
-                      {(showAllTx ? sortedSales : sortedSales.slice(0, 5)).map((sale, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            display: 'flex', justifyContent: 'space-between',
-                            padding: '6px 0', borderBottom: '0.5px solid #f3f4f6',
-                            fontSize: '12px',
-                          }}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 500 }}>{sale.productName || 'Unknown'}</span>
-                            <span style={{ color: '#888', marginLeft: '8px' }}>{formatDate(sale.date)}</span>
+                    return (
+                      <>
+                        {/* Filters */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
+                            {([['all', 'All'], ['6m', '6M'], ['1y', '1Y']] as const).map(([v, l]) => (
+                              <button key={v} onClick={() => setPurchasePeriod(v)}
+                                style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? '#1a4731' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
+                                {l}
+                              </button>
+                            ))}
                           </div>
-                          <span style={{ fontWeight: 500, color: '#1a4731' }}>
-                            {formatCurrency(Math.round(Number(sale.amount)))}
-                          </span>
+                          {products.length > 1 && (
+                            <select value={purchaseProduct} onChange={(e) => setPurchaseProduct(e.target.value)}
+                              style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '3px 8px', background: 'white' }}>
+                              <option value="all">All Products</option>
+                              {products.map((p) => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                          )}
+                          <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#888', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <span>{Math.round(totalKg).toLocaleString()} kg</span>
+                            <span style={{ fontWeight: 600, color: '#1a4731' }}>{formatCurrency(Math.round(totalAmt))}</span>
+                          </div>
                         </div>
-                      ))}
-                      {sortedSales.length > 5 && (
-                        <button
-                          onClick={() => setShowAllTx(!showAllTx)}
-                          style={{
-                            marginTop: '10px', width: '100%', padding: '8px',
-                            background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px',
-                            cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500,
-                          }}
-                        >
-                          {showAllTx ? 'Show less' : `+ ${sortedSales.length - 5} more transactions`}
-                        </button>
-                      )}
-                    </div>
-                  </>
+
+                        {/* Product breakdown bars */}
+                        {pBrkArr.map(([product, data]) => {
+                          const pct = maxAmt > 0 ? (data.amount / maxAmt) * 100 : 0;
+                          return (
+                            <div key={product} style={{ marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 500 }}>{product}</span>
+                                <span style={{ color: '#666' }}>
+                                  {data.kg > 0 && <span style={{ color: '#888', marginRight: '8px' }}>{Math.round(data.kg).toLocaleString()} kg</span>}
+                                  {formatCurrency(Math.round(data.amount))}
+                                </span>
+                              </div>
+                              <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, height: '100%', background: '#1a4731', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Transactions */}
+                        <div style={{ marginTop: '16px', borderTop: '0.5px solid #e5e7eb', paddingTop: '16px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 500, color: '#888', marginBottom: '8px' }}>
+                            Transactions ({filtered.length})
+                          </div>
+                          {filtered.length === 0 ? (
+                            <div style={{ color: '#aaa', fontSize: '12px', padding: '8px 0' }}>No transactions match filters.</div>
+                          ) : (
+                            <>
+                              {(showAllTx ? filtered : filtered.slice(0, 5)).map((sale, idx) => (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '0.5px solid #f3f4f6', fontSize: '12px' }}>
+                                  <div>
+                                    <span style={{ fontWeight: 500 }}>{sale.productName || 'Unknown'}</span>
+                                    <span style={{ color: '#888', marginLeft: '8px' }}>{formatDate(sale.date)}</span>
+                                    {(sale.volumeKg || 0) > 0 && <span style={{ color: '#aaa', marginLeft: '6px' }}>{Math.round(sale.volumeKg).toLocaleString()} kg</span>}
+                                  </div>
+                                  <span style={{ fontWeight: 500, color: '#1a4731' }}>{formatCurrency(Math.round(Number(sale.amount)))}</span>
+                                </div>
+                              ))}
+                              {filtered.length > 5 && (
+                                <button onClick={() => setShowAllTx(!showAllTx)}
+                                  style={{ marginTop: '10px', width: '100%', padding: '8px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500 }}>
+                                  {showAllTx ? 'Show less' : `+ ${filtered.length - 5} more transactions`}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()
                 )}
               </div>
             </div>
