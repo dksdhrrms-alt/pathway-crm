@@ -62,8 +62,10 @@ export default function AccountDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAllContacts, setShowAllContacts] = useState(false);
-  const [purchasePeriod, setPurchasePeriod] = useState<'all' | '6m' | '1y'>('all');
+  const [purchasePeriod, setPurchasePeriod] = useState<'all' | '6m' | '1y' | '2y' | 'custom'>('all');
   const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
+  const [purchaseFrom, setPurchaseFrom] = useState('');
+  const [purchaseTo, setPurchaseTo] = useState('');
 
   // --- Related data ---
   const accountContacts = useMemo(
@@ -412,7 +414,8 @@ export default function AccountDetailPage() {
                     // Apply period filter
                     const now = Date.now();
                     const periodFiltered = purchasePeriod === 'all' ? sortedSales
-                      : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= (purchasePeriod === '6m' ? 180 : 365));
+                      : purchasePeriod === 'custom' ? sortedSales.filter((s) => (!purchaseFrom || s.date >= purchaseFrom) && (!purchaseTo || s.date <= purchaseTo))
+                      : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= ({ '6m': 180, '1y': 365, '2y': 730 }[purchasePeriod] || 9999));
                     // Apply product filter
                     const filtered = purchaseProduct === 'all' ? periodFiltered
                       : periodFiltered.filter((s) => (s.productName || 'Unknown') === purchaseProduct);
@@ -436,13 +439,22 @@ export default function AccountDetailPage() {
                         {/* Filters */}
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
-                            {([['all', 'All'], ['6m', '6M'], ['1y', '1Y']] as const).map(([v, l]) => (
+                            {([['all', 'All'], ['6m', '6M'], ['1y', '1Y'], ['2y', '2Y'], ['custom', 'Custom']] as const).map(([v, l]) => (
                               <button key={v} onClick={() => setPurchasePeriod(v)}
                                 style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? '#1a4731' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
                                 {l}
                               </button>
                             ))}
                           </div>
+                          {purchasePeriod === 'custom' && (
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                              <input type="date" value={purchaseFrom} onChange={(e) => setPurchaseFrom(e.target.value)}
+                                style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px 6px' }} />
+                              <span style={{ fontSize: '10px', color: '#aaa' }}>~</span>
+                              <input type="date" value={purchaseTo} onChange={(e) => setPurchaseTo(e.target.value)}
+                                style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px 6px' }} />
+                            </div>
+                          )}
                           {products.length > 1 && (
                             <select value={purchaseProduct} onChange={(e) => setPurchaseProduct(e.target.value)}
                               style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '3px 8px', background: 'white' }}>
