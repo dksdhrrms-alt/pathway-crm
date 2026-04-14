@@ -145,38 +145,15 @@ export default function InsightsPage() {
         activeDeals: opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length,
       };
 
-      const prompt = `You are a sales analytics advisor for Pathway Intermediates USA, a livestock feed additive company.
-
-Here is the current CRM data summary for ${selectedYear}:
-- YTD Revenue: ${summary.ytdRevenue} (${summary.yoyGrowth} YoY growth)
-- Open Pipeline: ${summary.openPipeline} across ${summary.activeDeals} deals
-- Win Rate: ${summary.winRate}, Average Deal Size: ${summary.avgDealSize}
-- Top Categories: ${summary.topCategories}
-- Top Accounts: ${summary.topAccounts}
-- Total Activities: ${summary.totalActivities}
-- Inactive Accounts (30+ days): ${summary.inactiveAccounts}
-- Overdue Tasks: ${summary.overdueTasks}
-
-Provide 5-7 actionable insights and recommendations. Include:
-1. Revenue trend analysis and forecast
-2. Pipeline health assessment
-3. Account engagement gaps
-4. Category performance comparison
-5. Specific action items for the sales team
-
-Format each insight as a bullet point starting with an emoji icon.
-Keep each point concise (1-2 sentences).
-Write in professional but direct tone.`.replace(/[^\x00-\x7F]/g, ' ');
-
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/insights', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.NEXT_PUBLIC_ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: { ...summary, year: selectedYear } }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setAiInsight(data.content?.[0]?.text || 'Unable to generate insights.');
+      const data = await res.json();
+      if (res.ok && data.insight) {
+        setAiInsight(data.insight);
       } else {
         // Fallback: generate insights from data
         const insights = [];
