@@ -19,6 +19,7 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EditOpportunityModal from '@/app/components/EditOpportunityModal';
 import ViewTabs from '@/app/components/ViewTabs';
 import { useViewFilter } from '@/hooks/useViewFilter';
+import { useScrollRestore } from '@/hooks/useUrlState';
 
 const TODAY = new Date().toISOString().split('T')[0];
 const STAGES: Stage[] = [
@@ -71,6 +72,7 @@ const columnTitleStyle: Record<Stage, string> = {
 };
 
 export default function OpportunitiesPage() {
+  useScrollRestore();
   const { opportunities: allOpps, accounts, activities, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();

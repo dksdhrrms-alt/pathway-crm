@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useScrollRestore } from '@/hooks/useUrlState';
 import { Contact, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import SendEmailModal from '@/app/components/SendEmailModal';
@@ -24,6 +25,7 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ContactsPage() {
+  useScrollRestore();
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';

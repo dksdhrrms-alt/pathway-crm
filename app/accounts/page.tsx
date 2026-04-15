@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useScrollRestore } from '@/hooks/useUrlState';
 import { Account } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -46,6 +47,7 @@ type SortKey = 'name' | 'industry' | 'country' | 'employee';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
+  useScrollRestore();
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
