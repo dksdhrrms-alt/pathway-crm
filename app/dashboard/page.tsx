@@ -135,7 +135,9 @@ export default function DashboardPage() {
   }, [scopedActivities]);
 
   // ── Activity Leaderboard ────────────────────────────────────────────────
-  const POINTS: Record<string, number> = { Call: 3, Meeting: 5, Email: 2, Note: 1 };
+  const ACT_POINTS: Record<string, number> = { Call: 3, Meeting: 5, Email: 2, Note: 1 };
+  const TASK_COMPLETE_PTS = 2;
+  const OPP_WON_PTS = 10;
   const leaderboard = useMemo(() => {
     const curPrefix = CURRENT_MONTH;
     const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
@@ -144,15 +146,21 @@ export default function DashboardPage() {
     return activeUsersList.map((u) => {
       const curActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(curPrefix));
       const prevActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(prevPrefix));
-      const curPts = curActs.reduce((s, a) => s + (POINTS[a.type] || 1), 0);
-      const prevPts = prevActs.reduce((s, a) => s + (POINTS[a.type] || 1), 0);
+      // Tasks completed this month
+      const tasksCompleted = allTasks.filter((t) => t.ownerId === u.id && t.status === 'Completed' && t.dueDate?.startsWith(curPrefix)).length;
+      // Opps won this month
+      const oppsWon = allOpps.filter((o) => o.ownerId === u.id && o.stage === 'Closed Won' && o.closeDate?.startsWith(curPrefix)).length;
+      const actPts = curActs.reduce((s, a) => s + (ACT_POINTS[a.type] || 1), 0);
+      const curPts = actPts + (tasksCompleted * TASK_COMPLETE_PTS) + (oppsWon * OPP_WON_PTS);
+      const prevPts = prevActs.reduce((s, a) => s + (ACT_POINTS[a.type] || 1), 0);
       const calls = curActs.filter((a) => a.type === 'Call').length;
       const meetings = curActs.filter((a) => a.type === 'Meeting').length;
       const emails = curActs.filter((a) => a.type === 'Email').length;
       const notes = curActs.filter((a) => a.type === 'Note').length;
-      return { user: u, points: curPts, prevPoints: prevPts, total: curActs.length, calls, meetings, emails, notes };
-    }).filter((x) => x.points > 0 || x.prevPoints > 0).sort((a, b) => b.points - a.points);
-  }, [allActivities, users]);
+      return { user: u, points: curPts, prevPoints: prevPts, total: curActs.length, calls, meetings, emails, notes, tasksCompleted, oppsWon };
+    }).filter((x) => x.total > 0 || x.points > 0 || x.prevPoints > 0 || x.tasksCompleted > 0 || x.oppsWon > 0)
+      .sort((a, b) => b.points - a.points);
+  }, [allActivities, allTasks, allOpps, users]);
 
   // ── Quota ───────────────────────────────────────────────────────────────
   const wonThisMonth = opportunities.filter((o) => o.stage === 'Closed Won' && o.closeDate?.startsWith(CURRENT_MONTH));
@@ -309,7 +317,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Monthly points: Call=3, Meeting=5, Email=2, Note=1</p>
+                <p className="text-xs text-gray-500 mt-0.5">Call=3, Meeting=5, Email=2, Note=1, Task Done=2, Deal Won=10</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
