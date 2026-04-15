@@ -137,7 +137,7 @@ export default function DashboardPage() {
   // ── Activity Leaderboard ────────────────────────────────────────────────
   const ACT_POINTS: Record<string, number> = { Call: 3, Meeting: 5, Email: 2, Note: 1 };
   const TASK_COMPLETE_PTS = 2;
-  const OPP_WON_PTS = 10;
+  const OPP_WON_PTS = 2;
   const leaderboard = useMemo(() => {
     const curPrefix = CURRENT_MONTH;
     const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
@@ -317,7 +317,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Call=3, Meeting=5, Email=2, Note=1, Task Done=2, Deal Won=10</p>
+                <p className="text-xs text-gray-500 mt-0.5">Call=3, Meeting=5, Email=2, Note=1, Task Done=2, New Deal=2</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
