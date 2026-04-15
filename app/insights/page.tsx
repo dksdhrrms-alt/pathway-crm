@@ -255,7 +255,7 @@ export default function InsightsPage() {
               <div style={{ height: 220 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false}>
+                    <Pie data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
                       {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={(v) => fmt(Number(v))} />
