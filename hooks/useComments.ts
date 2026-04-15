@@ -18,15 +18,30 @@ export function useComments(parentType: 'activity' | 'task' | 'opportunity', par
   useEffect(() => { load(); }, [load]);
 
   const add = useCallback(async (comment: Omit<Comment, 'createdAt'>) => {
+    // Optimistic: add immediately
+    const optimistic: Comment = { ...comment, createdAt: new Date().toISOString() };
+    setComments((prev) => [...prev, optimistic]);
+
     const result = await addComment(comment);
-    if (result) setComments((prev) => [...prev, result]);
+    if (result) {
+      // Replace optimistic with server result
+      setComments((prev) => prev.map((c) => c.id === comment.id ? result : c));
+    }
+    // If result is null but addComment returns local fallback, it's already in state
     return result;
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    await deleteComment(id);
-    setComments((prev) => prev.filter((c) => c.id !== id));
-  }, []);
+    // Optimistic: remove immediately
+    const prev = comments;
+    setComments((p) => p.filter((c) => c.id !== id));
+
+    const success = await deleteComment(id);
+    if (!success) {
+      // Rollback on failure
+      setComments(prev);
+    }
+  }, [comments]);
 
   return { comments, loading, add, remove, reload: load };
 }
