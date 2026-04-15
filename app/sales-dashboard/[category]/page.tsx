@@ -176,15 +176,22 @@ export default function SalesDashboardPage() {
 
   // Top accounts
   const topAccounts = useMemo(() => {
+    const curMonth = CURRENT_MONTH;
     const accts: Record<string, { amount: number; category: string; lastYear: number }> = {};
     for (const r of salesData) {
-      if (!r.date?.startsWith(String(year))) continue;
+      const d = String(r.date || '').split('-');
+      const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
+      if (rYear !== year) continue;
       if (category !== 'all' && r.category !== category) continue;
       if (!accts[r.accountName]) accts[r.accountName] = { amount: 0, category: r.category, lastYear: 0 };
       accts[r.accountName].amount += r.amount;
     }
+    // Compare same period (Jan through current month) of previous year
     for (const r of salesData) {
-      if (!r.date?.startsWith(String(year - 1))) continue;
+      const d = String(r.date || '').split('-');
+      const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
+      if (rYear !== year - 1) continue;
+      if (year === CURRENT_YEAR && rMonth > curMonth) continue; // same period only
       if (category !== 'all' && r.category !== category) continue;
       if (accts[r.accountName]) accts[r.accountName].lastYear += r.amount;
     }
@@ -476,7 +483,7 @@ export default function SalesDashboardPage() {
                     <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase">Category</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Total Sales</th>
                     <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">% of Total</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Trend</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YoY</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -485,7 +492,11 @@ export default function SalesDashboardPage() {
                     return (
                       <tr key={a.name} className="border-b border-gray-50">
                         <td className="text-center px-3 py-3 text-gray-400 text-xs">{i + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-800">{a.name}</td>
+                        <td className="px-4 py-3 font-medium">
+                          {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
+                            <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
+                          ) : <span className="text-gray-800">{a.name}</span>; })()}
+                        </td>
                         <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 capitalize">{a.category}</span></td>
                         <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{fmt(a.amount)}</td>
                         <td className="px-4 py-3 text-right text-gray-500">{a.pctOfTotal}%</td>
