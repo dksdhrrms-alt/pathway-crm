@@ -14,7 +14,7 @@ export function useViewFilter() {
   const userId = session?.user?.id ?? '';
   const role = (session?.user as { role?: string })?.role ?? '';
 
-  const isAdminOrCeo = ['admin', 'administrative_manager', 'ceo', 'coo', 'sales_director'].includes(role);
+  const isAdminOrCeo = ['admin', 'administrative_manager', 'ceo'].includes(role);
 
   const [activeView, setActiveView] = useState<ViewType>('personal');
 
