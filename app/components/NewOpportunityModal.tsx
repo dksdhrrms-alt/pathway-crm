@@ -43,6 +43,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
   const [probability, setProbability] = useState(DEFAULT_PROBABILITY[initialStage]);
   const [ownerId, setOwnerId] = useState(userId);
   const [nextStep, setNextStep] = useState('');
+  const [competitor, setCompetitor] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleStageChange(newStage: Stage) {
@@ -74,6 +75,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
       probability,
       ownerId,
       nextStep: nextStep.trim() || undefined,
+      competitor: competitor.trim() || undefined,
       createdDate: today,
       contactIds: [],
     };
@@ -212,6 +214,12 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
               placeholder="e.g. Send proposal by Friday"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Competitor</label>
+            <input type="text" value={competitor} onChange={(e) => setCompetitor(e.target.value)} placeholder="e.g. Alltech, Zinpro, Novus"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

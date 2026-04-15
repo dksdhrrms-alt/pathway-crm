@@ -48,6 +48,8 @@ export interface Contact {
   tel?: string;
   email: string;
   linkedIn?: string;
+  birthday?: string;
+  anniversary?: string;
   createdAt?: string;
   status?: string;
 }
@@ -64,6 +66,7 @@ export interface Opportunity {
   ownerName?: string;
   nextStep?: string;
   leadSource?: string;
+  competitor?: string;
   createdDate: string;
   contactIds: string[];
 }

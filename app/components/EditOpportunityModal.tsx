@@ -24,6 +24,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
   const [closeDate, setCloseDate] = useState(opportunity.closeDate || '');
   const [probability, setProbability] = useState(opportunity.probability || 10);
   const [nextStep, setNextStep] = useState(opportunity.nextStep || '');
+  const [competitor, setCompetitor] = useState(opportunity.competitor || '');
   const [ownerId, setOwnerId] = useState(opportunity.ownerId || '');
   const [error, setError] = useState('');
 
@@ -40,7 +41,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
     const updates: Partial<Opportunity> = {
       name: name.trim(), accountId, stage,
       amount: parseInt(String(amount).replace(/,/g, '')) || 0,
-      closeDate, probability, nextStep: nextStep.trim(),
+      closeDate, probability, nextStep: nextStep.trim(), competitor: competitor.trim(),
       ownerId, ownerName: selectedUser?.name,
     };
 
@@ -110,6 +111,11 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Next Step</label>
             <input type="text" value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="e.g. Send sample kit"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Competitor</label>
+            <input type="text" value={competitor} onChange={(e) => setCompetitor(e.target.value)} placeholder="e.g. Alltech, Zinpro, Novus"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>

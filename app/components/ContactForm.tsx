@@ -37,6 +37,8 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [tel, setTel] = useState(initialData?.tel || '');
   const [email, setEmail] = useState(initialData?.email || '');
+  const [birthday, setBirthday] = useState(initialData?.birthday || '');
+  const [anniversary, setAnniversary] = useState(initialData?.anniversary || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
@@ -65,6 +67,8 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       phone: phone.trim(),
       tel: tel.trim(),
       email: email.trim(),
+      birthday: birthday || undefined,
+      anniversary: anniversary || undefined,
       title: position.trim() || species,
     };
 
@@ -174,6 +178,19 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
         <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
+          <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Anniversary</label>
+          <input type="date" value={anniversary} onChange={(e) => setAnniversary(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

@@ -7,7 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -16,12 +16,12 @@ interface Notification {
 
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
   const router = useRouter();
-  const { tasks, opportunities, activities, accounts } = useCRM();
+  const { tasks, opportunities, activities, accounts, contacts } = useCRM();
 
   const [isOpen, setIsOpen] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
@@ -128,11 +128,36 @@ export default function NotificationBell() {
       });
     } catch { /* */ }
 
+    // 5. Birthday/Anniversary within 7 days
+    const today = new Date();
+    const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    contacts.forEach((c) => {
+      ['birthday', 'anniversary'].forEach((field) => {
+        const val = (c as Record<string, string | undefined>)[field];
+        if (!val) return;
+        const md = val.substring(5); // MM-DD
+        // Check if within 7 days
+        const eventDate = new Date(today.getFullYear(), parseInt(md.split('-')[0]) - 1, parseInt(md.split('-')[1]));
+        const diff = Math.floor((eventDate.getTime() - today.getTime()) / 86400000);
+        if (diff >= 0 && diff <= 7) {
+          const id = `${field}_${c.id}`;
+          if (!dismissed.has(id)) {
+            result.push({
+              id, type: 'birthday', priority: diff <= 1 ? 'medium' : 'low',
+              title: field === 'birthday' ? 'Birthday Coming Up' : 'Anniversary',
+              body: `${c.firstName} ${c.lastName}${diff === 0 ? ' - Today!' : ` - in ${diff} days`}`,
+              link: `/contacts/${c.id}`,
+            });
+          }
+        }
+      });
+    });
+
     return result.sort((a, b) => {
       const order = { high: 0, medium: 1, low: 2 };
       return order[a.priority] - order[b.priority];
     });
-  }, [tasks, opportunities, activities, accounts, userId, isAdmin, dismissed]);
+  }, [tasks, opportunities, activities, accounts, contacts, userId, isAdmin, dismissed]);
 
   const count = notifications.length;
 
