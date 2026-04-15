@@ -134,6 +134,26 @@ export default function DashboardPage() {
     }));
   }, [scopedActivities]);
 
+  // ── Activity Leaderboard ────────────────────────────────────────────────
+  const POINTS: Record<string, number> = { Call: 3, Meeting: 5, Email: 2, Note: 1 };
+  const leaderboard = useMemo(() => {
+    const curPrefix = CURRENT_MONTH;
+    const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
+    const prevPrefix = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    const activeUsersList = users.filter((u) => u.status === 'active');
+    return activeUsersList.map((u) => {
+      const curActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(curPrefix));
+      const prevActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(prevPrefix));
+      const curPts = curActs.reduce((s, a) => s + (POINTS[a.type] || 1), 0);
+      const prevPts = prevActs.reduce((s, a) => s + (POINTS[a.type] || 1), 0);
+      const calls = curActs.filter((a) => a.type === 'Call').length;
+      const meetings = curActs.filter((a) => a.type === 'Meeting').length;
+      const emails = curActs.filter((a) => a.type === 'Email').length;
+      const notes = curActs.filter((a) => a.type === 'Note').length;
+      return { user: u, points: curPts, prevPoints: prevPts, total: curActs.length, calls, meetings, emails, notes };
+    }).filter((x) => x.points > 0 || x.prevPoints > 0).sort((a, b) => b.points - a.points);
+  }, [allActivities, users]);
+
   // ── Quota ───────────────────────────────────────────────────────────────
   const wonThisMonth = opportunities.filter((o) => o.stage === 'Closed Won' && o.closeDate?.startsWith(CURRENT_MONTH));
   const lostThisMonth = opportunities.filter((o) => o.stage === 'Closed Lost' && o.closeDate?.startsWith(CURRENT_MONTH));
@@ -430,6 +450,66 @@ export default function DashboardPage() {
               </ul>
             </div>
           </div>
+
+          {/* Activity Leaderboard */}
+          {isAdminCeo && activeTab === 'company' && leaderboard.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Monthly points: Call=3, Meeting=5, Email=2, Note=1</p>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="w-10 text-center px-3 py-2.5 text-xs text-gray-500">#</th>
+                    <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-medium">Team Member</th>
+                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Calls</th>
+                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Meetings</th>
+                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Emails</th>
+                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Notes</th>
+                    <th className="text-right px-4 py-2.5 text-xs text-gray-500 font-medium">Points</th>
+                    <th className="text-right px-4 py-2.5 text-xs text-gray-500 font-medium">vs Last Month</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboard.slice(0, 10).map((entry, i) => {
+                    const trend = entry.prevPoints > 0 ? Math.round(((entry.points - entry.prevPoints) / entry.prevPoints) * 100) : null;
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+                    return (
+                      <tr key={entry.user.id} className="border-b border-gray-50 hover:bg-gray-50/60">
+                        <td className="text-center px-3 py-3 text-xs text-gray-400">{medal || i + 1}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
+                              style={{ backgroundColor: '#1a4731' }}>
+                              {entry.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            <span className="font-medium text-gray-800">{entry.user.name}</span>
+                          </div>
+                        </td>
+                        <td className="text-center px-3 py-3 text-blue-600 font-medium">{entry.calls || '-'}</td>
+                        <td className="text-center px-3 py-3 text-purple-600 font-medium">{entry.meetings || '-'}</td>
+                        <td className="text-center px-3 py-3 text-green-600 font-medium">{entry.emails || '-'}</td>
+                        <td className="text-center px-3 py-3 text-gray-500">{entry.notes || '-'}</td>
+                        <td className="text-right px-4 py-3 font-bold" style={{ color: '#1a4731' }}>{entry.points}</td>
+                        <td className="text-right px-4 py-3">
+                          {trend !== null ? (
+                            <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              {trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%
+                            </span>
+                          ) : entry.points > 0 ? (
+                            <span className="text-xs text-green-600 font-medium">NEW</span>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </main>
 
