@@ -452,7 +452,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Activity Leaderboard */}
-          {isAdminCeo && activeTab === 'company' && leaderboard.length > 0 && (
+          {leaderboard.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-6">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
