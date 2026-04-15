@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Activity, ActivityType } from '@/lib/data';
 import { useUsers } from '@/lib/UserContext';
+import CommentThread from './CommentThread';
 
 interface ActivityTimelineProps {
   activities: Activity[];
@@ -39,6 +41,7 @@ export default function ActivityTimeline({
   onDelete,
 }: ActivityTimelineProps) {
   const { users } = useUsers();
+  const [showComments, setShowComments] = useState<string | null>(null);
 
   function getOwnerName(ownerId: string): string {
     const ctxUser = users.find((u) => u.id === ownerId);
@@ -115,7 +118,18 @@ export default function ActivityTimeline({
                   <p className="mt-1 text-sm text-gray-600 leading-relaxed">
                     {activity.description}
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">Logged by {getOwnerName(activity.ownerId)}</p>
+                  <div className="mt-1 flex items-center gap-3">
+                    <p className="text-xs text-gray-400">Logged by {getOwnerName(activity.ownerId)}</p>
+                    <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
+                      className="text-xs text-gray-400 hover:text-gray-600" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      {showComments === activity.id ? 'Hide replies' : 'Reply'}
+                    </button>
+                  </div>
+                  {showComments === activity.id && (
+                    <div className="mt-2 ml-1 pl-3" style={{ borderLeft: '2px solid #e5e7eb' }}>
+                      <CommentThread parentType="activity" parentId={activity.id} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

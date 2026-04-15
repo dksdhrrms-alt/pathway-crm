@@ -9,6 +9,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import StageBadge from '@/app/components/StageBadge';
 import ActivityTimeline from '@/app/components/ActivityTimeline';
+import CommentThread from '@/app/components/CommentThread';
 import LogActivityModal from '@/app/components/LogActivityModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
 import TopBar from '@/app/components/TopBar';
@@ -263,6 +264,12 @@ export default function OpportunityDetailPage() {
               accountNameMap={accountNameMap}
               onDelete={deleteActivity}
             />
+
+            {/* Deal Comments */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Deal Comments</h3>
+              <CommentThread parentType="opportunity" parentId={oppId} />
+            </div>
           </div>
         </div>
       </main>
