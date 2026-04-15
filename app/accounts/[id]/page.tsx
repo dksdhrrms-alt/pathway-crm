@@ -66,6 +66,7 @@ export default function AccountDetailPage() {
   const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
   const [purchaseFrom, setPurchaseFrom] = useState('');
   const [purchaseTo, setPurchaseTo] = useState('');
+  const [purchaseView, setPurchaseView] = useState<'list' | 'quarterly'>('list');
 
   // --- Related data ---
   const accountContacts = useMemo(
@@ -403,13 +404,106 @@ export default function AccountDetailPage() {
                   borderRadius: '12px', padding: '20px',
                 }}
               >
-                <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
+                  <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
+                    {([['list', 'List'], ['quarterly', 'Q Compare']] as const).map(([v, l]) => (
+                      <button key={v} onClick={() => setPurchaseView(v)}
+                        style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchaseView === v ? 600 : 400, background: purchaseView === v ? '#1a4731' : 'transparent', color: purchaseView === v ? 'white' : '#666', cursor: 'pointer' }}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                {accountSales.length === 0 ? (
+                {/* Quarterly Comparison View */}
+                {purchaseView === 'quarterly' && accountSales.length > 0 && (() => {
+                  const curYear = new Date().getFullYear();
+                  const years = [curYear, curYear - 1];
+                  const quarters = [
+                    { label: 'Q1', months: [1, 2, 3] },
+                    { label: 'Q2', months: [4, 5, 6] },
+                    { label: 'Q3', months: [7, 8, 9] },
+                    { label: 'Q4', months: [10, 11, 12] },
+                  ];
+                  const getData = (yr: number, ms: number[]) => accountSales.filter((s) => {
+                    const d = String(s.date || '').split('-');
+                    return parseInt(d[0]) === yr && ms.includes(parseInt(d[1]));
+                  });
+                  const sum = (arr: typeof accountSales) => arr.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+                  const sumKg = (arr: typeof accountSales) => arr.reduce((s, r) => s + (Number(r.volumeKg) || 0), 0);
+                  const ytdMonth = new Date().getMonth() + 1;
+                  const ytdMonths = Array.from({ length: ytdMonth }, (_, i) => i + 1);
+
+                  return (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '500px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                            <th style={{ textAlign: 'left', padding: '6px 8px', color: '#888', fontWeight: 500 }}>Period</th>
+                            {years.map((y) => (
+                              <th key={y} colSpan={2} style={{ textAlign: 'center', padding: '6px 8px', color: '#1a4731', fontWeight: 600, borderLeft: '1px solid #e5e7eb' }}>{y}</th>
+                            ))}
+                            <th style={{ textAlign: 'center', padding: '6px 8px', color: '#888', fontWeight: 500, borderLeft: '1px solid #e5e7eb' }}>YoY</th>
+                          </tr>
+                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <th />
+                            {years.map((y) => (
+                              <span key={y} style={{ display: 'contents' }}>
+                                <th style={{ textAlign: 'right', padding: '4px 8px', color: '#aaa', fontWeight: 400, fontSize: '10px' }}>Amount</th>
+                                <th style={{ textAlign: 'right', padding: '4px 8px', color: '#aaa', fontWeight: 400, fontSize: '10px' }}>KG</th>
+                              </span>
+                            ))}
+                            <th style={{ textAlign: 'center', padding: '4px 8px', color: '#aaa', fontWeight: 400, fontSize: '10px' }}>%</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {quarters.map((q) => {
+                            const curAmt = sum(getData(curYear, q.months));
+                            const prevAmt = sum(getData(curYear - 1, q.months));
+                            const yoy = prevAmt > 0 ? Math.round(((curAmt - prevAmt) / prevAmt) * 100) : null;
+                            return (
+                              <tr key={q.label} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
+                                <td style={{ padding: '8px 8px', fontWeight: 500 }}>{q.label}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 500, color: '#1a4731' }}>{curAmt > 0 ? formatCurrency(Math.round(curAmt)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear, q.months)) > 0 ? Math.round(sumKg(getData(curYear, q.months))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#666', borderLeft: '1px solid #e5e7eb' }}>{prevAmt > 0 ? formatCurrency(Math.round(prevAmt)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear - 1, q.months)) > 0 ? Math.round(sumKg(getData(curYear - 1, q.months))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 600, color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
+                                  {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {/* YTD row */}
+                          {(() => {
+                            const curYTD = sum(getData(curYear, ytdMonths));
+                            const prevYTD = sum(getData(curYear - 1, ytdMonths));
+                            const yoy = prevYTD > 0 ? Math.round(((curYTD - prevYTD) / prevYTD) * 100) : null;
+                            return (
+                              <tr style={{ borderTop: '2px solid #1a4731', background: '#f0f7ee', fontWeight: 600 }}>
+                                <td style={{ padding: '8px 8px', color: '#1a4731' }}>YTD</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#1a4731' }}>{curYTD > 0 ? formatCurrency(Math.round(curYTD)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear, ytdMonths))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#666', borderLeft: '1px solid #e5e7eb' }}>{prevYTD > 0 ? formatCurrency(Math.round(prevYTD)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear - 1, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear - 1, ytdMonths))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'center', color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
+                                  {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+
+                {purchaseView === 'list' && accountSales.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px', padding: '16px 0' }}>
                     No purchase records yet.
                   </div>
-                ) : (
+                ) : purchaseView === 'list' ? (
                   (() => {
                     // Apply period filter
                     const now = Date.now();
@@ -518,7 +612,7 @@ export default function AccountDetailPage() {
                       </>
                     );
                   })()
-                )}
+                ) : null}
               </div>
             </div>
 
