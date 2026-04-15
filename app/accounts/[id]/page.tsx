@@ -513,7 +513,7 @@ export default function AccountDetailPage() {
                       : purchasePeriod === 'custom' ? sortedSales.filter((s) => (!purchaseFrom || s.date >= purchaseFrom) && (!purchaseTo || s.date <= purchaseTo))
                       : purchasePeriod === 'ytd' ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY; })
                       : qMonths[purchasePeriod] ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY && qMonths[purchasePeriod].includes(parseInt(d[1])); })
-                      : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= ({ '6m': 180, '1y': 365, '2y': 730 }[purchasePeriod] || 9999));
+                      : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= (({ '6m': 180, '1y': 365, '2y': 730 } as Record<string, number>)[purchasePeriod] || 9999));
                     // Previous year same period for comparison
                     const prevPeriodSales = purchasePeriod === 'ytd' ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY - 1; })
                       : qMonths[purchasePeriod] ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY - 1 && qMonths[purchasePeriod].includes(parseInt(d[1])); })
