@@ -146,10 +146,10 @@ export default function DashboardPage() {
     return activeUsersList.map((u) => {
       const curActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(curPrefix));
       const prevActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(prevPrefix));
-      // Tasks completed this month
-      const tasksCompleted = allTasks.filter((t) => t.ownerId === u.id && t.status === 'Completed' && t.dueDate?.startsWith(curPrefix)).length;
-      // Opps won this month
-      const oppsWon = allOpps.filter((o) => o.ownerId === u.id && o.stage === 'Closed Won' && o.closeDate?.startsWith(curPrefix)).length;
+      // Tasks completed (status=Completed, dueDate in current or recent month)
+      const tasksCompleted = allTasks.filter((t) => t.ownerId === u.id && t.status === 'Completed' && (t.dueDate?.startsWith(curPrefix) || t.dueDate?.startsWith(prevPrefix))).length;
+      // New opportunities created this month
+      const oppsWon = allOpps.filter((o) => o.ownerId === u.id && o.createdDate?.startsWith(curPrefix)).length;
       const actPts = curActs.reduce((s, a) => s + (ACT_POINTS[a.type] || 1), 0);
       const curPts = actPts + (tasksCompleted * TASK_COMPLETE_PTS) + (oppsWon * OPP_WON_PTS);
       const prevPts = prevActs.reduce((s, a) => s + (ACT_POINTS[a.type] || 1), 0);
@@ -317,7 +317,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Call=3, Meeting=5, Email=2, Note=1, Task Done=2, New Deal=2</p>
+                <p className="text-xs text-gray-500 mt-0.5">Call=3 Meeting=5 Email=2 Note=1 Task Done=2 New Opp=2</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
