@@ -324,12 +324,14 @@ export default function DashboardPage() {
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="w-10 text-center px-3 py-2.5 text-xs text-gray-500">#</th>
                     <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-medium">Team Member</th>
-                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Calls</th>
-                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Meetings</th>
-                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Emails</th>
-                    <th className="text-center px-3 py-2.5 text-xs text-gray-500 font-medium">Notes</th>
-                    <th className="text-right px-4 py-2.5 text-xs text-gray-500 font-medium">Points</th>
-                    <th className="text-right px-4 py-2.5 text-xs text-gray-500 font-medium">vs Last Month</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Calls</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Meetings</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Emails</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Notes</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Tasks</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Opps</th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-medium">Points</th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-medium">vs LM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,12 +349,14 @@ export default function DashboardPage() {
                             <span className="font-medium text-gray-800">{entry.user.name}</span>
                           </div>
                         </td>
-                        <td className="text-center px-3 py-3 text-blue-600 font-medium">{entry.calls || '-'}</td>
-                        <td className="text-center px-3 py-3 text-purple-600 font-medium">{entry.meetings || '-'}</td>
-                        <td className="text-center px-3 py-3 text-green-600 font-medium">{entry.emails || '-'}</td>
-                        <td className="text-center px-3 py-3 text-gray-500">{entry.notes || '-'}</td>
-                        <td className="text-right px-4 py-3 font-bold" style={{ color: '#1a4731' }}>{entry.points}</td>
-                        <td className="text-right px-4 py-3">
+                        <td className="text-center px-2 py-3 text-blue-600 font-medium">{entry.calls || '-'}</td>
+                        <td className="text-center px-2 py-3 text-purple-600 font-medium">{entry.meetings || '-'}</td>
+                        <td className="text-center px-2 py-3 text-green-600 font-medium">{entry.emails || '-'}</td>
+                        <td className="text-center px-2 py-3 text-gray-500">{entry.notes || '-'}</td>
+                        <td className="text-center px-2 py-3 text-amber-600 font-medium">{entry.tasksCompleted || '-'}</td>
+                        <td className="text-center px-2 py-3 text-teal-600 font-medium">{entry.oppsWon || '-'}</td>
+                        <td className="text-right px-3 py-3 font-bold" style={{ color: '#1a4731' }}>{entry.points}</td>
+                        <td className="text-right px-3 py-3">
                           {trend !== null ? (
                             <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>{trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%</span>
                           ) : entry.points > 0 ? (
