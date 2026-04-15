@@ -62,7 +62,7 @@ export default function AccountDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAllContacts, setShowAllContacts] = useState(false);
-  const [purchasePeriod, setPurchasePeriod] = useState<'all' | '6m' | '1y' | '2y' | 'custom'>('all');
+  const [purchasePeriod, setPurchasePeriod] = useState<'all' | 'q1' | 'q2' | 'q3' | 'q4' | 'ytd' | '6m' | '1y' | '2y' | 'custom'>('all');
   const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
   const [purchaseFrom, setPurchaseFrom] = useState('');
   const [purchaseTo, setPurchaseTo] = useState('');
@@ -507,9 +507,19 @@ export default function AccountDetailPage() {
                   (() => {
                     // Apply period filter
                     const now = Date.now();
+                    const cY = new Date().getFullYear();
+                    const qMonths: Record<string, number[]> = { q1: [1,2,3], q2: [4,5,6], q3: [7,8,9], q4: [10,11,12] };
                     const periodFiltered = purchasePeriod === 'all' ? sortedSales
                       : purchasePeriod === 'custom' ? sortedSales.filter((s) => (!purchaseFrom || s.date >= purchaseFrom) && (!purchaseTo || s.date <= purchaseTo))
+                      : purchasePeriod === 'ytd' ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY; })
+                      : qMonths[purchasePeriod] ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY && qMonths[purchasePeriod].includes(parseInt(d[1])); })
                       : sortedSales.filter((s) => (now - new Date(s.date + 'T00:00:00').getTime()) / 86400000 <= ({ '6m': 180, '1y': 365, '2y': 730 }[purchasePeriod] || 9999));
+                    // Previous year same period for comparison
+                    const prevPeriodSales = purchasePeriod === 'ytd' ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY - 1; })
+                      : qMonths[purchasePeriod] ? sortedSales.filter((s) => { const d = String(s.date||'').split('-'); return parseInt(d[0]) === cY - 1 && qMonths[purchasePeriod].includes(parseInt(d[1])); })
+                      : [];
+                    const prevTotal = prevPeriodSales.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+                    const prevKg = prevPeriodSales.reduce((s, r) => s + (Number(r.volumeKg) || 0), 0);
                     // Apply product filter
                     const filtered = purchaseProduct === 'all' ? periodFiltered
                       : periodFiltered.filter((s) => (s.productName || 'Unknown') === purchaseProduct);
@@ -532,10 +542,10 @@ export default function AccountDetailPage() {
                       <>
                         {/* Filters */}
                         <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
-                            {([['all', 'All'], ['6m', '6M'], ['1y', '1Y'], ['2y', '2Y'], ['custom', 'Custom']] as const).map(([v, l]) => (
+                          <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px', flexWrap: 'wrap' }}>
+                            {([['all', 'All'], ['q1', 'Q1'], ['q2', 'Q2'], ['q3', 'Q3'], ['q4', 'Q4'], ['ytd', 'YTD'], ['custom', 'Custom']] as const).map(([v, l]) => (
                               <button key={v} onClick={() => setPurchasePeriod(v)}
-                                style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? '#1a4731' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
+                                style={{ padding: '3px 8px', borderRadius: '4px', border: 'none', fontSize: '10px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? '#1a4731' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
                                 {l}
                               </button>
                             ))}
@@ -556,11 +566,22 @@ export default function AccountDetailPage() {
                               {products.map((p) => <option key={p} value={p}>{p}</option>)}
                             </select>
                           )}
-                          <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#888', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#888', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <span>{Math.round(totalKg).toLocaleString()} kg</span>
                             <span style={{ fontWeight: 600, color: '#1a4731' }}>{formatCurrency(Math.round(totalAmt))}</span>
+                            {prevTotal > 0 && (() => {
+                              const yoy = Math.round(((totalAmt - prevTotal) / prevTotal) * 100);
+                              return <span style={{ fontWeight: 600, color: yoy >= 0 ? '#0F6E56' : '#E24B4A' }}>vs LY: {yoy >= 0 ? '+' : ''}{yoy}%</span>;
+                            })()}
                           </div>
                         </div>
+                        {/* Previous year comparison bar */}
+                        {prevTotal > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '12px', padding: '6px 8px', background: '#f9fafb', borderRadius: '6px' }}>
+                            <span>vs {cY - 1} same period:</span>
+                            <span>{Math.round(prevKg).toLocaleString()} kg &middot; {formatCurrency(Math.round(prevTotal))}</span>
+                          </div>
+                        )}
 
                         {/* Product breakdown bars */}
                         {pBrkArr.map(([product, data]) => {
