@@ -133,7 +133,7 @@ export default function NotificationBell() {
     const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     contacts.forEach((c) => {
       ['birthday', 'anniversary'].forEach((field) => {
-        const val = (c as Record<string, string | undefined>)[field];
+        const val = (c as unknown as Record<string, string | undefined>)[field];
         if (!val) return;
         const md = val.substring(5); // MM-DD
         // Check if within 7 days
