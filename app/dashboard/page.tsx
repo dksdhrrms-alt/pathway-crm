@@ -144,8 +144,8 @@ export default function DashboardPage() {
     const prevPrefix = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
     const activeUsersList = users.filter((u) => u.status === 'active');
     return activeUsersList.map((u) => {
-      const curActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(curPrefix));
-      const prevActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(prevPrefix));
+      const curActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(curPrefix) && !a.subject?.startsWith('[SYSTEM]'));
+      const prevActs = allActivities.filter((a) => a.ownerId === u.id && a.date?.startsWith(prevPrefix) && !a.subject?.startsWith('[SYSTEM]'));
       // Tasks completed (status=Completed, dueDate in current or recent month)
       const tasksCompleted = allTasks.filter((t) => t.ownerId === u.id && t.status === 'Completed' && (t.dueDate?.startsWith(curPrefix) || t.dueDate?.startsWith(prevPrefix))).length;
       // New opportunities created this month

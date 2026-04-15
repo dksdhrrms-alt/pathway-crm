@@ -116,7 +116,7 @@ export default function SalesUploadPage() {
 
     addActivity({
       id: generateId(), type: 'Note',
-      subject: `Sales data uploaded — ${tagged.length} records imported`,
+      subject: `[SYSTEM] Sales data uploaded — ${tagged.length} records imported`,
       description: `File: ${file?.name}. ${tagged.length} imported, ${duplicates.length} duplicates skipped.`,
       date: new Date().toISOString().split('T')[0],
       ownerId: session?.user?.id ?? '', accountId: '',
