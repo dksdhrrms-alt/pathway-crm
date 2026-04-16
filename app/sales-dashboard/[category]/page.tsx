@@ -54,6 +54,7 @@ export default function SalesDashboardPage() {
 
   const { saleRecords: salesData, salesBudgets: ctxBudgets, accountBudgets, setAccountBudgets, accounts: crmAccounts } = useCRM();
   const [year, setYear] = useState(CURRENT_YEAR);
+  const [quarterFilter, setQuarterFilter] = useState<'all' | 'q1' | 'q2' | 'q3' | 'q4' | 'ytd'>('all');
   const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showAcctBudgetModal, setShowAcctBudgetModal] = useState(false);
@@ -126,19 +127,32 @@ export default function SalesDashboardPage() {
     return result;
   }, [salesData, year, category]);
 
+  // Quarter filter — which months to include
+  const visibleMonths = useMemo(() => {
+    if (quarterFilter === 'all') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    if (quarterFilter === 'q1') return [1, 2, 3];
+    if (quarterFilter === 'q2') return [4, 5, 6];
+    if (quarterFilter === 'q3') return [7, 8, 9];
+    if (quarterFilter === 'q4') return [10, 11, 12];
+    if (quarterFilter === 'ytd') return Array.from({ length: CURRENT_MONTH }, (_, i) => i + 1);
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }, [quarterFilter]);
+
   // Chart data
   const chartData = useMemo(() => {
     return MONTHS.map((m, i) => {
-      const budget = getBudgetAmount(budgets, i + 1);
+      const mo = i + 1;
+      if (!visibleMonths.includes(mo)) return null;
+      const budget = getBudgetAmount(budgets, mo);
       const actual = monthlyActuals[i];
       const pct = budget > 0 ? Math.round((actual / budget) * 100) : 0;
       return { month: m, Budget: budget, Actual: actual, 'Achievement %': pct };
-    });
-  }, [budgets, monthlyActuals]);
+    }).filter(Boolean) as { month: string; Budget: number; Actual: number; 'Achievement %': number }[];
+  }, [budgets, monthlyActuals, visibleMonths]);
 
-  // Totals
-  const totalBudget = budgets.reduce((s, b) => s + b.budgetAmount, 0);
-  const totalActual = monthlyActuals.reduce((s, a) => s + a, 0);
+  // Totals — respect quarter filter
+  const totalBudget = budgets.filter((b) => visibleMonths.includes(b.month)).reduce((s, b) => s + b.budgetAmount, 0);
+  const totalActual = visibleMonths.reduce((s, mo) => s + monthlyActuals[mo - 1], 0);
   const totalPct = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
   const curMonthBudget = getBudgetAmount(budgets, CURRENT_MONTH);
   const curMonthActual = monthlyActuals[CURRENT_MONTH - 1];
@@ -254,6 +268,15 @@ export default function SalesDashboardPage() {
                   >{y}</button>
                 ))}
               </div>
+              {/* Quarter filter */}
+              <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+                {([['all', 'All'], ['q1', 'Q1'], ['q2', 'Q2'], ['q3', 'Q3'], ['q4', 'Q4'], ['ytd', 'YTD']] as const).map(([v, l]) => (
+                  <button key={v} onClick={() => setQuarterFilter(v)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded transition-all ${quarterFilter === v ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                    style={quarterFilter === v ? { backgroundColor: '#1a4731' } : {}}
+                  >{l}</button>
+                ))}
+              </div>
               {isAdmin && category !== 'all' && (
                 <>
                   <button onClick={() => setShowBudgetModal(true)}
@@ -351,6 +374,7 @@ export default function SalesDashboardPage() {
               <tbody>
                 {MONTHS.map((m, i) => {
                   const mo = i + 1;
+                  if (!visibleMonths.includes(mo)) return null;
                   const bgt = getBudgetAmount(budgets, mo);
                   const act = monthlyActuals[i];
                   const pct = bgt > 0 ? Math.round((act / bgt) * 100) : 0;
