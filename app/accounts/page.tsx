@@ -120,23 +120,33 @@ export default function AccountsPage() {
       <TopBar searchValue={search} onSearchChange={setSearch} placeholder="Search accounts..." />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
-          <div className="mt-6 mb-6 flex items-center justify-between">
+          <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
+              <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
-                <option value="all">All Owners ({accounts.length})</option>
-                {ownerOptions.map((o) => {
-                  const count = accounts.filter((a) => a.ownerId === o.id).length;
-                  return <option key={o.id} value={o.id}>{o.name} ({count})</option>;
-                })}
-              </select>
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
             </div>
+          </div>
+
+          {/* Filter bar */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 mb-4 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Filter by Owner:</span>
+            <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white min-w-[200px]">
+              <option value="all">All Owners ({accounts.length})</option>
+              {ownerOptions.map((o) => {
+                const count = accounts.filter((a) => a.ownerId === o.id).length;
+                return <option key={o.id} value={o.id}>{o.name} ({count})</option>;
+              })}
+            </select>
+            {ownerFilter !== 'all' && (
+              <button onClick={() => setOwnerFilter('all')} className="text-xs text-gray-500 hover:text-gray-700 underline">
+                Clear filter
+              </button>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
