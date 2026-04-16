@@ -126,13 +126,14 @@ export default function AccountsPage() {
               <p className="text-sm text-gray-500 mt-0.5">{accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {ownerOptions.length > 1 && (
-                <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
-                  <option value="all">All Owners</option>
-                  {ownerOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                </select>
-              )}
+              <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                <option value="all">All Owners ({accounts.length})</option>
+                {ownerOptions.map((o) => {
+                  const count = accounts.filter((a) => a.ownerId === o.id).length;
+                  return <option key={o.id} value={o.id}>{o.name} ({count})</option>;
+                })}
+              </select>
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
             </div>
