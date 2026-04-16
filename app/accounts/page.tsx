@@ -68,14 +68,21 @@ export default function AccountsPage() {
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortKey(key); setSortDir('asc'); }
   }
 
+  const ownerOptions = useMemo(() => {
+    const ids = [...new Set(accounts.map((a) => a.ownerId).filter(Boolean))];
+    return ids.map((id) => ({ id, name: users.find((u) => u.id === id)?.name || id })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [accounts, users]);
+
   const filtered = useMemo(() => {
     let list = accounts.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
+    if (ownerFilter !== 'all') list = list.filter((a) => a.ownerId === ownerFilter);
     list.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
@@ -87,7 +94,7 @@ export default function AccountsPage() {
       return sortDir === 'desc' ? -cmp : cmp;
     });
     return list;
-  }, [accounts, search, sortKey, sortDir]);
+  }, [accounts, search, sortKey, sortDir, ownerFilter]);
 
   function handleDeleteConfirm() {
     if (!confirmDeleteId) return;
@@ -118,7 +125,14 @@ export default function AccountsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
               <p className="text-sm text-gray-500 mt-0.5">{accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {ownerOptions.length > 1 && (
+                <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                  <option value="all">All Owners</option>
+                  {ownerOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              )}
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
             </div>
