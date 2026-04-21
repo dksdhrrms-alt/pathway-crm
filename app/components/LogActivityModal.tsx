@@ -24,7 +24,7 @@ export default function LogActivityModal({
   onSave,
 }: LogActivityModalProps) {
   const { data: session } = useSession();
-  const { addActivity, accounts } = useCRM();
+  const { addActivity, accounts, contacts } = useCRM();
   const { users: allUsers } = useUsers();
 
   const userId = session?.user?.id ?? '';
@@ -36,7 +36,23 @@ export default function LogActivityModal({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [ownerId, setOwnerId] = useState(userId);
   const [accountId, setAccountId] = useState(initialAccountId || '');
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
+    new Set(contactId ? [contactId] : [])
+  );
   const [error, setError] = useState('');
+
+  // Filter contacts by selected account (or show all if no account)
+  const availableContacts = accountId
+    ? contacts.filter((c) => c.accountId === accountId)
+    : contacts;
+
+  function toggleContact(id: string) {
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,18 +60,25 @@ export default function LogActivityModal({
       setError('Subject is required.');
       return;
     }
-    const newActivity: Activity = {
-      id: generateId(),
-      type,
-      subject: subject.trim(),
-      description: description.trim(),
-      date,
-      ownerId,
-      accountId: accountId || '',
-      contactId: contactId || undefined,
-    };
-    addActivity(newActivity);
-    onSave(newActivity);
+    const ids = Array.from(selectedContactIds);
+    // If no contacts selected, create one activity with no contact
+    const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
+    let last: Activity | null = null;
+    contactList.forEach((cid) => {
+      const newActivity: Activity = {
+        id: generateId(),
+        type,
+        subject: subject.trim(),
+        description: description.trim(),
+        date,
+        ownerId,
+        accountId: accountId || '',
+        contactId: cid,
+      };
+      addActivity(newActivity);
+      last = newActivity;
+    });
+    if (last) onSave(last);
     onClose();
   }
 
@@ -105,6 +128,32 @@ export default function LogActivityModal({
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contacts <span className="text-gray-400 text-xs">(select multiple — one activity per contact)</span>
+            </label>
+            {availableContacts.length === 0 ? (
+              <div className="text-xs text-gray-400 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+                {accountId ? 'No contacts for this account.' : 'No contacts available.'}
+              </div>
+            ) : (
+              <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+                {[...availableContacts].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)).map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0">
+                    <input type="checkbox" checked={selectedContactIds.has(c.id)} onChange={() => toggleContact(c.id)}
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                    <span className="font-medium">{c.firstName} {c.lastName}</span>
+                    {c.title && <span className="text-xs text-gray-400">· {c.title}</span>}
+                    {c.isKeyMan && <span className="text-amber-500 text-xs">★</span>}
+                  </label>
+                ))}
+              </div>
+            )}
+            {selectedContactIds.size > 0 && (
+              <p className="text-xs text-gray-500 mt-1">{selectedContactIds.size} contact{selectedContactIds.size > 1 ? 's' : ''} selected — will create {selectedContactIds.size} {selectedContactIds.size > 1 ? 'separate activities' : 'activity'}</p>
+            )}
           </div>
 
           <div>
