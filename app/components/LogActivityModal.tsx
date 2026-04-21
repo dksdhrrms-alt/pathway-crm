@@ -7,7 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 
 interface LogActivityModalProps {
-  accountId: string;
+  accountId?: string;
   contactId?: string;
   defaultType?: ActivityType;
   onClose: () => void;
@@ -17,14 +17,14 @@ interface LogActivityModalProps {
 const ACTIVITY_TYPES: ActivityType[] = ['Call', 'Meeting', 'Email', 'Note'];
 
 export default function LogActivityModal({
-  accountId,
+  accountId: initialAccountId,
   contactId,
   defaultType = 'Call',
   onClose,
   onSave,
 }: LogActivityModalProps) {
   const { data: session } = useSession();
-  const { addActivity } = useCRM();
+  const { addActivity, accounts } = useCRM();
   const { users: allUsers } = useUsers();
 
   const userId = session?.user?.id ?? '';
@@ -35,6 +35,7 @@ export default function LogActivityModal({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [ownerId, setOwnerId] = useState(userId);
+  const [accountId, setAccountId] = useState(initialAccountId || '');
   const [error, setError] = useState('');
 
   function handleSubmit(e: React.FormEvent) {
@@ -50,7 +51,7 @@ export default function LogActivityModal({
       description: description.trim(),
       date,
       ownerId,
-      accountId,
+      accountId: accountId || '',
       contactId: contactId || undefined,
     };
     addActivity(newActivity);
@@ -91,6 +92,17 @@ export default function LogActivityModal({
                 <option key={t} value={t}>
                   {t}
                 </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Account {!initialAccountId && <span className="text-gray-400 text-xs">(optional)</span>}</label>
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">— No account —</option>
+              {[...accounts].sort((a, b) => a.name.localeCompare(b.name)).map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
           </div>

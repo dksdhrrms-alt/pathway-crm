@@ -249,9 +249,9 @@ export default function ContactDetailPage() {
         </div>
       </main>
 
-      {showLogModal && contact.accountId && (
+      {showLogModal && (
         <LogActivityModal
-          accountId={contact.accountId}
+          accountId={contact.accountId || ''}
           contactId={contactId}
           defaultType={logModalType}
           onClose={() => setShowLogModal(false)}
