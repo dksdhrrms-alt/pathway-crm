@@ -30,7 +30,9 @@ export function useScrollRestore(ready: boolean = true) {
     };
   }, [key]);
 
-  // Restore scroll once data is ready
+  // Restore scroll once data is ready. We wait 80ms after `ready` flips true
+  // so the list rows have a chance to paint and the document grows tall enough
+  // for the saved scrollY to be reachable.
   useEffect(() => {
     if (!ready || restoredRef.current) return;
     const saved = sessionStorage.getItem(key);
@@ -39,22 +41,11 @@ export function useScrollRestore(ready: boolean = true) {
       return;
     }
     const y = parseInt(saved);
-
-    // Try restoring across a few animation frames — content height grows as
-    // images/list rows finish painting.
-    let attempts = 0;
-    const maxAttempts = 20;
-    function tryRestore() {
-      const maxY = document.documentElement.scrollHeight - window.innerHeight;
-      if (maxY >= y || attempts >= maxAttempts) {
-        window.scrollTo(0, y);
-        restoredRef.current = true;
-        return;
-      }
-      attempts += 1;
-      requestAnimationFrame(tryRestore);
-    }
-    requestAnimationFrame(tryRestore);
+    const t = setTimeout(() => {
+      window.scrollTo(0, y);
+      restoredRef.current = true;
+    }, 80);
+    return () => clearTimeout(t);
   }, [key, ready]);
 }
 
