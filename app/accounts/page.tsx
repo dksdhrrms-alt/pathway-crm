@@ -24,7 +24,20 @@ const COUNTRY_LIST = ['USA','Mexico','Colombia','Peru','Panama','El Salvador','G
 
 const INDUSTRY_LIST = ['Dairy/Beef','Dairy','Beef','Poultry','Swine','Feed Mill','Aquaculture','Multi-Species','Veterinary Hospital','Veterinary Clinic','Distributor','Research','University','Other'];
 
-const COMPANY_TYPES = ['Producer','Integrator','Distributor','Premix Manufacturer','Feed Mill','Veterinary Group','Consulting Firm','Cooperative','Government / Regulator','Academic / Research','Other'];
+const COMPANY_TYPES = [
+  'Poultry Integrator',
+  'Swine Integratory',
+  'Dairy Farm - single site',
+  'Dairy Farm - multisite',
+  'Feedlot',
+  'Beef operation other (calf ranch)',
+  'Feed Mill - all species',
+  'Feed Mill - dairy',
+  'Feed Mill - poultry',
+  'Feed Mill Swine',
+  'Distributor',
+  'Freight Carrier',
+];
 
 const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
   'Dairy/Beef': { bg: '#E1F5EE', text: '#0F6E56' },
