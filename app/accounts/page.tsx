@@ -43,7 +43,7 @@ function ownerInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-type SortKey = 'name' | 'industry' | 'country' | 'employee';
+type SortKey = 'name' | 'industry' | 'country' | 'employee' | 'openDeals' | 'pipelineValue';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
@@ -52,7 +52,7 @@ export default function AccountsPage() {
   const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
-  const { accounts: allAccounts, contacts, deleteAccount, deleteAccountsBulk, loading } = useCRM();
+  const { accounts: allAccounts, contacts, opportunities, deleteAccount, deleteAccountsBulk, loading } = useCRM();
   const { users } = useUsers();
   void users;
 
@@ -78,6 +78,8 @@ export default function AccountsPage() {
     { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true },
     { id: 'phone', label: 'Telephone', sortable: false, defaultVisible: true },
     { id: 'employee', label: 'Employee', sortable: true, sortKey: 'employee' as SortKey, defaultVisible: true, align: 'right' as const },
+    { id: 'openDeals', label: 'Open Deals', sortable: true, sortKey: 'openDeals' as SortKey, defaultVisible: true, align: 'right' as const },
+    { id: 'pipelineValue', label: 'Pipeline', sortable: true, sortKey: 'pipelineValue' as SortKey, defaultVisible: true, align: 'right' as const },
     { id: 'website', label: 'Website', sortable: false, defaultVisible: true },
     { id: 'address', label: 'Address', sortable: false, defaultVisible: true },
   ], []);
@@ -90,10 +92,16 @@ export default function AccountsPage() {
     try {
       const order = localStorage.getItem('accounts_col_order');
       const hidden = localStorage.getItem('accounts_col_hidden');
-      if (order) setColumnOrder(JSON.parse(order));
+      if (order) {
+        const saved: string[] = JSON.parse(order);
+        const all = ALL_COLUMNS.map((c) => c.id);
+        // Append any new columns that aren't in saved order
+        const merged = [...saved.filter((id) => all.includes(id)), ...all.filter((id) => !saved.includes(id))];
+        setColumnOrder(merged);
+      }
       if (hidden) setHiddenColumns(new Set(JSON.parse(hidden)));
     } catch { /* */ }
-  }, []);
+  }, [ALL_COLUMNS]);
 
   function saveCols(order: string[], hidden: Set<string>) {
     try {
@@ -135,6 +143,18 @@ export default function AccountsPage() {
     return ids.map((id) => ({ id, name: users.find((u) => u.id === id)?.name || id })).sort((a, b) => a.name.localeCompare(b.name));
   }, [accounts, users]);
 
+  const dealsByAccount = useMemo(() => {
+    const map: Record<string, { count: number; value: number }> = {};
+    opportunities.forEach((o) => {
+      if (o.stage === 'Closed Won' || o.stage === 'Closed Lost') return;
+      if (!o.accountId) return;
+      if (!map[o.accountId]) map[o.accountId] = { count: 0, value: 0 };
+      map[o.accountId].count += 1;
+      map[o.accountId].value += o.amount || 0;
+    });
+    return map;
+  }, [opportunities]);
+
   const filtered = useMemo(() => {
     let list = accounts.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
     if (ownerFilter !== 'all') list = list.filter((a) => a.ownerId === ownerFilter);
@@ -145,11 +165,13 @@ export default function AccountsPage() {
         case 'industry': cmp = (a.industry || '').localeCompare(b.industry || ''); break;
         case 'country': cmp = (a.country || '').localeCompare(b.country || ''); break;
         case 'employee': cmp = (a.employee ?? 0) - (b.employee ?? 0); break;
+        case 'openDeals': cmp = (dealsByAccount[a.id]?.count ?? 0) - (dealsByAccount[b.id]?.count ?? 0); break;
+        case 'pipelineValue': cmp = (dealsByAccount[a.id]?.value ?? 0) - (dealsByAccount[b.id]?.value ?? 0); break;
       }
       return sortDir === 'desc' ? -cmp : cmp;
     });
     return list;
-  }, [accounts, search, sortKey, sortDir, ownerFilter]);
+  }, [accounts, search, sortKey, sortDir, ownerFilter, dealsByAccount]);
 
   function handleDeleteConfirm() {
     if (!confirmDeleteId) return;
@@ -283,6 +305,8 @@ export default function AccountsPage() {
                           case 'country': return <td key={col.id} className="px-4 py-3 text-sm">{acct.country ? <span>{FLAGS[acct.country] ?? '🌐'} {acct.country}</span> : <span className="text-gray-400">—</span>}</td>;
                           case 'phone': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600">{acct.phone || '—'}</td>;
                           case 'employee': return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-600">{acct.employee ?? '—'}</td>;
+                          case 'openDeals': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-700">{d?.count ? <span className="font-medium" style={{ color: '#1a4731' }}>{d.count}</span> : <span className="text-gray-400">—</span>}</td>; }
+                          case 'pipelineValue': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm font-medium text-gray-700">{d?.value ? `$${(d.value / 1000).toFixed(0)}K` : <span className="text-gray-400 font-normal">—</span>}</td>; }
                           case 'website': return <td key={col.id} className="px-4 py-3 text-sm">{acct.website ? <a href={acct.website.startsWith('http') ? acct.website : `https://${acct.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[130px]">{stripUrl(acct.website)}</a> : <span className="text-gray-400">—</span>}</td>;
                           case 'address': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500" title={acct.location || ''}>{acct.location ? (acct.location.length > 35 ? acct.location.slice(0, 35) + '...' : acct.location) : '—'}</td>;
                           default: return null;
