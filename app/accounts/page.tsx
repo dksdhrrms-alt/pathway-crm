@@ -282,7 +282,7 @@ export default function AccountsPage() {
                       {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
                     </th>
                   ))}
-                  <th className="w-16 px-3 py-3"></th>
+                  <th className="w-16 px-3 py-3 sticky right-0 bg-gray-50 z-10" style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -312,12 +312,12 @@ export default function AccountsPage() {
                           default: return null;
                         }
                       })}
-                      <td className="px-3 py-3">
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditAccountId(acct.id)} className="p-1 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
+                      <td className={`px-3 py-3 sticky right-0 z-[1] ${isSelected ? 'bg-green-50' : 'bg-white'} group-hover:bg-gray-50`} style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}>
+                        <div className="flex gap-1">
+                          <button onClick={() => setEditAccountId(acct.id)} className="p-1 rounded text-gray-400 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                           </button>
-                          <button onClick={() => setConfirmDeleteId(acct.id)} className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50" aria-label="Delete">
+                          <button onClick={() => setConfirmDeleteId(acct.id)} className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50" aria-label="Delete">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
