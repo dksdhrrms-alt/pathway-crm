@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { useScrollRestore } from '@/hooks/useUrlState';
 import { generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import SendEmailModal from '@/app/components/SendEmailModal';
@@ -23,8 +22,7 @@ export default function ContactsPage() {
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
-  const { contacts: allContacts, accounts: allAccounts, getActivitiesForContact, deleteContact, deleteContactsBulk, addActivity, loading } = useCRM();
-  useScrollRestore(!loading && allContacts.length > 0);
+  const { contacts: allContacts, accounts: allAccounts, deleteContact, deleteContactsBulk, addActivity, loading } = useCRM();
   const { users } = useUsers();
 
   function getOwnerName(ownerId: string): string {

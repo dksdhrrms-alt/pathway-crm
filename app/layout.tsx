@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 import Providers from '@/app/components/Providers';
+import ScrollRestorer from '@/app/components/ScrollRestorer';
 
 const geist = Geist({
   variable: '--font-geist-sans',
@@ -31,7 +32,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}` }} />
       </head>
       <body className="h-full bg-gray-50">
-        <Providers>{children}</Providers>
+        <Providers>
+          <ScrollRestorer />
+          {children}
+        </Providers>
       </body>
     </html>
   );

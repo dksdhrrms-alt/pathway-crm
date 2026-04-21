@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { useScrollRestore } from '@/hooks/useUrlState';
 import { Account } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -53,7 +52,6 @@ export default function AccountsPage() {
   const userId = session?.user?.id ?? '';
 
   const { accounts: allAccounts, contacts, opportunities, deleteAccount, deleteAccountsBulk, loading } = useCRM();
-  useScrollRestore(!loading && allAccounts.length > 0);
   const { users } = useUsers();
   void users;
 
