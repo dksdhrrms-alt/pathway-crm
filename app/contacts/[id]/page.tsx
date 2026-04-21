@@ -143,19 +143,6 @@ export default function ContactDetailPage() {
                   Edit
                 </button>
                 <button
-                  onClick={openLogCall}
-                  className="px-3 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
-                  style={{ backgroundColor: '#1a4731' }}
-                >
-                  📞 Log a Call
-                </button>
-                <button
-                  onClick={() => setShowEmailModal(true)}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Send Email
-                </button>
-                <button
                   onClick={() => setShowTaskModal(true)}
                   className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
                 >
