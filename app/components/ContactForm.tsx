@@ -15,19 +15,17 @@ export const SPECIES_LIST = [
 ];
 
 export const CONTACT_TYPES = [
-  'Decision Maker',
-  'Influencer',
-  'Champion',
-  'End User',
-  'Technical Buyer',
-  'Economic Buyer',
-  'Gatekeeper',
-  'Procurement',
-  'Nutritionist',
-  'Veterinarian',
-  'Operations',
-  'Management',
-  'Other',
+  'Independent Dairy Nutritionist',
+  'Independent Poultry Nutritionist',
+  'Independent Swine Nutritionist',
+  'Company Nutritionist',
+  'Dairy Producer',
+  'Feedlot Manager/Owner',
+  'Manager',
+  'Industry Contact - Dairy',
+  'Industry Contact - Beef',
+  'Industry Contact - Poultry',
+  'Industry Contact - Swine',
 ];
 
 interface Props {
