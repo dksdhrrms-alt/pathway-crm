@@ -39,12 +39,19 @@ export default function LogActivityModal({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
     new Set(contactId ? [contactId] : [])
   );
+  const [contactSearch, setContactSearch] = useState('');
   const [error, setError] = useState('');
 
-  // Filter contacts by selected account (or show all if no account)
+  // When account selected: show all contacts of that account
+  // When no account: only show contacts matching search query
   const availableContacts = accountId
     ? contacts.filter((c) => c.accountId === accountId)
-    : contacts;
+    : contactSearch.trim().length > 0
+      ? contacts.filter((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(contactSearch.toLowerCase().trim())).slice(0, 20)
+      : [];
+
+  // Selected contacts (for showing already-picked items even when search clears)
+  const selectedContactObjs = contacts.filter((c) => selectedContactIds.has(c.id));
 
   function toggleContact(id: string) {
     setSelectedContactIds((prev) => {
@@ -134,21 +141,49 @@ export default function LogActivityModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Contacts <span className="text-gray-400 text-xs">(select multiple — one activity per contact)</span>
             </label>
+
+            {/* Selected contact chips */}
+            {selectedContactObjs.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedContactObjs.map((c) => (
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-xs text-green-700 border border-green-200">
+                    {c.firstName} {c.lastName}
+                    <button type="button" onClick={() => toggleContact(c.id)} className="text-green-600 hover:text-green-800 font-bold ml-1" aria-label="Remove">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Search input when no account, otherwise show account contacts directly */}
+            {!accountId && (
+              <input
+                type="text"
+                value={contactSearch}
+                onChange={(e) => setContactSearch(e.target.value)}
+                placeholder="Search contacts by name..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-1.5"
+              />
+            )}
+
             {availableContacts.length === 0 ? (
               <div className="text-xs text-gray-400 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
-                {accountId ? 'No contacts for this account.' : 'No contacts available.'}
+                {accountId ? 'No contacts for this account.' : contactSearch ? 'No contacts match search.' : 'Type to search contacts...'}
               </div>
             ) : (
               <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
-                {[...availableContacts].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)).map((c) => (
+                {[...availableContacts].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)).map((c) => {
+                  const acctName = accounts.find((a) => a.id === c.accountId)?.name;
+                  return (
                   <label key={c.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0">
                     <input type="checkbox" checked={selectedContactIds.has(c.id)} onChange={() => toggleContact(c.id)}
                       className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
                     <span className="font-medium">{c.firstName} {c.lastName}</span>
                     {c.title && <span className="text-xs text-gray-400">· {c.title}</span>}
+                    {!accountId && acctName && <span className="text-xs text-blue-600">· {acctName}</span>}
                     {c.isKeyMan && <span className="text-amber-500 text-xs">★</span>}
                   </label>
-                ))}
+                  );
+                })}
               </div>
             )}
             {selectedContactIds.size > 0 && (
