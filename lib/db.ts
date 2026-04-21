@@ -22,6 +22,7 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   uploadBatchId: 'upload_batch_id', uploadedAt: 'uploaded_at', uploadedBy: 'uploaded_by',
   fileName: 'file_name', recordCount: 'record_count', skippedCount: 'skipped_count',
   budgetAmount: 'budget_amount',
+  companyType: 'company_type',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};

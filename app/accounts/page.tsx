@@ -20,6 +20,12 @@ const FLAGS: Record<string, string> = {
   Brazil: '🇧🇷', Ecuador: '🇪🇨', Bolivia: '🇧🇴',
 };
 
+const COUNTRY_LIST = ['USA','Mexico','Colombia','Peru','Panama','El Salvador','Guatemala','Brazil','Ecuador','Bolivia','Chile','Dominican Republic','Jamaica','Korea','UK'];
+
+const INDUSTRY_LIST = ['Dairy/Beef','Dairy','Beef','Poultry','Swine','Feed Mill','Aquaculture','Multi-Species','Veterinary Hospital','Veterinary Clinic','Distributor','Research','University','Other'];
+
+const COMPANY_TYPES = ['Producer','Integrator','Distributor','Premix Manufacturer','Feed Mill','Veterinary Group','Consulting Firm','Cooperative','Government / Regulator','Academic / Research','Other'];
+
 const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
   'Dairy/Beef': { bg: '#E1F5EE', text: '#0F6E56' },
   Poultry: { bg: '#E6F1FB', text: '#185FA5' },
@@ -43,7 +49,7 @@ function ownerInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-type SortKey = 'name' | 'industry' | 'country' | 'employee' | 'openDeals' | 'pipelineValue';
+type SortKey = 'name' | 'industry' | 'country' | 'employee' | 'openDeals' | 'pipelineValue' | 'companyType';
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
@@ -51,9 +57,9 @@ export default function AccountsPage() {
   const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
-  const { accounts: allAccounts, contacts, opportunities, deleteAccount, deleteAccountsBulk, loading } = useCRM();
+  const { accounts: allAccounts, contacts, opportunities, updateAccount, deleteAccount, deleteAccountsBulk, loading } = useCRM();
   const { users } = useUsers();
-  void users;
+  const activeUsers = useMemo(() => users.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name)), [users]);
 
   const accounts = allAccounts; // All users see all accounts
 
@@ -72,9 +78,10 @@ export default function AccountsPage() {
   // Column customization
   const ALL_COLUMNS = useMemo(() => [
     { id: 'name', label: 'Account Name', sortable: true, sortKey: 'name' as SortKey, defaultVisible: true, minWidth: 180 },
-    { id: 'industry', label: 'Species', sortable: true, sortKey: 'industry' as SortKey, defaultVisible: true, minWidth: 120 },
-    { id: 'owner', label: 'Sales Owner', sortable: false, defaultVisible: true, minWidth: 140 },
-    { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true, minWidth: 110 },
+    { id: 'industry', label: 'Species', sortable: true, sortKey: 'industry' as SortKey, defaultVisible: true, minWidth: 150 },
+    { id: 'companyType', label: 'Company Type', sortable: true, sortKey: 'companyType' as SortKey, defaultVisible: true, minWidth: 160 },
+    { id: 'owner', label: 'Sales Owner', sortable: false, defaultVisible: true, minWidth: 160 },
+    { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true, minWidth: 130 },
     { id: 'phone', label: 'Telephone', sortable: false, defaultVisible: true, minWidth: 130 },
     { id: 'employee', label: 'Employee', sortable: true, sortKey: 'employee' as SortKey, defaultVisible: true, align: 'right' as const, minWidth: 90 },
     { id: 'openDeals', label: 'Open Deals', sortable: true, sortKey: 'openDeals' as SortKey, defaultVisible: true, align: 'right' as const, minWidth: 110 },
@@ -169,6 +176,7 @@ export default function AccountsPage() {
         case 'industry': cmp = (a.industry || '').localeCompare(b.industry || ''); break;
         case 'country': cmp = (a.country || '').localeCompare(b.country || ''); break;
         case 'employee': cmp = (a.employee ?? 0) - (b.employee ?? 0); break;
+        case 'companyType': cmp = (a.companyType || '').localeCompare(b.companyType || ''); break;
         case 'openDeals': cmp = (dealsByAccount[a.id]?.count ?? 0) - (dealsByAccount[b.id]?.count ?? 0); break;
         case 'pipelineValue': cmp = (dealsByAccount[a.id]?.value ?? 0) - (dealsByAccount[b.id]?.value ?? 0); break;
       }
@@ -180,6 +188,7 @@ export default function AccountsPage() {
   const exportColumns: ExportColumn<typeof filtered[number]>[] = useMemo(() => [
     { id: 'name', label: 'Account Name', getValue: (a) => a.name },
     { id: 'industry', label: 'Species', getValue: (a) => a.industry || '' },
+    { id: 'companyType', label: 'Company Type', getValue: (a) => a.companyType || '' },
     { id: 'owner', label: 'Sales Owner', getValue: (a) => a.ownerName || '' },
     { id: 'country', label: 'Country', getValue: (a) => a.country || '' },
     { id: 'phone', label: 'Telephone', getValue: (a) => a.phone || '' },
@@ -318,9 +327,60 @@ export default function AccountsPage() {
                       {visibleCols.map((col) => {
                         switch (col.id) {
                           case 'name': return <td key={col.id} className="px-4 py-3"><Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link></td>;
-                          case 'industry': return <td key={col.id} className="px-4 py-3">{acct.industry ? <span className="text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{ backgroundColor: badge?.bg, color: badge?.text }}>{acct.industry}</span> : <span className="text-gray-400">—</span>}</td>;
-                          case 'owner': return <td key={col.id} className="px-4 py-3">{acct.ownerName ? <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>{ownerInitials(acct.ownerName)}</div><span className="text-sm text-gray-800">{acct.ownerName}</span></div> : <span className="text-gray-400">—</span>}</td>;
-                          case 'country': return <td key={col.id} className="px-4 py-3 text-sm">{acct.country ? <span>{FLAGS[acct.country] ?? '🌐'} {acct.country}</span> : <span className="text-gray-400">—</span>}</td>;
+                          case 'industry': return (
+                            <td key={col.id} className="px-4 py-3">
+                              <select value={acct.industry || ''}
+                                onChange={(e) => updateAccount(acct.id, { industry: e.target.value })}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs px-2 py-0.5 rounded font-medium border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none cursor-pointer max-w-[150px]"
+                                style={{ backgroundColor: badge?.bg, color: badge?.text }}>
+                                <option value="">— Select —</option>
+                                {INDUSTRY_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
+                                {acct.industry && !INDUSTRY_LIST.includes(acct.industry) && <option value={acct.industry}>{acct.industry}</option>}
+                              </select>
+                            </td>
+                          );
+                          case 'companyType': return (
+                            <td key={col.id} className="px-4 py-3">
+                              <select value={acct.companyType || ''}
+                                onChange={(e) => updateAccount(acct.id, { companyType: e.target.value })}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-sm text-gray-700 px-2 py-0.5 rounded border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none bg-transparent cursor-pointer max-w-[160px]">
+                                <option value="">—</option>
+                                {COMPANY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                {acct.companyType && !COMPANY_TYPES.includes(acct.companyType) && <option value={acct.companyType}>{acct.companyType}</option>}
+                              </select>
+                            </td>
+                          );
+                          case 'owner': return (
+                            <td key={col.id} className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {acct.ownerName && <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>{ownerInitials(acct.ownerName)}</div>}
+                                <select value={acct.ownerId || ''}
+                                  onChange={(e) => {
+                                    const u = activeUsers.find((x) => x.id === e.target.value);
+                                    updateAccount(acct.id, { ownerId: e.target.value, ownerName: u?.name || '' });
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-sm text-gray-800 px-2 py-0.5 rounded border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none bg-transparent cursor-pointer max-w-[140px]">
+                                  <option value="">—</option>
+                                  {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                </select>
+                              </div>
+                            </td>
+                          );
+                          case 'country': return (
+                            <td key={col.id} className="px-4 py-3 text-sm">
+                              <select value={acct.country || ''}
+                                onChange={(e) => updateAccount(acct.id, { country: e.target.value })}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-sm px-2 py-0.5 rounded border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none bg-transparent cursor-pointer">
+                                <option value="">—</option>
+                                {COUNTRY_LIST.map((c) => <option key={c} value={c}>{FLAGS[c] || '🌐'} {c}</option>)}
+                                {acct.country && !COUNTRY_LIST.includes(acct.country) && <option value={acct.country}>{acct.country}</option>}
+                              </select>
+                            </td>
+                          );
                           case 'phone': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600">{acct.phone || '—'}</td>;
                           case 'employee': return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-600">{acct.employee ?? '—'}</td>;
                           case 'openDeals': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-700">{d?.count ? <span className="font-medium" style={{ color: '#1a4731' }}>{d.count}</span> : <span className="text-gray-400">—</span>}</td>; }

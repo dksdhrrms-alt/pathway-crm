@@ -28,6 +28,7 @@ export interface Account {
   phone?: string;
   employee?: number | null;
   category?: string;
+  companyType?: string;
   createdAt?: string;
 }
 
