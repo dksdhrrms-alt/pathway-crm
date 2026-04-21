@@ -72,16 +72,16 @@ export default function AccountsPage() {
 
   // Column customization
   const ALL_COLUMNS = useMemo(() => [
-    { id: 'name', label: 'Account Name', sortable: true, sortKey: 'name' as SortKey, defaultVisible: true },
-    { id: 'industry', label: 'Species', sortable: true, sortKey: 'industry' as SortKey, defaultVisible: true },
-    { id: 'owner', label: 'Sales Owner', sortable: false, defaultVisible: true },
-    { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true },
-    { id: 'phone', label: 'Telephone', sortable: false, defaultVisible: true },
-    { id: 'employee', label: 'Employee', sortable: true, sortKey: 'employee' as SortKey, defaultVisible: true, align: 'right' as const },
-    { id: 'openDeals', label: 'Open Deals', sortable: true, sortKey: 'openDeals' as SortKey, defaultVisible: true, align: 'right' as const },
-    { id: 'pipelineValue', label: 'Pipeline', sortable: true, sortKey: 'pipelineValue' as SortKey, defaultVisible: true, align: 'right' as const },
-    { id: 'website', label: 'Website', sortable: false, defaultVisible: true },
-    { id: 'address', label: 'Address', sortable: false, defaultVisible: true },
+    { id: 'name', label: 'Account Name', sortable: true, sortKey: 'name' as SortKey, defaultVisible: true, minWidth: 180 },
+    { id: 'industry', label: 'Species', sortable: true, sortKey: 'industry' as SortKey, defaultVisible: true, minWidth: 120 },
+    { id: 'owner', label: 'Sales Owner', sortable: false, defaultVisible: true, minWidth: 140 },
+    { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true, minWidth: 110 },
+    { id: 'phone', label: 'Telephone', sortable: false, defaultVisible: true, minWidth: 130 },
+    { id: 'employee', label: 'Employee', sortable: true, sortKey: 'employee' as SortKey, defaultVisible: true, align: 'right' as const, minWidth: 90 },
+    { id: 'openDeals', label: 'Open Deals', sortable: true, sortKey: 'openDeals' as SortKey, defaultVisible: true, align: 'right' as const, minWidth: 110 },
+    { id: 'pipelineValue', label: 'Pipeline', sortable: true, sortKey: 'pipelineValue' as SortKey, defaultVisible: true, align: 'right' as const, minWidth: 110 },
+    { id: 'website', label: 'Website', sortable: false, defaultVisible: true, minWidth: 140 },
+    { id: 'address', label: 'Address', sortable: false, defaultVisible: true, minWidth: 200 },
   ], []);
   const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
@@ -276,8 +276,8 @@ export default function AccountsPage() {
                   </th>
                   {visibleCols.map((col) => (
                     <th key={col.id}
-                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
-                      style={col.id === 'industry' ? { minWidth: 120 } : undefined}
+                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                      style={col.minWidth ? { minWidth: col.minWidth } : undefined}
                       onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
                       {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
                     </th>
@@ -300,7 +300,7 @@ export default function AccountsPage() {
                       {visibleCols.map((col) => {
                         switch (col.id) {
                           case 'name': return <td key={col.id} className="px-4 py-3"><Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link></td>;
-                          case 'industry': return <td key={col.id} className="px-4 py-3" style={{ minWidth: 120 }}>{acct.industry ? <span className="text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{ backgroundColor: badge?.bg, color: badge?.text }}>{acct.industry}</span> : <span className="text-gray-400">—</span>}</td>;
+                          case 'industry': return <td key={col.id} className="px-4 py-3">{acct.industry ? <span className="text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{ backgroundColor: badge?.bg, color: badge?.text }}>{acct.industry}</span> : <span className="text-gray-400">—</span>}</td>;
                           case 'owner': return <td key={col.id} className="px-4 py-3">{acct.ownerName ? <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>{ownerInitials(acct.ownerName)}</div><span className="text-sm text-gray-800">{acct.ownerName}</span></div> : <span className="text-gray-400">—</span>}</td>;
                           case 'country': return <td key={col.id} className="px-4 py-3 text-sm">{acct.country ? <span>{FLAGS[acct.country] ?? '🌐'} {acct.country}</span> : <span className="text-gray-400">—</span>}</td>;
                           case 'phone': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600">{acct.phone || '—'}</td>;
