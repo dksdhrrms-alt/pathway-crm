@@ -72,8 +72,8 @@ const columnTitleStyle: Record<Stage, string> = {
 };
 
 export default function OpportunitiesPage() {
-  useScrollRestore();
   const { opportunities: allOpps, accounts, activities, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
+  useScrollRestore(!loading && allOpps.length > 0);
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
 

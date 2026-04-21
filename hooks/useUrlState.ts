@@ -1,35 +1,61 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
 /**
  * Saves and restores scroll position per page using sessionStorage.
- * Call once in each list page.
+ * Pass `ready=false` while data is still loading so restore waits until the page is tall enough.
  */
-export function useScrollRestore() {
+export function useScrollRestore(ready: boolean = true) {
   const pathname = usePathname();
   const key = `scroll_${pathname}`;
+  const restoredRef = useRef(false);
 
+  // Save scroll position continuously and on unmount
   useEffect(() => {
-    // Restore scroll position on mount
-    const saved = sessionStorage.getItem(key);
-    if (saved) {
-      const y = parseInt(saved);
-      setTimeout(() => window.scrollTo(0, y), 50);
-    }
-
-    // Save scroll position on unmount / navigation
     function save() {
-      sessionStorage.setItem(key, String(window.scrollY));
+      // Only save once we've actually restored — otherwise we'd overwrite the saved
+      // value with 0 before the user has a chance to scroll.
+      if (restoredRef.current) {
+        sessionStorage.setItem(key, String(window.scrollY));
+      }
     }
-
     window.addEventListener('beforeunload', save);
+    window.addEventListener('scroll', save, { passive: true });
     return () => {
       save();
       window.removeEventListener('beforeunload', save);
+      window.removeEventListener('scroll', save);
     };
   }, [key]);
+
+  // Restore scroll once data is ready
+  useEffect(() => {
+    if (!ready || restoredRef.current) return;
+    const saved = sessionStorage.getItem(key);
+    if (!saved) {
+      restoredRef.current = true;
+      return;
+    }
+    const y = parseInt(saved);
+
+    // Try restoring across a few animation frames — content height grows as
+    // images/list rows finish painting.
+    let attempts = 0;
+    const maxAttempts = 20;
+    function tryRestore() {
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxY >= y || attempts >= maxAttempts) {
+        window.scrollTo(0, y);
+        restoredRef.current = true;
+        return;
+      }
+      attempts += 1;
+      requestAnimationFrame(tryRestore);
+    }
+    requestAnimationFrame(tryRestore);
+  }, [key, ready]);
 }
 
 /**

@@ -25,12 +25,12 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default function ContactsPage() {
-  useScrollRestore();
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
   const { contacts: allContacts, accounts: allAccounts, getActivitiesForContact, deleteContact, deleteContactsBulk, addActivity, loading } = useCRM();
+  useScrollRestore(!loading && allContacts.length > 0);
   const { users } = useUsers();
 
   function getOwnerName(ownerId: string): string {

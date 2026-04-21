@@ -34,8 +34,8 @@ const priorityStyles: Record<string, string> = {
 };
 
 export default function TasksPage() {
-  useScrollRestore();
   const { tasks: allTasks, accounts, contacts, toggleTask, deleteTask, loading } = useCRM();
+  useScrollRestore(!loading && allTasks.length > 0);
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
 

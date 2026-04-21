@@ -47,12 +47,12 @@ type SortKey = 'name' | 'industry' | 'country' | 'employee' | 'openDeals' | 'pip
 type SortDir = 'asc' | 'desc';
 
 export default function AccountsPage() {
-  useScrollRestore();
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
   const { accounts: allAccounts, contacts, opportunities, deleteAccount, deleteAccountsBulk, loading } = useCRM();
+  useScrollRestore(!loading && allAccounts.length > 0);
   const { users } = useUsers();
   void users;
 
