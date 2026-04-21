@@ -32,9 +32,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const [showAccountDD, setShowAccountDD] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
-  // Contact search
+  // Contact search (multi-select)
   const [contactSearch, setContactSearch] = useState('');
-  const [contactId, setContactId] = useState('');
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [showContactDD, setShowContactDD] = useState(false);
   const contactRef = useRef<HTMLDivElement>(null);
 
@@ -57,6 +57,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
 
   const filteredContacts = contacts
     .filter((c) => {
+      if (selectedContactIds.has(c.id)) return false; // Skip already selected
       const name = `${c.firstName} ${c.lastName}`.toLowerCase();
       if (!name.includes(contactSearch.toLowerCase())) return false;
       if (accountId) return c.accountId === accountId;
@@ -64,19 +65,29 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
     })
     .slice(0, 8);
 
+  const selectedContactObjs = contacts.filter((c) => selectedContactIds.has(c.id));
+
+  function toggleContactSelect(id: string) {
+    setSelectedContactIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  }
+
   function handleSave() {
     if (!subject.trim() || saving) return;
     setSaving(true);
 
-    addActivity({
-      id: generateId(),
-      type,
-      subject: subject.trim(),
-      description: description.trim(),
-      date: new Date().toISOString().split('T')[0],
-      ownerId: session?.user?.id || '',
-      accountId: accountId || '',
-      contactId: contactId || '',
+    const ids = Array.from(selectedContactIds);
+    const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
+    contactList.forEach((cid) => {
+      addActivity({
+        id: generateId(),
+        type,
+        subject: subject.trim(),
+        description: description.trim(),
+        date: new Date().toISOString().split('T')[0],
+        ownerId: session?.user?.id || '',
+        accountId: accountId || '',
+        contactId: cid || '',
+      });
     });
 
     setSaved(true);
@@ -164,7 +175,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           />
           {accountName && (
             <button
-              onClick={() => { setAccountSearch(''); setAccountName(''); setAccountId(''); setContactSearch(''); setContactId(''); }}
+              onClick={() => { setAccountSearch(''); setAccountName(''); setAccountId(''); setContactSearch(''); setSelectedContactIds(new Set()); }}
               style={{
                 position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
                 background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '18px',
@@ -183,7 +194,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               {filteredAccounts.map((a) => (
                 <div
                   key={a.id}
-                  onClick={() => { setAccountName(a.name); setAccountId(a.id); setAccountSearch(a.name); setShowAccountDD(false); setContactSearch(''); setContactId(''); }}
+                  onClick={() => { setAccountName(a.name); setAccountId(a.id); setAccountSearch(a.name); setShowAccountDD(false); setContactSearch(''); setSelectedContactIds(new Set()); }}
                   style={{
                     padding: '10px 14px', cursor: 'pointer', fontSize: '13px',
                     display: 'flex', alignItems: 'center', gap: '10px',
@@ -209,27 +220,40 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           )}
         </div>
 
-        {/* Contact Search */}
+        {/* Contact Search (multi-select with tags) */}
         <div ref={contactRef} style={{ position: 'relative', marginBottom: '10px' }}>
+          {/* Selected contact tags */}
+          {selectedContactObjs.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+              {selectedContactObjs.map((c) => (
+                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '12px', background: '#E1F5EE', color: '#0F6E56', fontSize: '12px', border: '1px solid #B5E3D2' }}>
+                  {c.firstName} {c.lastName}
+                  <button type="button" onClick={() => toggleContactSelect(c.id)} style={{ background: 'none', border: 'none', color: '#0F6E56', cursor: 'pointer', fontWeight: 700, padding: 0, marginLeft: '2px' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
           <input
             type="text"
             value={contactSearch}
-            onChange={(e) => { setContactSearch(e.target.value); setContactId(''); setShowContactDD(true); }}
-            onFocus={() => { if (contactSearch) setShowContactDD(true); }}
-            placeholder={accountId ? `Search contact at ${accountName}...` : 'Search contact (optional)...'}
+            onChange={(e) => { setContactSearch(e.target.value); setShowContactDD(true); }}
+            onFocus={() => setShowContactDD(true)}
+            placeholder={selectedContactObjs.length > 0 ? 'Add another contact...' : accountId ? `Search contact at ${accountName}...` : 'Search contact (optional)...'}
             style={{
               width: '100%', padding: '10px 12px', paddingRight: contactSearch ? '32px' : '12px',
               fontSize: '14px',
-              border: contactId ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
+              border: selectedContactObjs.length > 0 ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
               borderRadius: '8px', boxSizing: 'border-box',
-              background: contactId ? '#f0f7ee' : 'white',
+              background: selectedContactObjs.length > 0 ? '#f0f7ee' : 'white',
             }}
           />
           {contactSearch && (
             <button
-              onClick={() => { setContactSearch(''); setContactId(''); }}
+              onClick={() => setContactSearch('')}
               style={{
-                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                position: 'absolute', right: '10px', top: selectedContactObjs.length > 0 ? 'auto' : '50%',
+                bottom: selectedContactObjs.length > 0 ? '12px' : 'auto',
+                transform: selectedContactObjs.length > 0 ? 'none' : 'translateY(-50%)',
                 background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: '18px',
               }}
             >
@@ -250,9 +274,8 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
                   <div
                     key={c.id}
                     onClick={() => {
-                      setContactSearch(fullName);
-                      setContactId(c.id);
-                      setShowContactDD(false);
+                      toggleContactSelect(c.id);
+                      setContactSearch('');
                       if (!accountId && c.accountId) {
                         setAccountName(acctName);
                         setAccountId(c.accountId);
