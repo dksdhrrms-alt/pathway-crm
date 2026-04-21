@@ -13,6 +13,7 @@ import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ImportModal from '@/app/components/ImportModal';
 import EditAccountModal from '@/app/components/EditAccountModal';
+import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 
 const FLAGS: Record<string, string> = {
   USA: '🇺🇸', Mexico: '🇲🇽', Colombia: '🇨🇴', Peru: '🇵🇪', Panama: '🇵🇦',
@@ -173,6 +174,19 @@ export default function AccountsPage() {
     return list;
   }, [accounts, search, sortKey, sortDir, ownerFilter, dealsByAccount]);
 
+  const exportColumns: ExportColumn<typeof filtered[number]>[] = useMemo(() => [
+    { id: 'name', label: 'Account Name', getValue: (a) => a.name },
+    { id: 'industry', label: 'Species', getValue: (a) => a.industry || '' },
+    { id: 'owner', label: 'Sales Owner', getValue: (a) => a.ownerName || '' },
+    { id: 'country', label: 'Country', getValue: (a) => a.country || '' },
+    { id: 'phone', label: 'Telephone', getValue: (a) => a.phone || '' },
+    { id: 'employee', label: 'Employee', getValue: (a) => a.employee ?? '' },
+    { id: 'openDeals', label: 'Open Deals', getValue: (a) => dealsByAccount[a.id]?.count ?? 0 },
+    { id: 'pipelineValue', label: 'Pipeline ($)', getValue: (a) => dealsByAccount[a.id]?.value ?? 0 },
+    { id: 'website', label: 'Website', getValue: (a) => a.website || '' },
+    { id: 'address', label: 'Address', getValue: (a) => a.location || '' },
+  ], [dealsByAccount]);
+
   function handleDeleteConfirm() {
     if (!confirmDeleteId) return;
     deleteAccount(confirmDeleteId);
@@ -203,6 +217,7 @@ export default function AccountsPage() {
               <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <ExportButton filename={`accounts-${new Date().toISOString().split('T')[0]}`} title="Accounts" columns={exportColumns} rows={filtered} />
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
             </div>
