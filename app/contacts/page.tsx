@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
@@ -16,6 +17,10 @@ import EditContactModal from '@/app/components/EditContactModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 
 const COUNTRY_FLAGS: Record<string, string> = { USA:'🇺🇸', Mexico:'🇲🇽', UK:'🇬🇧', Colombia:'🇨🇴', Peru:'🇵🇪', Panama:'🇵🇦', 'El Salvador':'🇸🇻', Korea:'🇰🇷' };
+
+type SortKey = 'name' | 'company' | 'country' | 'owner' | 'position' | 'species' | 'birthday' | 'anniversary' | 'keyMan';
+type SortDir = 'asc' | 'desc';
+const SORTABLE_KEYS: SortKey[] = ['name','company','country','owner','position','species','birthday','anniversary','keyMan'];
 
 export default function ContactsPage() {
   const { data: session } = useSession();
@@ -33,6 +38,23 @@ export default function ContactsPage() {
   const contacts = useMemo(() => allContacts, [allContacts]);
   void isAdmin;
 
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sortKey = (SORTABLE_KEYS.includes((searchParams.get('sort') || '') as SortKey) ? searchParams.get('sort') : 'name') as SortKey;
+  const sortDir = (searchParams.get('dir') === 'desc' ? 'desc' : 'asc') as SortDir;
+
+  const toggleSort = useCallback((key: SortKey) => {
+    const params = new URLSearchParams(searchParams.toString());
+    let nextDir: SortDir = 'asc';
+    if (sortKey === key) nextDir = sortDir === 'asc' ? 'desc' : 'asc';
+    params.set('sort', key);
+    params.set('dir', nextDir);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, sortKey, sortDir, router, pathname]);
+
+  const sortArrow = (key: SortKey) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+
   const [search, setSearch] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -45,18 +67,18 @@ export default function ContactsPage() {
 
   // Column customization
   const ALL_COLUMNS = useMemo(() => [
-    { id: 'name', label: 'Name', defaultVisible: true, minWidth: 160 },
-    { id: 'species', label: 'Species', defaultVisible: true, minWidth: 160 },
-    { id: 'company', label: 'Company', defaultVisible: true, minWidth: 160 },
-    { id: 'country', label: 'Country', defaultVisible: true, minWidth: 110 },
-    { id: 'owner', label: 'Owner', defaultVisible: true, minWidth: 120 },
-    { id: 'position', label: 'Position', defaultVisible: true, minWidth: 140 },
-    { id: 'keyMan', label: 'Key', defaultVisible: true, minWidth: 50, align: 'center' as const },
-    { id: 'email', label: 'Email', defaultVisible: true, minWidth: 160 },
-    { id: 'tel', label: 'Tel', defaultVisible: true, minWidth: 130 },
-    { id: 'birthday', label: 'Birthday', defaultVisible: false, minWidth: 110 },
-    { id: 'anniversary', label: 'Anniversary', defaultVisible: false, minWidth: 110 },
-    { id: 'linkedIn', label: 'LinkedIn', defaultVisible: false, minWidth: 130 },
+    { id: 'name', label: 'Name', defaultVisible: true, minWidth: 160, sortable: true, sortKey: 'name' as SortKey },
+    { id: 'species', label: 'Species', defaultVisible: true, minWidth: 160, sortable: true, sortKey: 'species' as SortKey },
+    { id: 'company', label: 'Company', defaultVisible: true, minWidth: 160, sortable: true, sortKey: 'company' as SortKey },
+    { id: 'country', label: 'Country', defaultVisible: true, minWidth: 110, sortable: true, sortKey: 'country' as SortKey },
+    { id: 'owner', label: 'Owner', defaultVisible: true, minWidth: 120, sortable: true, sortKey: 'owner' as SortKey },
+    { id: 'position', label: 'Position', defaultVisible: true, minWidth: 140, sortable: true, sortKey: 'position' as SortKey },
+    { id: 'keyMan', label: 'Key', defaultVisible: true, minWidth: 50, align: 'center' as const, sortable: true, sortKey: 'keyMan' as SortKey },
+    { id: 'email', label: 'Email', defaultVisible: true, minWidth: 160, sortable: false },
+    { id: 'tel', label: 'Tel', defaultVisible: true, minWidth: 130, sortable: false },
+    { id: 'birthday', label: 'Birthday', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'birthday' as SortKey },
+    { id: 'anniversary', label: 'Anniversary', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'anniversary' as SortKey },
+    { id: 'linkedIn', label: 'LinkedIn', defaultVisible: false, minWidth: 130, sortable: false },
   ], []);
   const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
@@ -114,13 +136,37 @@ export default function ContactsPage() {
   }
   const visibleCols = columnOrder.map((id) => ALL_COLUMNS.find((c) => c.id === id)!).filter((c) => c && !hiddenColumns.has(c.id));
 
-  const filtered = contacts.filter((c) => {
-    const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
-    const account = allAccounts.find((a) => a.id === c.accountId);
-    const accountName = account?.name.toLowerCase() ?? '';
-    const q = search.toLowerCase();
-    return fullName.includes(q) || accountName.includes(q);
-  });
+  const filtered = useMemo(() => {
+    const list = contacts.filter((c) => {
+      const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+      const account = allAccounts.find((a) => a.id === c.accountId);
+      const accountName = account?.name.toLowerCase() ?? '';
+      const q = search.toLowerCase();
+      return fullName.includes(q) || accountName.includes(q);
+    });
+    list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case 'name': cmp = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`); break;
+        case 'company': {
+          const an = allAccounts.find((x) => x.id === a.accountId)?.name || a.accountName || '';
+          const bn = allAccounts.find((x) => x.id === b.accountId)?.name || b.accountName || '';
+          cmp = an.localeCompare(bn);
+          break;
+        }
+        case 'country': cmp = (a.country || '').localeCompare(b.country || ''); break;
+        case 'owner': cmp = (a.ownerName || getOwnerName(a.ownerId) || '').localeCompare(b.ownerName || getOwnerName(b.ownerId) || ''); break;
+        case 'position': cmp = (a.position || a.title || '').localeCompare(b.position || b.title || ''); break;
+        case 'species': cmp = (a.species || '').localeCompare(b.species || ''); break;
+        case 'birthday': cmp = (a.birthday || '').localeCompare(b.birthday || ''); break;
+        case 'anniversary': cmp = (a.anniversary || '').localeCompare(b.anniversary || ''); break;
+        case 'keyMan': cmp = (a.isKeyMan ? 1 : 0) - (b.isKeyMan ? 1 : 0); break;
+      }
+      return sortDir === 'desc' ? -cmp : cmp;
+    });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contacts, allAccounts, users, search, sortKey, sortDir]);
 
   function handleContactSaved() {
     setToast('Contact created successfully');
@@ -225,9 +271,10 @@ export default function ContactsPage() {
                   </th>
                   {visibleCols.map((col) => (
                     <th key={col.id}
-                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap tracking-wide ${col.align === 'center' ? 'text-center' : 'text-left'}`}
-                      style={col.minWidth ? { minWidth: col.minWidth } : undefined}>
-                      {col.label}
+                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap tracking-wide ${col.align === 'center' ? 'text-center' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none hover:text-gray-700' : ''}`}
+                      style={col.minWidth ? { minWidth: col.minWidth } : undefined}
+                      onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
+                      {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
                     </th>
                   ))}
                   <th className="w-16 px-3 py-3 sticky right-0 bg-gray-50 z-10" style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}></th>
