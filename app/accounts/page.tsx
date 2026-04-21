@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useScrollRestore } from '@/hooks/useUrlState';
@@ -69,6 +69,61 @@ export default function AccountsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
+
+  // Column customization
+  const ALL_COLUMNS = useMemo(() => [
+    { id: 'name', label: 'Account Name', sortable: true, sortKey: 'name' as SortKey, defaultVisible: true },
+    { id: 'industry', label: 'Species', sortable: true, sortKey: 'industry' as SortKey, defaultVisible: true },
+    { id: 'owner', label: 'Sales Owner', sortable: false, defaultVisible: true },
+    { id: 'country', label: 'Country', sortable: true, sortKey: 'country' as SortKey, defaultVisible: true },
+    { id: 'phone', label: 'Telephone', sortable: false, defaultVisible: true },
+    { id: 'employee', label: 'Employee', sortable: true, sortKey: 'employee' as SortKey, defaultVisible: true, align: 'right' as const },
+    { id: 'website', label: 'Website', sortable: false, defaultVisible: true },
+    { id: 'address', label: 'Address', sortable: false, defaultVisible: true },
+  ], []);
+  const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  const [showColMenu, setShowColMenu] = useState(false);
+  const [draggedCol, setDraggedCol] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const order = localStorage.getItem('accounts_col_order');
+      const hidden = localStorage.getItem('accounts_col_hidden');
+      if (order) setColumnOrder(JSON.parse(order));
+      if (hidden) setHiddenColumns(new Set(JSON.parse(hidden)));
+    } catch { /* */ }
+  }, []);
+
+  function saveCols(order: string[], hidden: Set<string>) {
+    try {
+      localStorage.setItem('accounts_col_order', JSON.stringify(order));
+      localStorage.setItem('accounts_col_hidden', JSON.stringify([...hidden]));
+    } catch { /* */ }
+  }
+  function toggleColumn(id: string) {
+    const next = new Set(hiddenColumns);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setHiddenColumns(next);
+    saveCols(columnOrder, next);
+  }
+  function moveColumn(from: string, to: string) {
+    if (from === to) return;
+    const order = [...columnOrder];
+    const fromIdx = order.indexOf(from);
+    const toIdx = order.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0) return;
+    order.splice(fromIdx, 1);
+    order.splice(toIdx, 0, from);
+    setColumnOrder(order);
+    saveCols(order, hiddenColumns);
+  }
+  function resetColumns() {
+    setColumnOrder(ALL_COLUMNS.map((c) => c.id));
+    setHiddenColumns(new Set());
+    try { localStorage.removeItem('accounts_col_order'); localStorage.removeItem('accounts_col_hidden'); } catch { /* */ }
+  }
+  const visibleCols = columnOrder.map((id) => ALL_COLUMNS.find((c) => c.id === id)!).filter((c) => c && !hiddenColumns.has(c.id));
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -147,6 +202,45 @@ export default function AccountsPage() {
                 Clear filter
               </button>
             )}
+            <div className="ml-auto relative">
+              <button onClick={() => setShowColMenu(!showColMenu)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
+                Columns ({visibleCols.length}/{ALL_COLUMNS.length})
+              </button>
+              {showColMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowColMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-2">
+                    <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-gray-100">
+                      <span className="text-xs font-semibold text-gray-700">Columns</span>
+                      <button onClick={resetColumns} className="text-xs text-blue-600 hover:underline">Reset</button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 px-2 mb-1">Drag to reorder · Click to toggle</p>
+                    <ul className="max-h-64 overflow-y-auto">
+                      {columnOrder.map((id) => {
+                        const col = ALL_COLUMNS.find((c) => c.id === id);
+                        if (!col) return null;
+                        const isHidden = hiddenColumns.has(id);
+                        return (
+                          <li key={id}
+                            draggable
+                            onDragStart={() => setDraggedCol(id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => { if (draggedCol) moveColumn(draggedCol, id); setDraggedCol(null); }}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-move ${draggedCol === id ? 'opacity-50' : ''}`}>
+                            <span className="text-gray-300 text-xs">⋮⋮</span>
+                            <input type="checkbox" checked={!isHidden} onChange={() => toggleColumn(id)}
+                              className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                            <span className={`text-sm flex-1 ${isHidden ? 'text-gray-400' : 'text-gray-700'}`}>{col.label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
@@ -158,20 +252,20 @@ export default function AccountsPage() {
                       checked={filtered.length > 0 && selectedIds.size === filtered.length}
                       onChange={(e) => { if (e.target.checked) setSelectedIds(new Set(filtered.map((a) => a.id))); else setSelectedIds(new Set()); }} />
                   </th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs cursor-pointer select-none" onClick={() => toggleSort('name')}>Account Name{sortArrow('name')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs cursor-pointer select-none" style={{ minWidth: 120 }} onClick={() => toggleSort('industry')}>Species{sortArrow('industry')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs">Sales Owner</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs cursor-pointer select-none" onClick={() => toggleSort('country')}>Country{sortArrow('country')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs">Telephone</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 uppercase text-xs cursor-pointer select-none" onClick={() => toggleSort('employee')}>Employee{sortArrow('employee')}</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs">Website</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs">Address</th>
+                  {visibleCols.map((col) => (
+                    <th key={col.id}
+                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
+                      style={col.id === 'industry' ? { minWidth: 120 } : undefined}
+                      onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
+                      {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
+                    </th>
+                  ))}
                   <th className="w-16 px-3 py-3"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-10 text-gray-400">No accounts match your search.</td></tr>
+                  <tr><td colSpan={visibleCols.length + 2} className="text-center py-10 text-gray-400">No accounts match your search.</td></tr>
                 ) : filtered.map((acct) => {
                   const badge = SPECIES_BADGE[acct.industry] || SPECIES_BADGE.Other;
                   const isSelected = selectedIds.has(acct.id);
@@ -181,33 +275,19 @@ export default function AccountsPage() {
                         <input type="checkbox" className="rounded border-gray-300" checked={isSelected}
                           onChange={(e) => { const n = new Set(selectedIds); if (e.target.checked) n.add(acct.id); else n.delete(acct.id); setSelectedIds(n); }} />
                       </td>
-                      <td className="px-4 py-3">
-                        <Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link>
-                      </td>
-                      <td className="px-4 py-3" style={{ minWidth: 120 }}>
-                        {acct.industry ? (
-                          <span className="text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{ backgroundColor: badge?.bg, color: badge?.text }}>{acct.industry}</span>
-                        ) : <span className="text-gray-400">—</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        {acct.ownerName ? (
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>
-                              {ownerInitials(acct.ownerName)}
-                            </div>
-                            <span className="text-sm text-gray-800">{acct.ownerName}</span>
-                          </div>
-                        ) : <span className="text-gray-400">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{acct.country ? <span>{FLAGS[acct.country] ?? '🌐'} {acct.country}</span> : <span className="text-gray-400">—</span>}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{acct.phone || '—'}</td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-600">{acct.employee ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm">
-                        {acct.website ? <a href={acct.website.startsWith('http') ? acct.website : `https://${acct.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[130px]">{stripUrl(acct.website)}</a> : <span className="text-gray-400">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500" title={acct.location || ''}>
-                        {acct.location ? (acct.location.length > 35 ? acct.location.slice(0, 35) + '...' : acct.location) : '—'}
-                      </td>
+                      {visibleCols.map((col) => {
+                        switch (col.id) {
+                          case 'name': return <td key={col.id} className="px-4 py-3"><Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link></td>;
+                          case 'industry': return <td key={col.id} className="px-4 py-3" style={{ minWidth: 120 }}>{acct.industry ? <span className="text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{ backgroundColor: badge?.bg, color: badge?.text }}>{acct.industry}</span> : <span className="text-gray-400">—</span>}</td>;
+                          case 'owner': return <td key={col.id} className="px-4 py-3">{acct.ownerName ? <div className="flex items-center gap-2"><div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>{ownerInitials(acct.ownerName)}</div><span className="text-sm text-gray-800">{acct.ownerName}</span></div> : <span className="text-gray-400">—</span>}</td>;
+                          case 'country': return <td key={col.id} className="px-4 py-3 text-sm">{acct.country ? <span>{FLAGS[acct.country] ?? '🌐'} {acct.country}</span> : <span className="text-gray-400">—</span>}</td>;
+                          case 'phone': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600">{acct.phone || '—'}</td>;
+                          case 'employee': return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-600">{acct.employee ?? '—'}</td>;
+                          case 'website': return <td key={col.id} className="px-4 py-3 text-sm">{acct.website ? <a href={acct.website.startsWith('http') ? acct.website : `https://${acct.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[130px]">{stripUrl(acct.website)}</a> : <span className="text-gray-400">—</span>}</td>;
+                          case 'address': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500" title={acct.location || ''}>{acct.location ? (acct.location.length > 35 ? acct.location.slice(0, 35) + '...' : acct.location) : '—'}</td>;
+                          default: return null;
+                        }
+                      })}
                       <td className="px-3 py-3">
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setEditAccountId(acct.id)} className="p-1 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
