@@ -31,7 +31,7 @@ export default function ContactsPage() {
   }
 
   const contacts = useMemo(() => allContacts, [allContacts]);
-  void isAdmin; void userId;
+  void isAdmin;
 
   const [search, setSearch] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
@@ -65,24 +65,29 @@ export default function ContactsPage() {
   const [showColMenu, setShowColMenu] = useState(false);
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
 
+  const colOrderKey = `contacts_col_order_${userId || 'anon'}`;
+  const colHiddenKey = `contacts_col_hidden_${userId || 'anon'}`;
+
   useEffect(() => {
     try {
-      const order = localStorage.getItem('contacts_col_order');
-      const hidden = localStorage.getItem('contacts_col_hidden');
+      const order = localStorage.getItem(colOrderKey);
+      const hidden = localStorage.getItem(colHiddenKey);
       if (order) {
         const saved: string[] = JSON.parse(order);
         const all = ALL_COLUMNS.map((c) => c.id);
         const merged = [...saved.filter((id) => all.includes(id)), ...all.filter((id) => !saved.includes(id))];
         setColumnOrder(merged);
+      } else {
+        setColumnOrder(ALL_COLUMNS.map((c) => c.id));
       }
-      if (hidden) setHiddenColumns(new Set(JSON.parse(hidden)));
+      setHiddenColumns(hidden ? new Set(JSON.parse(hidden)) : new Set(ALL_COLUMNS.filter((c) => !c.defaultVisible).map((c) => c.id)));
     } catch { /* */ }
-  }, [ALL_COLUMNS]);
+  }, [ALL_COLUMNS, colOrderKey, colHiddenKey]);
 
   function saveCols(order: string[], hidden: Set<string>) {
     try {
-      localStorage.setItem('contacts_col_order', JSON.stringify(order));
-      localStorage.setItem('contacts_col_hidden', JSON.stringify([...hidden]));
+      localStorage.setItem(colOrderKey, JSON.stringify(order));
+      localStorage.setItem(colHiddenKey, JSON.stringify([...hidden]));
     } catch { /* */ }
   }
   function toggleColumn(id: string) {
@@ -105,7 +110,7 @@ export default function ContactsPage() {
   function resetColumns() {
     setColumnOrder(ALL_COLUMNS.map((c) => c.id));
     setHiddenColumns(new Set(ALL_COLUMNS.filter((c) => !c.defaultVisible).map((c) => c.id)));
-    try { localStorage.removeItem('contacts_col_order'); localStorage.removeItem('contacts_col_hidden'); } catch { /* */ }
+    try { localStorage.removeItem(colOrderKey); localStorage.removeItem(colHiddenKey); } catch { /* */ }
   }
   const visibleCols = columnOrder.map((id) => ALL_COLUMNS.find((c) => c.id === id)!).filter((c) => c && !hiddenColumns.has(c.id));
 
