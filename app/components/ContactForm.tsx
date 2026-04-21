@@ -8,10 +8,26 @@ import { getRoleLabel } from '@/lib/users';
 import CountrySelect from './CountrySelect';
 import AccountSearchSelect from './AccountSearchSelect';
 
-const SPECIES_LIST = [
+export const SPECIES_LIST = [
   'Primary Breeder', 'Broilers', 'Turkeys', 'Layers', 'Ruminant',
   'Swines', 'Aquaculture', 'Consulting Nutritionist', 'Industry Contact',
   'Multi', 'Research / Trials', 'University', 'Other',
+];
+
+export const CONTACT_TYPES = [
+  'Decision Maker',
+  'Influencer',
+  'Champion',
+  'End User',
+  'Technical Buyer',
+  'Economic Buyer',
+  'Gatekeeper',
+  'Procurement',
+  'Nutritionist',
+  'Veterinarian',
+  'Operations',
+  'Management',
+  'Other',
 ];
 
 interface Props {
@@ -145,9 +161,13 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Position / Title</label>
-        <input type="text" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="e.g. Director of Procurement"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
+        <select value={position} onChange={(e) => setPosition(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+          <option value="">Select contact type...</option>
+          {CONTACT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          {position && !CONTACT_TYPES.includes(position) && <option value={position}>{position} (existing)</option>}
+        </select>
       </div>
 
       {/* Key Man toggle */}

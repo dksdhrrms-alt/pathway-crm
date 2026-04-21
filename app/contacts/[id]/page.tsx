@@ -109,7 +109,21 @@ export default function ContactDetailPage() {
                   <h1 className="text-2xl font-bold text-gray-900">
                     {contact.firstName} {contact.lastName}
                   </h1>
-                  <p className="text-gray-500 mt-0.5">{contact.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {contact.position && (
+                      <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E1F5EE', color: '#0F6E56' }}>
+                        {contact.position}
+                      </span>
+                    )}
+                    {contact.species && (
+                      <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#EEEDFE', color: '#534AB7' }}>
+                        {contact.species}
+                      </span>
+                    )}
+                    {contact.title && contact.title !== contact.position && contact.title !== contact.species && (
+                      <span className="text-sm text-gray-500">{contact.title}</span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-3 mt-2">
                     {account && (
                       <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline" style={{ color: '#2d6a4f' }}>

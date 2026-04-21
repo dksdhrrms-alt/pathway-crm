@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -15,6 +15,8 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ImportModal from '@/app/components/ImportModal';
 import EditContactModal from '@/app/components/EditContactModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
+import { SPECIES_LIST, CONTACT_TYPES } from '@/app/components/ContactForm';
+import { getRoleLabel } from '@/lib/users';
 
 const COUNTRY_FLAGS: Record<string, string> = { USA:'🇺🇸', Mexico:'🇲🇽', UK:'🇬🇧', Colombia:'🇨🇴', Peru:'🇵🇪', Panama:'🇵🇦', 'El Salvador':'🇸🇻', Korea:'🇰🇷' };
 
@@ -23,16 +25,36 @@ type SortDir = 'asc' | 'desc';
 const SORTABLE_KEYS: SortKey[] = ['name','company','country','owner','position','species','birthday','anniversary','keyMan'];
 
 export default function ContactsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <ContactsPageInner />
+    </Suspense>
+  );
+}
+
+function ContactsPageInner() {
   const { data: session } = useSession();
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
   const userId = session?.user?.id ?? '';
 
-  const { contacts: allContacts, accounts: allAccounts, deleteContact, deleteContactsBulk, addActivity, loading } = useCRM();
+  const { contacts: allContacts, accounts: allAccounts, deleteContact, deleteContactsBulk, addActivity, updateContact, loading } = useCRM();
   const { users } = useUsers();
 
   function getOwnerName(ownerId: string): string {
     const user = users.find((u) => u.id === ownerId);
     return user ? user.name : '—';
+  }
+
+  const activeUsers = useMemo(() => users.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name)), [users]);
+
+  function speciesColors(s: string | undefined): { bg: string; color: string } {
+    if (!s) return { bg: '#F1EFE8', color: '#5F5E5A' };
+    if (['Broilers','Layers','Primary Breeders','Primary Breeder','Turkeys'].includes(s)) return { bg: '#E6F1FB', color: '#185FA5' };
+    if (s === 'Ruminant') return { bg: '#E1F5EE', color: '#0F6E56' };
+    if (s === 'Swines') return { bg: '#FAEEDA', color: '#854F0B' };
+    if (s === 'Aquaculture') return { bg: '#E1F5EE', color: '#0F6E56' };
+    if (s.includes('Consulting')) return { bg: '#EEEDFE', color: '#534AB7' };
+    return { bg: '#F1EFE8', color: '#5F5E5A' };
   }
 
   const contacts = useMemo(() => allContacts, [allContacts]);
@@ -72,7 +94,7 @@ export default function ContactsPage() {
     { id: 'company', label: 'Company', defaultVisible: true, minWidth: 160, sortable: true, sortKey: 'company' as SortKey },
     { id: 'country', label: 'Country', defaultVisible: true, minWidth: 110, sortable: true, sortKey: 'country' as SortKey },
     { id: 'owner', label: 'Owner', defaultVisible: true, minWidth: 120, sortable: true, sortKey: 'owner' as SortKey },
-    { id: 'position', label: 'Position', defaultVisible: true, minWidth: 140, sortable: true, sortKey: 'position' as SortKey },
+    { id: 'position', label: 'Contact Type', defaultVisible: true, minWidth: 150, sortable: true, sortKey: 'position' as SortKey },
     { id: 'keyMan', label: 'Key', defaultVisible: true, minWidth: 50, align: 'center' as const, sortable: true, sortKey: 'keyMan' as SortKey },
     { id: 'email', label: 'Email', defaultVisible: true, minWidth: 160, sortable: false },
     { id: 'tel', label: 'Tel', defaultVisible: true, minWidth: 130, sortable: false },
@@ -307,16 +329,19 @@ export default function ContactsPage() {
                                 </Link>
                               </td>
                             );
-                            case 'species': return (
+                            case 'species': { const sc = speciesColors(contact.species); return (
                               <td key={col.id} className="px-4 py-3">
-                                {contact.species ? (
-                                  <span className="text-xs px-2.5 py-0.5 rounded font-medium whitespace-nowrap inline-block" style={{
-                                    backgroundColor: ['Broilers','Layers','Primary Breeders','Turkeys'].includes(contact.species) ? '#E6F1FB' : contact.species === 'Ruminant' ? '#E1F5EE' : contact.species === 'Swines' ? '#FAEEDA' : contact.species === 'Aquaculture' ? '#E1F5EE' : contact.species?.includes('Consulting') ? '#EEEDFE' : '#F1EFE8',
-                                    color: ['Broilers','Layers','Primary Breeders','Turkeys'].includes(contact.species) ? '#185FA5' : contact.species === 'Ruminant' ? '#0F6E56' : contact.species === 'Swines' ? '#854F0B' : contact.species === 'Aquaculture' ? '#0F6E56' : contact.species?.includes('Consulting') ? '#534AB7' : '#5F5E5A',
-                                  }}>{contact.species}</span>
-                                ) : <span className="text-gray-400">—</span>}
+                                <select value={contact.species || ''}
+                                  onChange={(e) => updateContact(contact.id, { species: e.target.value })}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-xs px-2 py-0.5 rounded font-medium border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none cursor-pointer max-w-[150px]"
+                                  style={{ backgroundColor: sc.bg, color: sc.color }}>
+                                  <option value="">— Select —</option>
+                                  {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  {contact.species && !SPECIES_LIST.includes(contact.species) && <option value={contact.species}>{contact.species}</option>}
+                                </select>
                               </td>
-                            );
+                            ); }
                             case 'company': return (
                               <td key={col.id} className="px-4 py-3">
                                 {account ? (
@@ -331,10 +356,30 @@ export default function ContactsPage() {
                                 {contact.country ? <span>{COUNTRY_FLAGS[contact.country] ?? '🌐'} {contact.country}</span> : <span className="text-gray-400">—</span>}
                               </td>
                             );
-                            case 'owner': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600">{contact.ownerName || getOwnerName(contact.ownerId)}</td>;
+                            case 'owner': return (
+                              <td key={col.id} className="px-4 py-3 text-sm">
+                                <select value={contact.ownerId || ''}
+                                  onChange={(e) => {
+                                    const u = activeUsers.find((x) => x.id === e.target.value);
+                                    updateContact(contact.id, { ownerId: e.target.value, ownerName: u?.name || '' });
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-sm text-gray-700 px-2 py-0.5 rounded border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none bg-transparent cursor-pointer max-w-[140px]">
+                                  <option value="">—</option>
+                                  {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name} ({getRoleLabel(u.role)})</option>)}
+                                </select>
+                              </td>
+                            );
                             case 'position': return (
-                              <td key={col.id} className="px-4 py-3 text-sm text-gray-500" title={contact.position || ''}>
-                                {contact.position ? (contact.position.length > 25 ? contact.position.slice(0, 25) + '...' : contact.position) : '—'}
+                              <td key={col.id} className="px-4 py-3 text-sm">
+                                <select value={contact.position || ''}
+                                  onChange={(e) => updateContact(contact.id, { position: e.target.value })}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-sm text-gray-700 px-2 py-0.5 rounded border border-transparent hover:border-gray-300 focus:border-green-500 focus:outline-none bg-transparent cursor-pointer max-w-[160px]">
+                                  <option value="">—</option>
+                                  {CONTACT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                                  {contact.position && !CONTACT_TYPES.includes(contact.position) && <option value={contact.position}>{contact.position}</option>}
+                                </select>
                               </td>
                             );
                             case 'keyMan': return (
