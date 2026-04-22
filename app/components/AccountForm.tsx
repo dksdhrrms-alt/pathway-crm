@@ -44,6 +44,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [employee, setEmployee] = useState(initialData?.employee != null ? String(initialData.employee) : '');
   const [website, setWebsite] = useState(initialData?.website || '');
   const [location, setLocation] = useState(initialData?.location || '');
+  const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
@@ -67,6 +68,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       employee: employee ? parseInt(employee) : null,
       website: ws,
       location: location.trim(),
+      notes: notes.trim(),
     };
 
     if (mode === 'new') {
@@ -160,6 +162,12 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
         <textarea value={location} onChange={(e) => setLocation(e.target.value)} rows={2} placeholder="Full address..."
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Summary</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Background, key relationships, recent updates, strategic context..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

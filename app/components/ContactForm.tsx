@@ -53,6 +53,7 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [email, setEmail] = useState(initialData?.email || '');
   const [birthday, setBirthday] = useState(initialData?.birthday || '');
   const [anniversary, setAnniversary] = useState(initialData?.anniversary || '');
+  const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
@@ -83,6 +84,7 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       email: email.trim(),
       birthday: birthday || undefined,
       anniversary: anniversary || undefined,
+      notes: notes.trim(),
       title: position.trim() || species,
     };
 
@@ -209,6 +211,12 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
           <input type="date" value={anniversary} onChange={(e) => setAnniversary(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Personal notes, preferences, recent conversations..."
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

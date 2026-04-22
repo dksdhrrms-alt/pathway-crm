@@ -47,8 +47,10 @@ export default function AccountDetailPage() {
     accounts, contacts, opportunities, tasks,
     activities, saleRecords,
     getActivitiesForAccount, deleteAccount, deleteActivity,
-    addActivity, toggleTask,
+    addActivity, toggleTask, updateAccount,
   } = useCRM();
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
   const { data: session } = useSession();
   const { users } = useUsers();
 
@@ -295,6 +297,50 @@ export default function AccountDetailPage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ========== SUMMARY ========== */}
+          <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Summary</h3>
+              {!editingNotes ? (
+                <button
+                  onClick={() => { setNotesDraft(account.notes || ''); setEditingNotes(true); }}
+                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #1a4731', color: '#1a4731', background: 'white', cursor: 'pointer' }}
+                >
+                  {account.notes ? 'Edit' : '+ Add Summary'}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => setEditingNotes(false)}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#6b7280', background: 'white', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { updateAccount(accountId, { notes: notesDraft.trim() }); setEditingNotes(false); setToast('Summary updated'); }}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: 'none', color: 'white', background: '#1a4731', cursor: 'pointer' }}
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
+            {editingNotes ? (
+              <textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                placeholder="Background, key relationships, recent updates, strategic context..."
+                rows={5}
+                autoFocus
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+              />
+            ) : account.notes ? (
+              <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#374151', whiteSpace: 'pre-wrap' }}>{account.notes}</p>
+            ) : (
+              <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No summary yet. Click &quot;+ Add Summary&quot; to capture key context about this account.</p>
+            )}
           </div>
 
           {/* ========== 2-COLUMN LAYOUT ========== */}

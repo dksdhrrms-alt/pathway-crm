@@ -29,6 +29,7 @@ export interface Account {
   employee?: number | null;
   category?: string;
   companyType?: string;
+  notes?: string;
   createdAt?: string;
 }
 
@@ -51,6 +52,7 @@ export interface Contact {
   linkedIn?: string;
   birthday?: string;
   anniversary?: string;
+  notes?: string;
   createdAt?: string;
   status?: string;
 }
