@@ -10,7 +10,7 @@ import AccountSearchSelect from './AccountSearchSelect';
 
 export const SPECIES_LIST = [
   'Primary Breeder', 'Broilers', 'Turkeys', 'Layers', 'Ruminant',
-  'Swines', 'Aquaculture', 'Consulting Nutritionist', 'Industry Contact',
+  'Swine', 'Aquaculture', 'Consulting Nutritionist', 'Industry Contact',
   'Multi', 'Research / Trials', 'University', 'Other',
 ];
 

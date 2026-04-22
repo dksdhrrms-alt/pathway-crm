@@ -51,7 +51,7 @@ function ContactsPageInner() {
     if (!s) return { bg: '#F1EFE8', color: '#5F5E5A' };
     if (['Broilers','Layers','Primary Breeders','Primary Breeder','Turkeys'].includes(s)) return { bg: '#E6F1FB', color: '#185FA5' };
     if (s === 'Ruminant') return { bg: '#E1F5EE', color: '#0F6E56' };
-    if (s === 'Swines') return { bg: '#FAEEDA', color: '#854F0B' };
+    if (s === 'Swine' || s === 'Swines') return { bg: '#FAEEDA', color: '#854F0B' };
     if (s === 'Aquaculture') return { bg: '#E1F5EE', color: '#0F6E56' };
     if (s.includes('Consulting')) return { bg: '#EEEDFE', color: '#534AB7' };
     return { bg: '#F1EFE8', color: '#5F5E5A' };
