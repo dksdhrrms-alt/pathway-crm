@@ -346,7 +346,7 @@ export default function AccountsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto" style={{ minHeight: 500 }}>
             <table className="w-full text-sm" style={{ tableLayout: 'auto' }}>
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
@@ -381,7 +381,7 @@ export default function AccountsPage() {
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={visibleCols.length + 2} className="text-center py-10 text-gray-400">No accounts match your search.</td></tr>
+                  <tr><td colSpan={visibleCols.length + 2} className="text-center text-gray-400" style={{ height: 400 }}>No accounts match your search.</td></tr>
                 ) : filtered.map((acct) => {
                   const badge = SPECIES_BADGE[acct.industry] || SPECIES_BADGE.Other;
                   const isSelected = selectedIds.has(acct.id);
