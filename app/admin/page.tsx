@@ -48,10 +48,10 @@ export default function AdminPage() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? '';
 
-  const { opportunities, tasks, activities } = useCRM();
+  const { opportunities, tasks, activities, accounts, saleRecords } = useCRM();
   const { users: allUsers, updateUserById } = useUsers();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health'>('overview');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toast, setToast] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -78,6 +78,42 @@ export default function AdminPage() {
   );
 
   const pendingCount = allUsers.filter((u) => u.status === 'pending').length;
+
+  // Sales records whose account name doesn't match any CRM Account
+  const orphanSalesAccounts = useMemo(() => {
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,'"&()]/g, '');
+    const acctSet = new Set(accounts.map((a) => norm(a.name)));
+    const acctNorms = accounts.map((a) => ({ id: a.id, name: a.name, n: norm(a.name) }));
+    const map = new Map<string, { name: string; recordCount: number; totalAmount: number; lastDate: string; suggestion: string | null }>();
+    for (const r of saleRecords) {
+      const raw = (r.accountName || '').trim();
+      if (!raw) continue;
+      const n = norm(raw);
+      if (acctSet.has(n)) continue;
+      // Fuzzy suggestion: find an account whose normalized name shares the longest prefix
+      let suggestion: string | null = null;
+      let bestLen = 0;
+      for (const a of acctNorms) {
+        if (n.includes(a.n) || a.n.includes(n)) {
+          const overlap = Math.min(n.length, a.n.length);
+          if (overlap > bestLen && overlap >= 4) { bestLen = overlap; suggestion = a.name; }
+        }
+      }
+      const existing = map.get(n);
+      if (existing) {
+        existing.recordCount += 1;
+        existing.totalAmount += r.amount || 0;
+        if (r.date > existing.lastDate) existing.lastDate = r.date;
+      } else {
+        map.set(n, { name: raw, recordCount: 1, totalAmount: r.amount || 0, lastDate: r.date || '', suggestion });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [saleRecords, accounts]);
+
+  const orphanCount = orphanSalesAccounts.length;
+  const orphanTotalAmount = orphanSalesAccounts.reduce((s, o) => s + o.totalAmount, 0);
+  const orphanRecordCount = orphanSalesAccounts.reduce((s, o) => s + o.recordCount, 0);
 
   const filteredUsers = useMemo(() => {
     if (statusFilter === 'all') return allUsers;
@@ -205,6 +241,19 @@ export default function AdminPage() {
               }`}
             >
               User Permissions
+            </button>
+            <button
+              onClick={() => setActiveTab('health')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                activeTab === 'health' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Data Health
+              {orphanCount > 0 && (
+                <span className="bg-amber-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {orphanCount}
+                </span>
+              )}
             </button>
           </div>
 
@@ -469,6 +518,85 @@ export default function AdminPage() {
 
           {activeTab === 'permissions' && (
             <UserPermissionsPanel users={allUsers} onSave={(msg) => setToast(msg)} />
+          )}
+
+          {activeTab === 'health' && (
+            <div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Orphan Account Names</p>
+                  <p className={`text-3xl font-bold mt-1 ${orphanCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{orphanCount}</p>
+                  <p className="text-xs text-gray-400 mt-1">In sales data but not in CRM</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sales Records Affected</p>
+                  <p className="text-3xl font-bold text-gray-900 mt-1">{orphanRecordCount.toLocaleString()}</p>
+                  <p className="text-xs text-gray-400 mt-1">Of {saleRecords.length.toLocaleString()} total</p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Unattributed Revenue</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: orphanTotalAmount > 0 ? '#b45309' : '#1a4731' }}>{formatCurrency(orphanTotalAmount)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Not linked to any account</p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h2 className="text-base font-semibold text-gray-900">Sales Data Without CRM Account</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {orphanCount === 0
+                      ? 'All sales records are linked to a CRM Account. ✓'
+                      : `${orphanCount} unique account name${orphanCount > 1 ? 's' : ''} in sales data have no matching CRM Account. Create the missing accounts to attribute their revenue properly.`}
+                  </p>
+                </div>
+                {orphanCount > 0 ? (
+                  <div className="overflow-x-auto" style={{ maxHeight: 600 }}>
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-gray-50">
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Account Name (from Sales)</th>
+                          <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Records</th>
+                          <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Total Revenue</th>
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Last Sale</th>
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Possible Match?</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orphanSalesAccounts.map((o, i) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-amber-50/30 transition-colors">
+                            <td className="px-5 py-3">
+                              <p className="font-medium text-gray-900">{o.name}</p>
+                            </td>
+                            <td className="px-5 py-3 text-right text-gray-700 font-medium">{o.recordCount.toLocaleString()}</td>
+                            <td className="px-5 py-3 text-right font-semibold" style={{ color: '#1a4731' }}>{formatCurrency(o.totalAmount)}</td>
+                            <td className="px-5 py-3 text-sm text-gray-500">{formatDate(o.lastDate)}</td>
+                            <td className="px-5 py-3">
+                              {o.suggestion ? (
+                                <span className="text-xs">
+                                  <span className="text-gray-400">Did you mean </span>
+                                  <span className="font-medium text-blue-700">{o.suggestion}</span>
+                                  <span className="text-gray-400">?</span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="px-6 py-12 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-3">
+                      <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">All clear!</p>
+                    <p className="text-xs text-gray-500 mt-1">Every sales record is linked to a known CRM Account.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </main>
