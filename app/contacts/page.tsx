@@ -15,6 +15,7 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ImportModal from '@/app/components/ImportModal';
 import EditContactModal from '@/app/components/EditContactModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
+import ColumnFilter from '@/app/components/ColumnFilter';
 import { SPECIES_LIST, CONTACT_TYPES } from '@/app/components/ContactForm';
 import { getRoleLabel } from '@/lib/users';
 
@@ -78,6 +79,43 @@ function ContactsPageInner() {
   const sortArrow = (key: SortKey) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
 
   const [search, setSearch] = useState('');
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+
+  function setColFilter(colId: string, sel: Set<string>) {
+    setColFilters((prev) => {
+      const next = { ...prev };
+      if (sel.size === 0) delete next[colId]; else next[colId] = sel;
+      return next;
+    });
+  }
+  const activeFilterCount = Object.keys(colFilters).length;
+  function clearAllFilters() { setColFilters({}); }
+
+  const filterValues = useMemo(() => {
+    const uniq = (vals: (string | undefined | null)[]) => [...new Set(vals.map((v) => v || ''))].sort((a, b) => a.localeCompare(b));
+    return {
+      species: uniq(allContacts.map((c) => c.species)),
+      country: uniq(allContacts.map((c) => c.country)),
+      owner: uniq(allContacts.map((c) => c.ownerName || getOwnerName(c.ownerId))),
+      position: uniq(allContacts.map((c) => c.position)),
+      company: uniq(allContacts.map((c) => allAccounts.find((a) => a.id === c.accountId)?.name || c.accountName || '')),
+      keyMan: ['Yes', 'No'],
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allContacts, allAccounts, users]);
+
+  function getColValue(c: typeof allContacts[number], colId: string): string {
+    switch (colId) {
+      case 'species': return c.species || '';
+      case 'country': return c.country || '';
+      case 'owner': return c.ownerName || getOwnerName(c.ownerId) || '';
+      case 'position': return c.position || '';
+      case 'company': return allAccounts.find((a) => a.id === c.accountId)?.name || c.accountName || '';
+      case 'keyMan': return c.isKeyMan ? 'Yes' : 'No';
+      default: return '';
+    }
+  }
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -159,13 +197,17 @@ function ContactsPageInner() {
   const visibleCols = columnOrder.map((id) => ALL_COLUMNS.find((c) => c.id === id)!).filter((c) => c && !hiddenColumns.has(c.id));
 
   const filtered = useMemo(() => {
-    const list = contacts.filter((c) => {
+    let list = contacts.filter((c) => {
       const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
       const account = allAccounts.find((a) => a.id === c.accountId);
       const accountName = account?.name.toLowerCase() ?? '';
       const q = search.toLowerCase();
       return fullName.includes(q) || accountName.includes(q);
     });
+    for (const [colId, sel] of Object.entries(colFilters)) {
+      if (!sel || sel.size === 0) continue;
+      list = list.filter((c) => sel.has(getColValue(c, colId)));
+    }
     list.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
@@ -188,7 +230,7 @@ function ContactsPageInner() {
     });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contacts, allAccounts, users, search, sortKey, sortDir]);
+  }, [contacts, allAccounts, users, search, sortKey, sortDir, colFilters]);
 
   function handleContactSaved() {
     setToast('Contact created successfully');
@@ -241,7 +283,12 @@ function ContactsPageInner() {
           </div>
 
           {/* Column menu bar */}
-          <div className="flex justify-end mb-3">
+          <div className="flex justify-end items-center gap-2 mb-3">
+            {activeFilterCount > 0 && (
+              <button onClick={clearAllFilters} className="text-xs text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1 rounded-full border border-green-200 font-medium">
+                Clear {activeFilterCount} column filter{activeFilterCount > 1 ? 's' : ''} ✕
+              </button>
+            )}
             <div className="relative">
               <button onClick={() => setShowColMenu(!showColMenu)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 bg-white">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
@@ -291,14 +338,27 @@ function ContactsPageInner() {
                       onChange={(e) => { if (e.target.checked) setSelectedIds(new Set(filtered.map(c => c.id))); else setSelectedIds(new Set()); }}
                     />
                   </th>
-                  {visibleCols.map((col) => (
-                    <th key={col.id}
-                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap tracking-wide ${col.align === 'center' ? 'text-center' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none hover:text-gray-700' : ''}`}
-                      style={col.minWidth ? { minWidth: col.minWidth } : undefined}
-                      onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
-                      {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
-                    </th>
-                  ))}
+                  {visibleCols.map((col) => {
+                    const isFilterable = ['species','country','owner','position','company','keyMan'].includes(col.id);
+                    return (
+                      <th key={col.id}
+                        className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap tracking-wide ${col.align === 'center' ? 'text-center' : 'text-left'}`}
+                        style={col.minWidth ? { minWidth: col.minWidth } : undefined}>
+                        <span className={col.sortable ? 'cursor-pointer select-none hover:text-gray-700' : ''}
+                          onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
+                          {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
+                        </span>
+                        {isFilterable && filterValues[col.id as keyof typeof filterValues] && (
+                          <ColumnFilter
+                            label={col.label}
+                            values={filterValues[col.id as keyof typeof filterValues]}
+                            selected={colFilters[col.id] || new Set()}
+                            onChange={(s) => setColFilter(col.id, s)}
+                          />
+                        )}
+                      </th>
+                    );
+                  })}
                   <th className="w-16 px-3 py-3 sticky right-0 bg-gray-50 z-10" style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}></th>
                 </tr>
               </thead>

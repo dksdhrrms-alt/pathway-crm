@@ -13,6 +13,7 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import ImportModal from '@/app/components/ImportModal';
 import EditAccountModal from '@/app/components/EditAccountModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
+import ColumnFilter from '@/app/components/ColumnFilter';
 
 const FLAGS: Record<string, string> = {
   USA: '🇺🇸', Mexico: '🇲🇽', Colombia: '🇨🇴', Peru: '🇵🇪', Panama: '🇵🇦',
@@ -87,6 +88,37 @@ export default function AccountsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
+
+  function setColFilter(colId: string, sel: Set<string>) {
+    setColFilters((prev) => {
+      const next = { ...prev };
+      if (sel.size === 0) delete next[colId]; else next[colId] = sel;
+      return next;
+    });
+  }
+  const activeFilterCount = Object.keys(colFilters).length;
+  function clearAllFilters() { setColFilters({}); }
+
+  const filterValues = useMemo(() => {
+    const uniq = (vals: (string | undefined | null)[]) => [...new Set(vals.map((v) => v || ''))].sort((a, b) => a.localeCompare(b));
+    return {
+      industry: uniq(accounts.map((a) => a.industry)),
+      companyType: uniq(accounts.map((a) => a.companyType)),
+      country: uniq(accounts.map((a) => a.country)),
+      owner: uniq(accounts.map((a) => a.ownerName)),
+    };
+  }, [accounts]);
+
+  function getColValue(a: typeof accounts[number], colId: string): string {
+    switch (colId) {
+      case 'industry': return a.industry || '';
+      case 'companyType': return a.companyType || '';
+      case 'country': return a.country || '';
+      case 'owner': return a.ownerName || '';
+      default: return '';
+    }
+  }
 
   // Column customization
   const ALL_COLUMNS = useMemo(() => [
@@ -182,6 +214,10 @@ export default function AccountsPage() {
   const filtered = useMemo(() => {
     let list = accounts.filter((a) => a.name.toLowerCase().includes(search.toLowerCase()));
     if (ownerFilter !== 'all') list = list.filter((a) => a.ownerId === ownerFilter);
+    for (const [colId, sel] of Object.entries(colFilters)) {
+      if (!sel || sel.size === 0) continue;
+      list = list.filter((a) => sel.has(getColValue(a, colId)));
+    }
     list.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
@@ -196,7 +232,7 @@ export default function AccountsPage() {
       return sortDir === 'desc' ? -cmp : cmp;
     });
     return list;
-  }, [accounts, search, sortKey, sortDir, ownerFilter, dealsByAccount]);
+  }, [accounts, search, sortKey, sortDir, ownerFilter, dealsByAccount, colFilters]);
 
   const exportColumns: ExportColumn<typeof filtered[number]>[] = useMemo(() => [
     { id: 'name', label: 'Account Name', getValue: (a) => a.name },
@@ -259,6 +295,11 @@ export default function AccountsPage() {
                 return <option key={o.id} value={o.id}>{o.name} ({count})</option>;
               })}
             </select>
+            {activeFilterCount > 0 && (
+              <button onClick={clearAllFilters} className="text-xs text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1 rounded-full border border-green-200 font-medium">
+                Clear {activeFilterCount} column filter{activeFilterCount > 1 ? 's' : ''} ✕
+              </button>
+            )}
             {ownerFilter !== 'all' && (
               <button onClick={() => setOwnerFilter('all')} className="text-xs text-gray-500 hover:text-gray-700 underline">
                 Clear filter
@@ -314,14 +355,27 @@ export default function AccountsPage() {
                       checked={filtered.length > 0 && selectedIds.size === filtered.length}
                       onChange={(e) => { if (e.target.checked) setSelectedIds(new Set(filtered.map((a) => a.id))); else setSelectedIds(new Set()); }} />
                   </th>
-                  {visibleCols.map((col) => (
-                    <th key={col.id}
-                      className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.sortable ? 'cursor-pointer select-none' : ''}`}
-                      style={col.minWidth ? { minWidth: col.minWidth } : undefined}
-                      onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
-                      {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
-                    </th>
-                  ))}
+                  {visibleCols.map((col) => {
+                    const isFilterable = ['industry','companyType','country','owner'].includes(col.id);
+                    return (
+                      <th key={col.id}
+                        className={`px-4 py-3 font-medium text-gray-500 uppercase text-xs whitespace-nowrap ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                        style={col.minWidth ? { minWidth: col.minWidth } : undefined}>
+                        <span className={col.sortable ? 'cursor-pointer select-none hover:text-gray-700' : ''}
+                          onClick={col.sortable && col.sortKey ? () => toggleSort(col.sortKey!) : undefined}>
+                          {col.label}{col.sortable && col.sortKey && sortArrow(col.sortKey)}
+                        </span>
+                        {isFilterable && filterValues[col.id as keyof typeof filterValues] && (
+                          <ColumnFilter
+                            label={col.label}
+                            values={filterValues[col.id as keyof typeof filterValues]}
+                            selected={colFilters[col.id] || new Set()}
+                            onChange={(s) => setColFilter(col.id, s)}
+                          />
+                        )}
+                      </th>
+                    );
+                  })}
                   <th className="w-16 px-3 py-3 sticky right-0 bg-gray-50 z-10" style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}></th>
                 </tr>
               </thead>
