@@ -3,8 +3,9 @@
 import { useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
-import { generateId, Account, Contact } from '@/lib/data';
-import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, generateContactTemplate, parseMondayCompanies, parseMondayContacts, ParsedAccount, ParsedContact } from '@/lib/importParser';
+import { useUsers } from '@/lib/UserContext';
+import { generateId, Account } from '@/lib/data';
+import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, generateContactTemplate, parseMondayCompanies, parseMondayContacts, ParsedAccount, ParsedContact, fuzzyMatchUser } from '@/lib/importParser';
 
 type ImportType = 'accounts' | 'contacts';
 type Step = 'upload' | 'mapping' | 'preview' | 'done';
@@ -22,6 +23,14 @@ const CONTACT_FIELDS = ['firstName', 'lastName', 'title', 'accountName', 'phone'
 export default function ImportModal({ type, onClose, onDone }: Props) {
   const { data: session } = useSession();
   const { accounts, addAccount, contacts, addContact } = useCRM();
+  const { users } = useUsers();
+  const activeUsers = users.filter((u) => u.status === 'active');
+
+  // Resolve a CRM user from (a) the explicit "Sales" column, then (b) the name
+  // extracted from the Q (Date) column. Returns the matched user or null.
+  function resolveOwner(rawSalesName: string, fromDateName: string) {
+    return fuzzyMatchUser(rawSalesName, activeUsers) || fuzzyMatchUser(fromDateName, activeUsers);
+  }
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('upload');
@@ -96,12 +105,15 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
         for (const ma of mondayAccounts) {
           const existing = accounts.find((a) => a.name.toLowerCase() === ma.name.toLowerCase());
           if (existing && dupMode === 'skip') { skipped++; continue; }
+          const matched = resolveOwner(ma.ownerName, ma.ownerNameFromDate);
           addAccount({
             id: generateId(), name: ma.name,
             industry: ma.industry as Account['industry'],
             location: ma.location, annualRevenue: 0,
-            website: ma.website, ownerId: userId,
-            ownerName: ma.ownerName, country: ma.country,
+            website: ma.website,
+            ownerId: matched?.id ?? userId,
+            ownerName: matched?.name ?? (ma.ownerName || ma.ownerNameFromDate),
+            country: ma.country,
             phone: ma.phone, employee: ma.employee,
             category: ma.category, createdAt: ma.createdAt,
             contactIds: [], opportunityIds: [],
@@ -115,14 +127,17 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             if (dupMode === 'skip') { skipped++; continue; }
           }
           const matchedAccount = accounts.find((a) => a.name.toLowerCase() === mc.accountName.toLowerCase());
+          const matched = resolveOwner(mc.ownerName, mc.ownerNameFromDate);
           addContact({
             id: generateId(), firstName: mc.firstName, lastName: mc.lastName,
             title: mc.position || mc.species || '',
             species: mc.species, accountId: matchedAccount?.id ?? '',
             accountName: mc.accountName, country: mc.country,
-            ownerName: mc.ownerName, position: mc.position,
+            ownerName: matched?.name ?? (mc.ownerName || mc.ownerNameFromDate),
+            position: mc.position,
             isKeyMan: mc.isKeyMan, phone: mc.phone, tel: mc.tel,
-            email: mc.email, ownerId: userId,
+            email: mc.email,
+            ownerId: matched?.id ?? userId,
             createdAt: mc.createdAt, status: mc.status,
           });
           imported++;
@@ -136,6 +151,8 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
           if (!name) { errors++; continue; }
           const existing = accounts.find((a) => a.name.toLowerCase() === name.toLowerCase());
           if (existing && dupMode === 'skip') { skipped++; continue; }
+          const ownerNameRaw = getMapped(row, 'ownerName');
+          const matched = fuzzyMatchUser(ownerNameRaw, activeUsers);
           addAccount({
             id: generateId(), name,
             industry: (getMapped(row, 'industry') || 'Other') as Account['industry'],
@@ -144,7 +161,9 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             website: getMapped(row, 'website') || '',
             country: getMapped(row, 'country') || '',
             phone: getMapped(row, 'phone') || '',
-            ownerId: userId, contactIds: [], opportunityIds: [],
+            ownerId: matched?.id ?? userId,
+            ownerName: matched?.name ?? ownerNameRaw,
+            contactIds: [], opportunityIds: [],
           });
           imported++;
         }
@@ -164,6 +183,8 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
           }
           const accountName = getMapped(row, 'accountName');
           const matchedAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase());
+          const ownerNameRaw = getMapped(row, 'ownerName');
+          const matched = fuzzyMatchUser(ownerNameRaw, activeUsers);
           addContact({
             id: generateId(), firstName, lastName,
             title: getMapped(row, 'title') || '',
@@ -171,7 +192,8 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             phone: getMapped(row, 'phone') || '',
             email: email || '',
             linkedIn: getMapped(row, 'linkedIn') || undefined,
-            ownerId: userId,
+            ownerId: matched?.id ?? userId,
+            ownerName: matched?.name ?? ownerNameRaw,
           });
           imported++;
         }

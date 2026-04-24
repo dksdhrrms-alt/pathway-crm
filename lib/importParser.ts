@@ -42,6 +42,57 @@ function parseMondayDate(raw: string): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// Extract a person's name from a cell that may also contain a date / metadata.
+// Monday.com "Date" columns often look like:
+//   "Jan 15, 2026" + a separate "Created by" sub-text → exported as "Jan 15, 2026 Sarah Mitchell"
+// Returns the name portion (or '' if none found).
+export function extractNameFromCell(raw: string): string {
+  if (!raw) return '';
+  let s = String(raw)
+    .replace(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d+,?\s+\d{2,4}/gi, '')
+    .replace(/\d{4}-\d{2}-\d{2}/g, '')
+    .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '')
+    .replace(/\b(created|updated|added|modified|edited|by|at|on|am|pm)\b/gi, '')
+    .replace(/[,\-:|()\[\]]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Prefer "First Last" capitalized pattern; fall back to whatever is left
+  const m = s.match(/([A-Z][\p{L}'.-]+(?:\s+[A-Z][\p{L}'.-]+)+)/u);
+  return m ? m[1].trim() : s;
+}
+
+// Fuzzy match a name string to a list of CRM users. Returns best match or null.
+export function fuzzyMatchUser<T extends { id: string; name: string }>(query: string, users: T[]): T | null {
+  if (!query || users.length === 0) return null;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9À-ſ一-鿿가-힯\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = norm(query);
+  if (!q) return null;
+
+  // 1. Exact match
+  for (const u of users) if (norm(u.name) === q) return u;
+
+  // 2. Token overlap scoring
+  const qTokens = q.split(' ').filter((t) => t.length >= 2);
+  if (qTokens.length === 0) return null;
+
+  let bestScore = 0;
+  let best: T | null = null;
+  for (const u of users) {
+    const un = norm(u.name);
+    const uTokens = un.split(' ').filter((t) => t.length >= 2);
+    let score = 0;
+    for (const t of qTokens) {
+      if (uTokens.includes(t)) score += 3;
+      else if (uTokens.some((ut) => ut.startsWith(t) || t.startsWith(ut))) score += 1;
+    }
+    // Bonus when one fully contains the other
+    if (un.includes(q) || q.includes(un)) score += 2;
+    if (score > bestScore) { bestScore = score; best = u; }
+  }
+  // Require at least one full token hit (score 3+) to consider it a match
+  return bestScore >= 3 ? best : null;
+}
+
 // ── Species → Industry/Category mapping ─────────────────────────────────────
 
 function mapSpeciesToIndustry(species: string): string {
@@ -149,6 +200,7 @@ export interface ParsedAccount {
   industry: string;
   category: string;
   ownerName: string;
+  ownerNameFromDate: string; // Extracted from Q column (Date) for fuzzy matching fallback
   country: string;
   employee: number | null;
   phone: string;
@@ -176,6 +228,7 @@ export interface ParsedContact {
   accountName: string;
   country: string;
   ownerName: string;
+  ownerNameFromDate: string; // Extracted from Q column (Date) for fuzzy matching fallback
   position: string;
   isKeyMan: boolean;
   phone: string;
@@ -212,18 +265,21 @@ export function parseMondayCompanies(buffer: ArrayBuffer): ParsedAccount[] {
     .map((row, idx) => {
       const r = row as (string | number | null)[];
       const species = String(r[5] ?? '').trim();
-      if (idx < 3) console.log(`[MondayCompanies] Row ${idx}:`, { name: r[0], species: r[5], salesOwner: r[6], country: r[8] });
+      const qRaw = String(r[16] ?? '');
+      const ownerNameFromDate = extractNameFromCell(qRaw);
+      if (idx < 3) console.log(`[MondayCompanies] Row ${idx}:`, { name: r[0], species: r[5], salesOwner: r[6], country: r[8], qRaw, extractedName: ownerNameFromDate });
       return {
         name: String(r[0] ?? '').trim(),
         industry: mapSpeciesToIndustry(species),
         category: mapSpeciesToCategory(species),
         ownerName: String(r[6] ?? '').trim(),
+        ownerNameFromDate,
         country: String(r[8] ?? '').trim(),
         employee: r[9] ? Number(r[9]) || null : null,
         phone: formatPhone(String(r[11] ?? '').trim()),
         website: String(r[13] ?? '').trim(),
         location: String(r[14] ?? '').trim(),
-        createdAt: parseMondayDate(String(r[16] ?? '')),
+        createdAt: parseMondayDate(qRaw),
       };
     })
     .filter((a) => a.name.length > 0);
@@ -247,6 +303,11 @@ export function parseMondayContacts(buffer: ArrayBuffer): ParsedContact[] {
       const r = row as (string | number | null)[];
       const fullName = String(r[0] ?? '').trim();
       const parts = fullName.split(/\s+/);
+      // Q column (r[16]) often holds a "Date + Created by" combo on Monday.com — try it first,
+      // fall back to the dedicated Date column at r[13] (Col N).
+      const qRaw = String(r[16] ?? '');
+      const dateRaw = String(r[13] ?? '');
+      const ownerNameFromDate = extractNameFromCell(qRaw) || extractNameFromCell(dateRaw);
       return {
         firstName: parts[0] || fullName,
         lastName: parts.slice(1).join(' ') || '',
@@ -254,13 +315,14 @@ export function parseMondayContacts(buffer: ArrayBuffer): ParsedContact[] {
         accountName: String(r[4] ?? '').trim(),      // Col E: USA_Company
         country: String(r[5] ?? '').trim(),          // Col F: Country
         ownerName: String(r[6] ?? '').trim(),        // Col G: Sales
+        ownerNameFromDate,
         position: String(r[8] ?? '').trim(),         // Col I: Position
         isKeyMan: String(r[9] ?? '').trim().toLowerCase() === 'v', // Col J: Key Man
         phone: String(r[10] || r[11] || '').trim(),  // Col K: CellPhone, fallback Col L: Tel
         tel: String(r[11] ?? '').trim(),             // Col L: Tel (stored separately)
         email: String(r[12] ?? '').trim(),           // Col M: Email
         status: mapContactStatus(String(r[15] ?? '')), // Col P: Status
-        createdAt: parseMondayDate(String(r[13] ?? '')), // Col N: Date
+        createdAt: parseMondayDate(qRaw || dateRaw), // Q (Date) preferred, fallback N
       };
     })
     .filter((c) => c.firstName.length > 0);
