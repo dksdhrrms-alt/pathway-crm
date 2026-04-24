@@ -288,19 +288,37 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                 <table className="w-full text-xs">
                   <thead><tr className="border-b bg-gray-50">
                     {type === 'accounts'
-                      ? ['Name','Industry','Owner','Country','Phone','Website'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)
-                      : ['Name','Species','Company','Country','Position','Key','Email'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)}
+                      ? ['Name','Industry','Owner →','Country','Phone','Website'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)
+                      : ['Name','Species','Company','Country','Owner →','Email'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)}
                   </tr></thead>
                   <tbody>
-                    {(type === 'accounts' ? mondayAccounts : mondayContacts).slice(0, 10).map((r, i) => (
-                      <tr key={i} className="border-b border-gray-50">
-                        {type === 'accounts' ? (
-                          <>{[('name' in r ? r.name : ''), ('industry' in r ? (r as ParsedAccount).industry : ''), ('ownerName' in r ? (r as ParsedAccount).ownerName : ''), ('country' in r ? (r as ParsedAccount).country : ''), ('phone' in r ? r.phone : ''), ('website' in r ? (r as ParsedAccount).website : '')].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}</>
-                        ) : (
-                          <>{[`${(r as ParsedContact).firstName} ${(r as ParsedContact).lastName}`, (r as ParsedContact).species, (r as ParsedContact).accountName, (r as ParsedContact).country, (r as ParsedContact).position, (r as ParsedContact).isKeyMan ? '★' : '☆', (r as ParsedContact).email].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{String(v) || '—'}</td>)}</>
-                        )}
-                      </tr>
-                    ))}
+                    {(type === 'accounts' ? mondayAccounts : mondayContacts).slice(0, 10).map((r, i) => {
+                      const ownerName = (r as ParsedAccount | ParsedContact).ownerName;
+                      const ownerFromDate = (r as ParsedAccount | ParsedContact).ownerNameFromDate;
+                      const matched = resolveOwner(ownerName, ownerFromDate);
+                      const ownerCell = (
+                        <span title={`Sales: "${ownerName || '—'}" · Date col: "${ownerFromDate || '—'}"`}>
+                          {matched ? <span className="text-green-700 font-medium">✓ {matched.name}</span> : <span className="text-amber-600 italic">{ownerName || ownerFromDate || '—'}</span>}
+                        </span>
+                      );
+                      return (
+                        <tr key={i} className="border-b border-gray-50">
+                          {type === 'accounts' ? (
+                            <>
+                              {[(r as ParsedAccount).name, (r as ParsedAccount).industry].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                              <td className="px-2 py-1.5 truncate max-w-[140px]">{ownerCell}</td>
+                              {[(r as ParsedAccount).country, (r as ParsedAccount).phone, (r as ParsedAccount).website].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                            </>
+                          ) : (
+                            <>
+                              {[`${(r as ParsedContact).firstName} ${(r as ParsedContact).lastName}`, (r as ParsedContact).species, (r as ParsedContact).accountName, (r as ParsedContact).country].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                              <td className="px-2 py-1.5 truncate max-w-[140px]">{ownerCell}</td>
+                              <td className="px-2 py-1.5 text-gray-700 truncate max-w-[120px]">{(r as ParsedContact).email || '—'}</td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               ) : (

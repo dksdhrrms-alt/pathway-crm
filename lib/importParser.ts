@@ -299,15 +299,16 @@ export function parseMondayContacts(buffer: ArrayBuffer): ParsedContact[] {
       const name = String((row as unknown[])[0] ?? '').trim();
       return name.length > 1 && name !== '이름' && name !== 'Customer Person' && !name.startsWith('USA_');
     })
-    .map((row) => {
+    .map((row, idx) => {
       const r = row as (string | number | null)[];
       const fullName = String(r[0] ?? '').trim();
       const parts = fullName.split(/\s+/);
-      // Q column (r[16]) often holds a "Date + Created by" combo on Monday.com — try it first,
-      // fall back to the dedicated Date column at r[13] (Col N).
-      const qRaw = String(r[16] ?? '');
+      // For Monday.com contact exports the Date column is N (r[13]). Try it first
+      // (it's the canonical date for contacts), fall back to Q (r[16]) only if N is empty.
       const dateRaw = String(r[13] ?? '');
-      const ownerNameFromDate = extractNameFromCell(qRaw) || extractNameFromCell(dateRaw);
+      const qRaw = String(r[16] ?? '');
+      const ownerNameFromDate = extractNameFromCell(dateRaw) || extractNameFromCell(qRaw);
+      if (idx < 3) console.log(`[MondayContacts] Row ${idx}:`, { name: r[0], salesOwner: r[6], dateRaw, qRaw, extractedName: ownerNameFromDate });
       return {
         firstName: parts[0] || fullName,
         lastName: parts.slice(1).join(' ') || '',
@@ -322,7 +323,7 @@ export function parseMondayContacts(buffer: ArrayBuffer): ParsedContact[] {
         tel: String(r[11] ?? '').trim(),             // Col L: Tel (stored separately)
         email: String(r[12] ?? '').trim(),           // Col M: Email
         status: mapContactStatus(String(r[15] ?? '')), // Col P: Status
-        createdAt: parseMondayDate(qRaw || dateRaw), // Q (Date) preferred, fallback N
+        createdAt: parseMondayDate(dateRaw || qRaw), // N (Date) preferred for contacts, fallback Q
       };
     })
     .filter((c) => c.firstName.length > 0);
