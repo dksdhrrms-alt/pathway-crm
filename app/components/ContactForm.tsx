@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Contact, generateId } from '@/lib/data';
+import { Contact, generateId, US_STATES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
@@ -53,6 +53,7 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [email, setEmail] = useState(initialData?.email || '');
   const [birthday, setBirthday] = useState(initialData?.birthday || '');
   const [anniversary, setAnniversary] = useState(initialData?.anniversary || '');
+  const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -84,6 +85,7 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       email: email.trim(),
       birthday: birthday || undefined,
       anniversary: anniversary || undefined,
+      state: stateVal.trim(),
       notes: notes.trim(),
       title: position.trim() || species,
     };
@@ -149,15 +151,29 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
           <CountrySelect value={country} onChange={setCountry} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Owner (Sales Rep)</label>
-          <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-            <option value="">Select owner...</option>
-            {activeUsers.sort((a, b) => a.name.localeCompare(b.name)).map((u) => (
-              <option key={u.id} value={u.id}>{u.name} — {getRoleLabel(u.role)}</option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-gray-700 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 text-xs">(US only)</span>}</label>
+          {country === 'USA' || !country ? (
+            <select value={stateVal} onChange={(e) => setStateVal(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">Select state...</option>
+              {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
+            </select>
+          ) : (
+            <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          )}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Owner (Sales Rep)</label>
+        <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+          <option value="">Select owner...</option>
+          {activeUsers.sort((a, b) => a.name.localeCompare(b.name)).map((u) => (
+            <option key={u.id} value={u.id}>{u.name} — {getRoleLabel(u.role)}</option>
+          ))}
+        </select>
       </div>
 
       <div>

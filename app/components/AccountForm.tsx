@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Account, generateId } from '@/lib/data';
+import { Account, generateId, US_STATES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
@@ -44,6 +44,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [employee, setEmployee] = useState(initialData?.employee != null ? String(initialData.employee) : '');
   const [website, setWebsite] = useState(initialData?.website || '');
   const [location, setLocation] = useState(initialData?.location || '');
+  const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -68,6 +69,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       employee: employee ? parseInt(employee) : null,
       website: ws,
       location: location.trim(),
+      state: stateVal.trim(),
       notes: notes.trim(),
     };
 
@@ -141,15 +143,29 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
 
       <div className="grid grid-cols-2 gap-4">
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 text-xs">(US only)</span>}</label>
+          {country === 'USA' || !country ? (
+            <select value={stateVal} onChange={(e) => setStateVal(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">Select state...</option>
+              {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
+            </select>
+          ) : (
+            <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          )}
+        </div>
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Telephone</label>
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Employee Count</label>
-          <input type="number" value={employee} onChange={(e) => setEmployee(e.target.value)} placeholder="e.g. 100" min={0}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Employee Count</label>
+        <input type="number" value={employee} onChange={(e) => setEmployee(e.target.value)} placeholder="e.g. 100" min={0}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div>
