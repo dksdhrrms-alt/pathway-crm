@@ -26,6 +26,13 @@ const typeColor: Record<ActivityType, string> = {
   Note: 'bg-gray-100 text-gray-700',
 };
 
+const typeLabel: Record<ActivityType, string> = {
+  Call: 'Call / Text Message',
+  Meeting: 'Meeting',
+  Email: 'Email',
+  Note: 'Note',
+};
+
 function formatDate(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short',
@@ -81,7 +88,7 @@ export default function ActivityTimeline({
                       <span
                         className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${typeColor[activity.type]}`}
                       >
-                        {activity.type}
+                        {typeLabel[activity.type]}
                       </span>
                       {activity.purpose && (
                         <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">

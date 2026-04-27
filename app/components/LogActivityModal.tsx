@@ -15,6 +15,7 @@ interface LogActivityModalProps {
 }
 
 const ACTIVITY_TYPES: ActivityType[] = ['Call', 'Meeting', 'Email', 'Note'];
+const TYPE_LABEL: Record<ActivityType, string> = { Call: 'Call / Text Message', Meeting: 'Meeting', Email: 'Email', Note: 'Note' };
 
 export default function LogActivityModal({
   accountId: initialAccountId,
@@ -123,7 +124,7 @@ export default function LogActivityModal({
               >
                 {ACTIVITY_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t}
+                    {TYPE_LABEL[t]}
                   </option>
                 ))}
               </select>

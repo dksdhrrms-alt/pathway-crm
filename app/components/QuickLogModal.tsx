@@ -6,7 +6,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 
 const ACTIVITY_TYPES: { id: ActivityType; emoji: string; label: string }[] = [
-  { id: 'Call', emoji: '📞', label: 'Call' },
+  { id: 'Call', emoji: '📞', label: 'Call / Text' },
   { id: 'Meeting', emoji: '🤝', label: 'Meeting' },
   { id: 'Email', emoji: '📧', label: 'Email' },
   { id: 'Note', emoji: '📝', label: 'Note' },

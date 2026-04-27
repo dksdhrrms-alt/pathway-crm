@@ -260,16 +260,19 @@ export default function DashboardPage() {
             <div className="flex items-center gap-3 flex-wrap">
               {/* Quick Log shortcuts */}
               <div className="flex gap-1.5">
-                {(['Call', 'Meeting', 'Email', 'Note'] as ActivityType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setQuickLogType(t)}
-                    className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs hover:border-gray-300 hover:shadow-sm transition-all flex items-center gap-1"
-                  >
-                    {t === 'Call' ? '📞' : t === 'Meeting' ? '🤝' : t === 'Email' ? '📧' : '📝'}
-                    <span className="hidden sm:inline">{t}</span>
-                  </button>
-                ))}
+                {(['Call', 'Meeting', 'Email', 'Note'] as ActivityType[]).map((t) => {
+                  const label = t === 'Call' ? 'Call / Text' : t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setQuickLogType(t)}
+                      className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs hover:border-gray-300 hover:shadow-sm transition-all flex items-center gap-1"
+                    >
+                      {t === 'Call' ? '📞' : t === 'Meeting' ? '🤝' : t === 'Email' ? '📧' : '📝'}
+                      <span className="hidden sm:inline">{label}</span>
+                    </button>
+                  );
+                })}
               </div>
               {/* View tabs — hidden entirely for staff who only see personal */}
               {(canViewCompany || canViewTeam) && (
