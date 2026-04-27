@@ -47,17 +47,16 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [location, setLocation] = useState(initialData?.location || '');
   const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
-  const [parentAccountId, setParentAccountId] = useState(initialData?.parentAccountId || '');
   // "Integration" toggle — when ON, this account is part of an Integration (parent-child) hierarchy.
-  // Initial state: ON if a parent is already linked, otherwise OFF.
-  const [isIntegration, setIsIntegration] = useState(!!initialData?.parentAccountId);
+  // Start with safe defaults; the useEffect below will sync values from `initialData`
+  // once it's actually loaded. This avoids the useState-initializer-runs-once trap where
+  // initialData was still undefined / unfetched when the form first mounted.
+  const [parentAccountId, setParentAccountId] = useState('');
+  const [isIntegration, setIsIntegration] = useState(false);
 
-  // Re-sync Integration/parent state if initialData arrives or changes after mount.
-  // useState initializers only run once, so when CRMContext finishes loading the
-  // account record AFTER the modal mounts, the toggle would otherwise stay OFF.
   useEffect(() => {
     setParentAccountId(initialData?.parentAccountId || '');
-    setIsIntegration(!!initialData?.parentAccountId);
+    setIsIntegration(Boolean(initialData?.parentAccountId));
   }, [initialData?.id, initialData?.parentAccountId]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -84,8 +83,10 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       location: location.trim(),
       state: stateVal.trim(),
       notes: notes.trim(),
-      // Only persist parent linkage when Integration toggle is ON; clearing it removes the link.
-      parentAccountId: isIntegration ? (parentAccountId || undefined) : undefined,
+      // Persist explicit empty string (not undefined) when clearing the link, so
+      // updateAccount actually overwrites the existing parent_account_id in the DB
+      // instead of silently skipping the field.
+      parentAccountId: isIntegration && parentAccountId ? parentAccountId : '',
     };
 
     if (mode === 'new') {
