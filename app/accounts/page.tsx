@@ -234,6 +234,52 @@ export default function AccountsPage() {
     return list;
   }, [accounts, search, sortKey, sortDir, ownerFilter, dealsByAccount, colFilters]);
 
+  // Integration accordion: top-level only by default; expand parents to show children inline.
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  function toggleExpand(id: string) {
+    setExpandedParents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  const childrenByParent = useMemo(() => {
+    const map: Record<string, typeof allAccounts> = {};
+    allAccounts.forEach((a) => {
+      if (a.parentAccountId) {
+        if (!map[a.parentAccountId]) map[a.parentAccountId] = [];
+        map[a.parentAccountId].push(a);
+      }
+    });
+    return map;
+  }, [allAccounts]);
+
+  // Accordion only when no search/filter is active — otherwise users would lose matched children.
+  const hasActiveFilters = search.trim().length > 0 || ownerFilter !== 'all' || activeFilterCount > 0;
+
+  const renderedRows = useMemo(() => {
+    type Row = { account: typeof filtered[number]; depth: number };
+    if (hasActiveFilters) return filtered.map((a) => ({ account: a, depth: 0 } as Row));
+    const topLevel = filtered.filter((a) => !a.parentAccountId);
+    const rows: Row[] = [];
+    for (const a of topLevel) {
+      rows.push({ account: a, depth: 0 });
+      if (expandedParents.has(a.id)) {
+        const children = (childrenByParent[a.id] || []).slice().sort((x, y) => x.name.localeCompare(y.name));
+        children.forEach((c) => rows.push({ account: c, depth: 1 }));
+      }
+    }
+    return rows;
+  }, [filtered, expandedParents, childrenByParent, hasActiveFilters]);
+
+  function expandAll() {
+    const ids = new Set<string>();
+    Object.keys(childrenByParent).forEach((id) => ids.add(id));
+    setExpandedParents(ids);
+  }
+  function collapseAll() { setExpandedParents(new Set()); }
+  const totalParentsWithChildren = Object.keys(childrenByParent).length;
+
   const exportColumns: ExportColumn<typeof filtered[number]>[] = useMemo(() => [
     { id: 'name', label: 'Account Name', getValue: (a) => a.name },
     { id: 'industry', label: 'Species', getValue: (a) => a.industry || '' },
@@ -288,7 +334,12 @@ export default function AccountsPage() {
           <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Accounts</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {filtered.length} of {accounts.length} account{accounts.length !== 1 ? 's' : ''}{isAdmin ? ' total' : ''}
+                {!hasActiveFilters && totalParentsWithChildren > 0 && (
+                  <span className="text-gray-400"> · {totalParentsWithChildren} integration{totalParentsWithChildren > 1 ? 's' : ''}</span>
+                )}
+              </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <ExportButton filename={`accounts-${new Date().toISOString().split('T')[0]}`} title="Accounts" columns={exportColumns} rows={filtered} />
@@ -318,7 +369,17 @@ export default function AccountsPage() {
                 Clear filter
               </button>
             )}
-            <div className="ml-auto relative">
+            {!hasActiveFilters && totalParentsWithChildren > 0 && (
+              <div className="ml-auto flex items-center gap-1">
+                <button onClick={expandAll} className="text-xs px-2.5 py-1 rounded-lg border border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-700">
+                  ▼ Expand all
+                </button>
+                <button onClick={collapseAll} className="text-xs px-2.5 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-700">
+                  ▶ Collapse
+                </button>
+              </div>
+            )}
+            <div className={`${hasActiveFilters || totalParentsWithChildren === 0 ? 'ml-auto' : ''} relative`}>
               <button onClick={() => setShowColMenu(!showColMenu)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" /></svg>
@@ -393,13 +454,13 @@ export default function AccountsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {renderedRows.length === 0 ? (
                   <tr><td colSpan={visibleCols.length + 2} className="text-center text-gray-400" style={{ height: 400 }}>No accounts match your search.</td></tr>
-                ) : filtered.map((acct) => {
+                ) : renderedRows.map(({ account: acct, depth }) => {
                   const badge = SPECIES_BADGE[acct.industry] || SPECIES_BADGE.Other;
                   const isSelected = selectedIds.has(acct.id);
                   return (
-                    <tr key={acct.id} className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors group ${isSelected ? 'bg-green-50/40' : ''}`}>
+                    <tr key={acct.id} className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors group ${isSelected ? 'bg-green-50/40' : ''} ${depth > 0 ? 'bg-blue-50/20' : ''}`}>
                       <td className="px-3 py-3">
                         <input type="checkbox" className="rounded border-gray-300" checked={isSelected}
                           onChange={(e) => { const n = new Set(selectedIds); if (e.target.checked) n.add(acct.id); else n.delete(acct.id); setSelectedIds(n); }} />
@@ -408,19 +469,32 @@ export default function AccountsPage() {
                         switch (col.id) {
                           case 'name': {
                             const parent = acct.parentAccountId ? allAccounts.find((a) => a.id === acct.parentAccountId) : null;
-                            const childCount = allAccounts.filter((a) => a.parentAccountId === acct.id).length;
+                            const childCount = (childrenByParent[acct.id] || []).length;
+                            const isExpanded = expandedParents.has(acct.id);
                             return (
                               <td key={col.id} className="px-4 py-3">
-                                <div className="flex items-center gap-1.5">
-                                  {parent && <span className="text-gray-300 text-xs" title={`Child of ${parent.name}`}>↳</span>}
-                                  <Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link>
+                                <div className="flex items-center gap-1.5" style={{ paddingLeft: depth * 24 }}>
+                                  {/* Chevron for parents (only in accordion mode) */}
+                                  {!hasActiveFilters && childCount > 0 && depth === 0 ? (
+                                    <button onClick={() => toggleExpand(acct.id)}
+                                      className="w-5 h-5 flex items-center justify-center rounded hover:bg-blue-100 text-blue-700 text-xs"
+                                      title={isExpanded ? 'Collapse' : 'Expand'}>
+                                      {isExpanded ? '▼' : '▶'}
+                                    </button>
+                                  ) : depth === 0 ? (
+                                    <span className="w-5 h-5 inline-block" />
+                                  ) : (
+                                    <span className="text-blue-300 text-xs" title="Complex">↳</span>
+                                  )}
+                                  <Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: depth > 0 ? '#2d6a4f' : '#1a4731' }}>{acct.name}</Link>
                                   {childCount > 0 && (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium" title={`${childCount} child account${childCount > 1 ? 's' : ''}`}>
                                       +{childCount}
                                     </span>
                                   )}
                                 </div>
-                                {parent && <p className="text-[11px] text-gray-400 mt-0.5">↳ <Link href={`/accounts/${parent.id}`} className="hover:underline">{parent.name}</Link></p>}
+                                {/* Parent breadcrumb only when accordion off (search active) and account is a child */}
+                                {hasActiveFilters && parent && <p className="text-[11px] text-gray-400 mt-0.5 ml-6">↳ <Link href={`/accounts/${parent.id}`} className="hover:underline">{parent.name}</Link></p>}
                               </td>
                             );
                           }
