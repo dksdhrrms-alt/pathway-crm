@@ -13,7 +13,7 @@ interface NewOpportunityModalProps {
   onSave: (opportunity: Opportunity) => void;
 }
 
-const STAGES: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
 const DEFAULT_PROBABILITY: Record<Stage, number> = {
   Prospect: 5,
@@ -39,7 +39,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
 
   const [name, setName] = useState('');
   const [accountId, setAccountId] = useState(defaultAccountId);
-  const initialStage = defaultStage || 'Prospecting';
+  const initialStage = defaultStage || 'Prospect';
   const [stage, setStage] = useState<Stage>(initialStage);
   const [amount, setAmount] = useState('');
   const [closeDate, setCloseDate] = useState('2026-06-30');

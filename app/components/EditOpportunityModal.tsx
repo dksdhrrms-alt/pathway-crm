@@ -7,7 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import AccountSearchSelect from './AccountSearchSelect';
 
-const STAGES: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
 
 interface Props { opportunity: Opportunity; onClose: () => void; onSaved: () => void; }
@@ -88,6 +88,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
               <select value={stage} onChange={(e) => handleStageChange(e.target.value as Stage)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                 {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                {!STAGES.includes(stage) && <option value={stage}>{stage} (legacy)</option>}
               </select>
             </div>
             <div>
