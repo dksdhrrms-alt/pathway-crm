@@ -155,7 +155,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($ / month)</label>
               <input
                 type="number"
                 value={amount}
