@@ -118,16 +118,12 @@ export interface Activity {
 }
 
 export const ACTIVITY_PURPOSES = [
-  'Introduction',
-  'Discovery',
-  'Sample / Trial',
-  'Pricing / Quote',
-  'Negotiation',
-  'Order Confirmation',
-  'Follow-up',
-  'Technical Support',
-  'Relationship Building',
-  'Other',
+  'Prospecting - new opportunity',
+  'Prospecting - growing existing business',
+  'Follow up - new opportunity',
+  'Follow up - existing business',
+  'maintenance - existing customer',
+  'Industry call - informational',
 ];
 
 export interface Task {
