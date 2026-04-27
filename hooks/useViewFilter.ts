@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useUsers } from '@/lib/UserContext';
 import { MONOGASTRICS_GROUP } from '@/lib/teams';
 
 export type ViewType = 'personal' | 'team' | 'company';
+
+// Role-based view permissions:
+//   - Admin tier (admin / administrative_manager / ceo): all 3 views
+//   - Director tier (sales_director / coo): personal + team only
+//   - Staff tier (sales / marketing / others): personal only
+const ADMIN_ROLES = ['admin', 'administrative_manager', 'ceo'];
+const DIRECTOR_ROLES = ['sales_director', 'coo'];
 
 export function useViewFilter() {
   const { data: session } = useSession();
@@ -14,9 +21,26 @@ export function useViewFilter() {
   const userId = session?.user?.id ?? '';
   const role = (session?.user as { role?: string })?.role ?? '';
 
-  const isAdminOrCeo = ['admin', 'administrative_manager', 'ceo'].includes(role);
+  const isAdminOrCeo = ADMIN_ROLES.includes(role);
+  const canViewCompany = isAdminOrCeo;
+  const canViewTeam = isAdminOrCeo || DIRECTOR_ROLES.includes(role);
 
-  const [activeView, setActiveView] = useState<ViewType>('personal');
+  // Default landing view: highest permitted scope
+  const defaultView: ViewType = canViewCompany ? 'company' : canViewTeam ? 'team' : 'personal';
+  const [activeView, setActiveViewRaw] = useState<ViewType>(defaultView);
+
+  // Guard against unauthorized view changes (bypass attempts via stale state)
+  const setActiveView = useCallback((v: ViewType) => {
+    if (v === 'company' && !canViewCompany) return;
+    if (v === 'team' && !canViewTeam) return;
+    setActiveViewRaw(v);
+  }, [canViewCompany, canViewTeam]);
+
+  // Auto-correct if current view becomes unauthorized (e.g., role changes mid-session)
+  useEffect(() => {
+    if (activeView === 'company' && !canViewCompany) setActiveViewRaw(canViewTeam ? 'team' : 'personal');
+    else if (activeView === 'team' && !canViewTeam) setActiveViewRaw('personal');
+  }, [activeView, canViewCompany, canViewTeam]);
 
   const currentUser = users.find((u) => u.id === userId);
   const userTeam = (currentUser as { team?: string } | undefined)?.team ?? '';
@@ -59,5 +83,5 @@ export function useViewFilter() {
     return data.filter((item) => item.ownerId === userId);
   }, [activeView, teamMemberIds, userId]);
 
-  return { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo, userId, teamMemberIds };
+  return { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo, canViewCompany, canViewTeam, userId, teamMemberIds };
 }

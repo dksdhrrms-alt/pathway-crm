@@ -52,11 +52,21 @@ export default function DashboardPage() {
   const userId = session?.user?.id ?? '';
   const userName = session?.user?.name ?? '';
   const isAdminCeo = ['administrative_manager', 'admin', 'ceo'].includes(role);
+  const canViewCompany = isAdminCeo;
+  const canViewTeam = isAdminCeo || ['sales_director', 'coo'].includes(role);
 
   const { opportunities: allOpps, tasks: allTasks, activities: allActivities, accounts, contacts, toggleTask, loading } = useCRM();
   const { users } = useUsers();
 
-  const [activeTab, setActiveTab] = useState<'company' | 'team' | 'personal'>(isAdminCeo ? 'company' : 'team');
+  const [activeTab, setActiveTab] = useState<'company' | 'team' | 'personal'>(
+    canViewCompany ? 'company' : canViewTeam ? 'team' : 'personal'
+  );
+
+  // Auto-correct if state ever holds an unauthorized view
+  useEffect(() => {
+    if (activeTab === 'company' && !canViewCompany) setActiveTab(canViewTeam ? 'team' : 'personal');
+    else if (activeTab === 'team' && !canViewTeam) setActiveTab('personal');
+  }, [activeTab, canViewCompany, canViewTeam]);
   const [toast, setToast] = useState<string | null>(null);
   const [quotaTarget, setQuotaTarget] = useState(500000);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
@@ -258,26 +268,30 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
-              {/* View tabs */}
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                {isAdminCeo && (
-                  <button onClick={() => setActiveTab('company')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    style={activeTab === 'company' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                    Company-wide
+              {/* View tabs — hidden entirely for staff who only see personal */}
+              {(canViewCompany || canViewTeam) && (
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                  {canViewCompany && (
+                    <button onClick={() => setActiveTab('company')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                      style={activeTab === 'company' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                      Company-wide
+                    </button>
+                  )}
+                  {canViewTeam && (
+                    <button onClick={() => setActiveTab('team')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                      style={activeTab === 'team' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                      {teamLabel || 'Team'}
+                    </button>
+                  )}
+                  <button onClick={() => setActiveTab('personal')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    style={activeTab === 'personal' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                    Personal
                   </button>
-                )}
-                <button onClick={() => setActiveTab('team')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  style={activeTab === 'team' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                  {teamLabel || 'Team'}
-                </button>
-                <button onClick={() => setActiveTab('personal')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                  style={activeTab === 'personal' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                  Personal
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </div>
 

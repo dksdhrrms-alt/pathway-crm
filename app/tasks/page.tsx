@@ -35,7 +35,7 @@ const priorityStyles: Record<string, string> = {
 export default function TasksPage() {
   const { tasks: allTasks, accounts, contacts, toggleTask, deleteTask, loading } = useCRM();
   const { users } = useUsers();
-  const { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo } = useViewFilter();
+  const { activeView, setActiveView, filterByView, teamLabel, viewLabel, canViewCompany, canViewTeam } = useViewFilter();
 
   const taskList = useMemo(() => filterByView(allTasks), [allTasks, activeView, filterByView]);
 
@@ -110,7 +110,7 @@ export default function TasksPage() {
               <p className="text-sm text-gray-500 mt-0.5">{openTaskCount} open &middot; {viewLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={isAdminOrCeo} />
+              <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={canViewCompany} showTeam={canViewTeam} />
               <button
                 onClick={() => setShowNewTaskModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
