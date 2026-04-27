@@ -16,14 +16,14 @@ export async function getComments(parentType: string, parentId: string): Promise
     const { data, error } = await supabase
       .from('comments')
       .select('*')
-      .eq('parent_type', parentType)
-      .eq('parent_id', parentId)
+      .eq('entity_type', parentType)
+      .eq('entity_id', parentId)
       .order('created_at', { ascending: true });
     if (error) { console.error('[COMMENTS] fetch error:', error.message, error.code, error.details); return []; }
     return (data || []).map((r) => ({
       id: r.id,
-      parentType: r.parent_type,
-      parentId: r.parent_id,
+      parentType: r.entity_type,
+      parentId: r.entity_id,
       body: r.body,
       authorId: r.author_id || '',
       authorName: r.author_name || 'Unknown',
@@ -43,8 +43,8 @@ export async function addComment(comment: Omit<Comment, 'createdAt'>): Promise<C
 
   const row = {
     id: comment.id,
-    parent_type: comment.parentType,
-    parent_id: comment.parentId,
+    entity_type: comment.parentType,
+    entity_id: comment.parentId,
     body: comment.body,
     author_id: comment.authorId || 'anonymous',
     author_name: comment.authorName || 'Unknown',
@@ -68,8 +68,8 @@ export async function addComment(comment: Omit<Comment, 'createdAt'>): Promise<C
     console.log('[COMMENTS] insert success:', data.id);
     return {
       id: data.id,
-      parentType: data.parent_type,
-      parentId: data.parent_id,
+      parentType: data.entity_type,
+      parentId: data.entity_id,
       body: data.body,
       authorId: data.author_id || '',
       authorName: data.author_name || 'Unknown',
