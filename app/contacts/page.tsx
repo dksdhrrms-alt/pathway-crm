@@ -243,6 +243,21 @@ function ContactsPageInner() {
     setToast('Contact deleted');
   }
 
+  function bulkUpdate(field: 'species' | 'position' | 'country' | 'ownerId', value: string) {
+    if (!value || selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    if (field === 'ownerId') {
+      const u = activeUsers.find((x) => x.id === value);
+      ids.forEach((id) => updateContact(id, { ownerId: value, ownerName: u?.name || '' }));
+    } else {
+      ids.forEach((id) => updateContact(id, { [field]: value }));
+    }
+    const label = field === 'species' ? 'Species' : field === 'position' ? 'Contact Type' : field === 'country' ? 'Country' : 'Owner';
+    setToast(`${ids.length} contact${ids.length > 1 ? 's' : ''} — ${label} updated`);
+  }
+
+  const COUNTRY_LIST = ['USA','Mexico','Colombia','Peru','Panama','El Salvador','Guatemala','Brazil','Ecuador','Bolivia','Chile','Dominican Republic','Jamaica','Korea','UK'];
+
   const contactToDelete = confirmDeleteId ? contacts.find((c) => c.id === confirmDeleteId) : null;
 
   const exportColumns: ExportColumn<typeof filtered[number]>[] = useMemo(() => [
@@ -503,11 +518,32 @@ function ContactsPageInner() {
       )}
 
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-gray-200 px-6 py-3 rounded-xl shadow-lg flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">{selectedIds.size} contact{selectedIds.size > 1 ? 's' : ''} selected</span>
-          <button onClick={() => setShowBulkEmail(true)} className="px-4 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800">Send Email</button>
-          <button onClick={() => setShowBulkDelete(true)} className="px-4 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete Selected</button>
-          <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-400 hover:text-gray-600">Clear</button>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-gray-200 px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 flex-wrap max-w-[95vw]">
+          <span className="text-sm font-medium text-gray-700 whitespace-nowrap">{selectedIds.size} selected</span>
+          <span className="text-xs text-gray-400 border-l border-gray-200 pl-3">Bulk update:</span>
+          <select onChange={(e) => { bulkUpdate('species', e.target.value); e.target.value = ''; }}
+            className="text-xs px-2 py-1 border border-gray-300 rounded-lg cursor-pointer hover:border-green-400" defaultValue="">
+            <option value="" disabled>Species…</option>
+            {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select onChange={(e) => { bulkUpdate('position', e.target.value); e.target.value = ''; }}
+            className="text-xs px-2 py-1 border border-gray-300 rounded-lg cursor-pointer hover:border-green-400" defaultValue="">
+            <option value="" disabled>Contact Type…</option>
+            {CONTACT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select onChange={(e) => { bulkUpdate('ownerId', e.target.value); e.target.value = ''; }}
+            className="text-xs px-2 py-1 border border-gray-300 rounded-lg cursor-pointer hover:border-green-400" defaultValue="">
+            <option value="" disabled>Owner…</option>
+            {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <select onChange={(e) => { bulkUpdate('country', e.target.value); e.target.value = ''; }}
+            className="text-xs px-2 py-1 border border-gray-300 rounded-lg cursor-pointer hover:border-green-400" defaultValue="">
+            <option value="" disabled>Country…</option>
+            {COUNTRY_LIST.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button onClick={() => setShowBulkEmail(true)} className="px-3 py-1 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 border-l border-gray-200 ml-1">Email</button>
+          <button onClick={() => setShowBulkDelete(true)} className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete</button>
+          <button onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>
         </div>
       )}
 
