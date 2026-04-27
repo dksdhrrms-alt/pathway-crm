@@ -48,6 +48,9 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [parentAccountId, setParentAccountId] = useState(initialData?.parentAccountId || '');
+  // "Integration" toggle — when ON, this account is part of an Integration (parent-child) hierarchy.
+  // Initial state: ON if a parent is already linked, otherwise OFF.
+  const [isIntegration, setIsIntegration] = useState(!!initialData?.parentAccountId);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
@@ -73,7 +76,8 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       location: location.trim(),
       state: stateVal.trim(),
       notes: notes.trim(),
-      parentAccountId: parentAccountId || undefined,
+      // Only persist parent linkage when Integration toggle is ON; clearing it removes the link.
+      parentAccountId: isIntegration ? (parentAccountId || undefined) : undefined,
     };
 
     if (mode === 'new') {
@@ -183,16 +187,36 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Parent Account <span className="text-gray-400 text-xs">(optional)</span></label>
-        <AccountParentSelector
-          value={parentAccountId}
-          onChange={setParentAccountId}
-          excludeAccountId={initialData?.id}
-          placeholder="Search to link as a child of another account..."
+      {/* Integration Account toggle */}
+      <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isIntegration ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+        <input
+          type="checkbox"
+          checked={isIntegration}
+          onChange={(e) => {
+            setIsIntegration(e.target.checked);
+            if (!e.target.checked) setParentAccountId('');
+          }}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
-        <p className="text-[11px] text-gray-400 mt-1">Use for headquarters → branch / parent company → subsidiary relationships</p>
-      </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-800">Integration Account</p>
+          <p className="text-xs text-gray-500">{isIntegration ? 'Linked under a parent account (HQ, holding, integrator, etc.)' : 'Mark as part of a parent-child / integration hierarchy'}</p>
+        </div>
+        <span className={`text-xs font-medium ${isIntegration ? 'text-blue-700' : 'text-gray-400'}`}>{isIntegration ? 'Integration' : 'Standalone'}</span>
+      </label>
+
+      {isIntegration && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Parent Account <span className="text-gray-400 text-xs">(required when Integration is ON)</span></label>
+          <AccountParentSelector
+            value={parentAccountId}
+            onChange={setParentAccountId}
+            excludeAccountId={initialData?.id}
+            placeholder="Search to link as a child of another account..."
+          />
+          <p className="text-[11px] text-gray-400 mt-1">Use for headquarters → branch / parent company → subsidiary relationships</p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Summary</label>
