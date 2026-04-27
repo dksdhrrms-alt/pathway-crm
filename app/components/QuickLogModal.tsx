@@ -25,6 +25,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Account search
   const [accountSearch, setAccountSearch] = useState('');
@@ -84,7 +85,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         type,
         subject: subject.trim(),
         description: description.trim(),
-        date: new Date().toISOString().split('T')[0],
+        date,
         ownerId: session?.user?.id || '',
         accountId: accountId || '',
         contactId: cid || '',
@@ -141,21 +142,33 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           ))}
         </div>
 
-        {/* Purpose */}
-        <select
-          value={purpose}
-          onChange={(e) => setPurpose(e.target.value)}
-          style={{
-            width: '100%', padding: '10px 12px', fontSize: '13px',
-            border: '1px solid #e5e7eb', borderRadius: '8px',
-            marginBottom: '10px', boxSizing: 'border-box',
-            background: 'white', cursor: 'pointer',
-            color: purpose ? '#1f2937' : '#9ca3af',
-          }}
-        >
-          <option value="">— Purpose (optional) —</option>
-          {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }}>{p}</option>)}
-        </select>
+        {/* Date + Purpose */}
+        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '10px' }}>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            style={{
+              padding: '10px 10px', fontSize: '13px',
+              border: '1px solid #e5e7eb', borderRadius: '8px',
+              boxSizing: 'border-box', background: 'white',
+              color: '#1f2937', fontFamily: 'inherit',
+            }}
+          />
+          <select
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 12px', fontSize: '13px',
+              border: '1px solid #e5e7eb', borderRadius: '8px',
+              boxSizing: 'border-box', background: 'white', cursor: 'pointer',
+              color: purpose ? '#1f2937' : '#9ca3af',
+            }}
+          >
+            <option value="">— Purpose (optional) —</option>
+            {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }}>{p}</option>)}
+          </select>
+        </div>
 
         {/* Subject */}
         <input
