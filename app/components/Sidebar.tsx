@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useMenuAccess } from '@/hooks/useMenuAccess';
+import { useUsers } from '@/lib/UserContext';
 
 const navItems = [
   { href: '/dashboard', label: 'Home', icon: HomeIcon },
@@ -109,6 +110,10 @@ export default function Sidebar() {
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith('/reports'));
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
+  const userId = session?.user?.id ?? '';
+  const { users } = useUsers();
+  const currentUser = users.find((u) => u.id === userId);
+  const userTeam = (currentUser as { team?: string } | undefined)?.team ?? '';
   const { canAccess } = useMenuAccess();
 
   // Swipe right to open sidebar on mobile
@@ -205,12 +210,27 @@ export default function Sidebar() {
             </button>
             {reportsOpen && (
               <div className="ml-4 mt-1 space-y-0.5">
-                {[
-                  { href: '/reports/ceo', label: 'CEO Report', icon: '🏢', adminOnly: true },
-                  { href: '/reports/monogastrics', label: 'Monogastrics', icon: '🐔', adminOnly: false },
-                  { href: '/reports/ruminants', label: 'Ruminants', icon: '🐄', adminOnly: false },
-                  { href: '/reports/latam', label: 'LATAM', icon: '🌎', adminOnly: false },
-                ].filter((item) => !item.adminOnly || isAdminRole)
+                {(() => {
+                  // Map each team value to the report(s) the user is allowed to see.
+                  // Swine is part of Monogastrics group, so it maps to the same report.
+                  const teamReports: Record<string, string[]> = {
+                    monogastrics: ['/reports/monogastrics'],
+                    swine: ['/reports/monogastrics'],
+                    ruminants: ['/reports/ruminants'],
+                    latam: ['/reports/latam'],
+                  };
+                  const allowedHrefs = isAdminRole ? null : (teamReports[userTeam] || []);
+                  return [
+                    { href: '/reports/ceo', label: 'CEO Report', icon: '🏢', adminOnly: true },
+                    { href: '/reports/monogastrics', label: 'Monogastrics', icon: '🐔', adminOnly: false },
+                    { href: '/reports/ruminants', label: 'Ruminants', icon: '🐄', adminOnly: false },
+                    { href: '/reports/latam', label: 'LATAM', icon: '🌎', adminOnly: false },
+                  ].filter((item) => {
+                    if (item.adminOnly) return isAdminRole;
+                    if (allowedHrefs === null) return true; // admin → all reports
+                    return allowedHrefs.includes(item.href);
+                  });
+                })()
                 .map((item) => (
                   <Link
                     key={item.href}
