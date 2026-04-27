@@ -13,13 +13,16 @@ interface NewOpportunityModalProps {
   onSave: (opportunity: Opportunity) => void;
 }
 
-const STAGES: Stage[] = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+const STAGES: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
 const DEFAULT_PROBABILITY: Record<Stage, number> = {
+  Prospect: 5,
   Prospecting: 10,
-  Qualification: 20,
-  Proposal: 40,
-  Negotiation: 60,
+  Qualified: 20,
+  Qualification: 25,
+  'Trial Started': 40,
+  Proposal: 50,
+  Negotiation: 75,
   'Closed Won': 100,
   'Closed Lost': 0,
 };

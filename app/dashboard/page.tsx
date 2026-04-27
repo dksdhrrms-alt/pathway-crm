@@ -24,8 +24,11 @@ const typeIcon: Record<ActivityType, string> = {
 };
 
 const stageColors: Record<string, string> = {
+  Prospect: '#94a3b8',
   Prospecting: '#6366f1',
+  Qualified: '#06b6d4',
   Qualification: '#f59e0b',
+  'Trial Started': '#14b8a6',
   Proposal: '#3b82f6',
   Negotiation: '#f97316',
   'Closed Won': '#22c55e',
@@ -122,7 +125,7 @@ export default function DashboardPage() {
 
   // Charts
   const pipelineByStage = useMemo(() => {
-    const stages: Stage[] = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won'];
+    const stages: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won'];
     return stages.map((stage) => ({
       stage, amount: opportunities.filter((o) => o.stage === stage).reduce((s, o) => s + o.amount, 0), fill: stageColors[stage],
     }));

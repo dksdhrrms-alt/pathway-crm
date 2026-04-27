@@ -7,8 +7,11 @@ interface StageBadgeProps {
 }
 
 const stageStyles: Record<Stage, string> = {
+  Prospect: 'bg-slate-100 text-slate-700',
   Prospecting: 'bg-gray-100 text-gray-700',
+  Qualified: 'bg-cyan-100 text-cyan-700',
   Qualification: 'bg-blue-100 text-blue-700',
+  'Trial Started': 'bg-teal-100 text-teal-700',
   Proposal: 'bg-amber-100 text-amber-700',
   Negotiation: 'bg-purple-100 text-purple-700',
   'Closed Won': 'bg-green-100 text-green-700',

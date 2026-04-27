@@ -7,8 +7,8 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import AccountSearchSelect from './AccountSearchSelect';
 
-const STAGES: Stage[] = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-const STAGE_PROB: Record<string, number> = { Prospecting: 10, Qualification: 25, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
+const STAGES: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
 
 interface Props { opportunity: Opportunity; onClose: () => void; onSaved: () => void; }
 

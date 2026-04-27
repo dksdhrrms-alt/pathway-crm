@@ -77,7 +77,7 @@ export default function InsightsPage() {
 
   // Pipeline by stage
   const pipelineByStage = useMemo(() => {
-    const stages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+    const stages = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
     return stages.map((s) => {
       const opps = opportunities.filter((o) => o.stage === s);
       return { stage: s, count: opps.length, value: opps.reduce((sum, o) => sum + (o.amount || 0), 0) };
@@ -319,7 +319,7 @@ export default function InsightsPage() {
             <h2 className="text-base font-semibold text-gray-900 mb-4">Pipeline by Stage</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {pipelineByStage.map((s) => {
-                const stageColor: Record<string, string> = { Prospecting: '#6366f1', Qualification: '#3b82f6', Proposal: '#f59e0b', Negotiation: '#f97316', 'Closed Won': '#22c55e', 'Closed Lost': '#ef4444' };
+                const stageColor: Record<string, string> = { Prospect: '#94a3b8', Prospecting: '#6366f1', Qualified: '#06b6d4', Qualification: '#3b82f6', 'Trial Started': '#14b8a6', Proposal: '#f59e0b', Negotiation: '#f97316', 'Closed Won': '#22c55e', 'Closed Lost': '#ef4444' };
                 return (
                   <div key={s.stage} className="bg-gray-50 rounded-lg p-4 text-center">
                     <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: stageColor[s.stage] || '#888' }}>

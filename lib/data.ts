@@ -8,7 +8,7 @@ export type Industry =
   | 'Veterinary Hospital'
   | 'Veterinary Clinic'
   | 'Distributor';
-export type Stage = 'Prospecting' | 'Qualification' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+export type Stage = 'Prospect' | 'Prospecting' | 'Qualified' | 'Qualification' | 'Trial Started' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
 export type ActivityType = 'Call' | 'Meeting' | 'Email' | 'Note';
 export type Priority = 'High' | 'Medium' | 'Low';
 export type TaskStatus = 'Open' | 'Completed';

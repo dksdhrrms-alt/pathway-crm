@@ -22,8 +22,11 @@ import { useViewFilter } from '@/hooks/useViewFilter';
 
 const TODAY = new Date().toISOString().split('T')[0];
 const STAGES: Stage[] = [
+  'Prospect',
   'Prospecting',
+  'Qualified',
   'Qualification',
+  'Trial Started',
   'Proposal',
   'Negotiation',
   'Closed Won',
@@ -53,8 +56,11 @@ function daysUntil(dateStr: string): number {
 }
 
 const columnHeaderStyle: Record<Stage, string> = {
+  Prospect: 'bg-slate-50 border-slate-200',
   Prospecting: 'bg-gray-50 border-gray-200',
+  Qualified: 'bg-cyan-50 border-cyan-200',
   Qualification: 'bg-blue-50 border-blue-200',
+  'Trial Started': 'bg-teal-50 border-teal-200',
   Proposal: 'bg-amber-50 border-amber-200',
   Negotiation: 'bg-purple-50 border-purple-200',
   'Closed Won': 'bg-green-100 border-green-300',
@@ -62,8 +68,11 @@ const columnHeaderStyle: Record<Stage, string> = {
 };
 
 const columnTitleStyle: Record<Stage, string> = {
+  Prospect: 'text-slate-700',
   Prospecting: 'text-gray-700',
+  Qualified: 'text-cyan-700',
   Qualification: 'text-blue-700',
+  'Trial Started': 'text-teal-700',
   Proposal: 'text-amber-700',
   Negotiation: 'text-purple-700',
   'Closed Won': 'text-green-800',
@@ -100,7 +109,7 @@ export default function OpportunitiesPage() {
   // Stats for current view
   const openOpps = filteredOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
   const totalPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-  const STAGE_PROB: Record<string, number> = { Prospecting: 10, Qualification: 25, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
+  const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
   const weightedPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0) * ((STAGE_PROB[o.stage] || 0) / 100), 0);
   const closedWonCount = filteredOpps.filter((o) => o.stage === 'Closed Won').length;
 
