@@ -8,7 +8,7 @@ import {
   Draggable,
   DropResult,
 } from '@hello-pangea/dnd';
-import { Opportunity, Stage } from '@/lib/data';
+import { Opportunity, Stage, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import StageBadge from '@/app/components/StageBadge';
@@ -110,6 +110,11 @@ export default function OpportunitiesPage() {
   const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
   const weightedPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0) * ((STAGE_PROB[o.stage] || 0) / 100), 0);
   const closedWonCount = filteredOpps.filter((o) => o.stage === 'Closed Won').length;
+
+  // Annualized revenue projection (this year + next year) — based on Expected Start Date
+  const currentYear = new Date().getFullYear();
+  const annualThisYear = openOpps.reduce((sum, o) => sum + annualizedRevenue(Number(o.amount) || 0, o.expectedStartDate, currentYear), 0);
+  const annualNextYear = openOpps.reduce((sum, o) => sum + annualizedRevenue(Number(o.amount) || 0, o.expectedStartDate, currentYear + 1), 0);
 
   // Unique owners for filter dropdown
   const ownerOptions = useMemo(() => {
@@ -223,6 +228,14 @@ export default function OpportunitiesPage() {
             <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
               <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WEIGHTED</div>
               <div style={{ fontSize: '22px', fontWeight: 500, color: '#185FA5' }}>{formatCurrency(weightedPipeline)}</div>
+            </div>
+            <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × remaining months in current year, based on Expected Start Date">
+              <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear} ANNUAL</div>
+              <div style={{ fontSize: '20px', fontWeight: 500, color: '#0F6E56' }}>{formatCurrency(annualThisYear)}</div>
+            </div>
+            <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × 12 for opportunities starting on or before next year">
+              <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear + 1} ANNUAL</div>
+              <div style={{ fontSize: '20px', fontWeight: 500, color: '#0F6E56' }}>{formatCurrency(annualNextYear)}</div>
             </div>
             <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
               <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WON</div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Opportunity, Stage } from '@/lib/data';
+import { Opportunity, Stage, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
@@ -21,6 +21,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
   const [accountId, setAccountId] = useState(opportunity.accountId || '');
   const [stage, setStage] = useState<Stage>(opportunity.stage);
   const [amount, setAmount] = useState(String(opportunity.amount || ''));
+  const [expectedStartDate, setExpectedStartDate] = useState(opportunity.expectedStartDate || '');
   const [closeDate, setCloseDate] = useState(opportunity.closeDate || '');
   const [probability, setProbability] = useState(opportunity.probability || 10);
   const [nextStep, setNextStep] = useState(opportunity.nextStep || '');
@@ -41,6 +42,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
     const updates: Partial<Opportunity> = {
       name: name.trim(), accountId, stage,
       amount: parseInt(String(amount).replace(/,/g, '')) || 0,
+      expectedStartDate: expectedStartDate || undefined,
       closeDate, probability, nextStep: nextStep.trim(), competitor: competitor.trim(),
       ownerId, ownerName: selectedUser?.name,
     };
@@ -108,6 +110,34 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
               <input type="date" value={closeDate} onChange={(e) => { setCloseDate(e.target.value); setError(''); }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expected Start Date</label>
+              <input type="date" value={expectedStartDate} onChange={(e) => setExpectedStartDate(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <p className="text-[11px] text-gray-400 mt-1">When monthly revenue begins</p>
+            </div>
+            {(() => {
+              const monthly = parseInt(String(amount).replace(/,/g, '')) || 0;
+              const yr = new Date().getFullYear();
+              const thisYr = annualizedRevenue(monthly, expectedStartDate, yr);
+              const nextYr = annualizedRevenue(monthly, expectedStartDate, yr + 1);
+              const fmt = (n: number) => '$' + n.toLocaleString('en-US');
+              return (
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-green-800 uppercase tracking-wide mb-1.5">Annualized Revenue</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">{yr}:</span>
+                    <span className="font-semibold text-gray-900">{fmt(thisYr)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-0.5">
+                    <span className="text-gray-600">{yr + 1}:</span>
+                    <span className="font-semibold text-gray-900">{fmt(nextYr)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Next Step</label>

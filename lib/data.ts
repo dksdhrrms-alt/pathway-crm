@@ -93,7 +93,8 @@ export interface Opportunity {
   name: string;
   accountId: string;
   stage: Stage;
-  amount: number;
+  amount: number;             // monthly revenue ($/month)
+  expectedStartDate?: string; // ISO date — when monthly revenue begins
   closeDate: string;
   probability: number;
   ownerId: string;
@@ -103,6 +104,27 @@ export interface Opportunity {
   competitor?: string;
   createdDate: string;
   contactIds: string[];
+}
+
+// Compute expected revenue for the calendar year that contains `forYear`,
+// given a monthly amount and an expected start date.
+//   - If start date is before `forYear`: 12 months (full year)
+//   - If start date is during `forYear`: 13 - startMonth months
+//   - If start date is after `forYear`: 0 months
+export function annualizedRevenue(monthlyAmount: number, expectedStartDate: string | undefined, forYear: number): number {
+  const amt = Number(monthlyAmount) || 0;
+  if (amt <= 0) return 0;
+  if (!expectedStartDate) {
+    // No start date set — assume revenue is already running
+    return amt * 12;
+  }
+  const d = new Date(expectedStartDate + (expectedStartDate.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return amt * 12;
+  const startYear = d.getFullYear();
+  const startMonth = d.getMonth() + 1; // 1-12
+  if (startYear < forYear) return amt * 12;
+  if (startYear === forYear) return amt * (13 - startMonth);
+  return 0;
 }
 
 export interface Activity {

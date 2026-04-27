@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { Opportunity, Stage, generateId } from '@/lib/data';
+import { Opportunity, Stage, generateId, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 
@@ -42,6 +42,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
   const initialStage = defaultStage || 'Prospect';
   const [stage, setStage] = useState<Stage>(initialStage);
   const [amount, setAmount] = useState('');
+  const [expectedStartDate, setExpectedStartDate] = useState('');
   const [closeDate, setCloseDate] = useState('2026-06-30');
   const [probability, setProbability] = useState(DEFAULT_PROBABILITY[initialStage]);
   const [ownerId, setOwnerId] = useState(userId);
@@ -74,6 +75,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
       accountId,
       stage,
       amount: amount ? parseInt(amount.replace(/,/g, ''), 10) : 0,
+      expectedStartDate: expectedStartDate || undefined,
       closeDate,
       probability,
       ownerId,
@@ -165,6 +167,39 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Expected Start Date</label>
+              <input
+                type="date"
+                value={expectedStartDate}
+                onChange={(e) => setExpectedStartDate(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">When monthly revenue begins</p>
+            </div>
+            {(() => {
+              const monthly = parseInt((amount || '0').replace(/,/g, ''), 10) || 0;
+              const yr = new Date().getFullYear();
+              const thisYr = annualizedRevenue(monthly, expectedStartDate, yr);
+              const nextYr = annualizedRevenue(monthly, expectedStartDate, yr + 1);
+              const fmt = (n: number) => '$' + n.toLocaleString('en-US');
+              return (
+                <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-green-800 uppercase tracking-wide mb-1.5">Annualized Revenue</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">{yr}:</span>
+                    <span className="font-semibold text-gray-900">{fmt(thisYr)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-0.5">
+                    <span className="text-gray-600">{yr + 1}:</span>
+                    <span className="font-semibold text-gray-900">{fmt(nextYr)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

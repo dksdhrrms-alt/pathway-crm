@@ -23,6 +23,7 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   fileName: 'file_name', recordCount: 'record_count', skippedCount: 'skipped_count',
   budgetAmount: 'budget_amount',
   companyType: 'company_type',
+  expectedStartDate: 'expected_start_date',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};
