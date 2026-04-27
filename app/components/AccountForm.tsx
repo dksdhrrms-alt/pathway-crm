@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Account, generateId, US_STATES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -51,6 +51,14 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   // "Integration" toggle — when ON, this account is part of an Integration (parent-child) hierarchy.
   // Initial state: ON if a parent is already linked, otherwise OFF.
   const [isIntegration, setIsIntegration] = useState(!!initialData?.parentAccountId);
+
+  // Re-sync Integration/parent state if initialData arrives or changes after mount.
+  // useState initializers only run once, so when CRMContext finishes loading the
+  // account record AFTER the modal mounts, the toggle would otherwise stay OFF.
+  useEffect(() => {
+    setParentAccountId(initialData?.parentAccountId || '');
+    setIsIntegration(!!initialData?.parentAccountId);
+  }, [initialData?.id, initialData?.parentAccountId]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
