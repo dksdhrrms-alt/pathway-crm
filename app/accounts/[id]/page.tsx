@@ -75,23 +75,43 @@ export default function AccountDetailPage() {
     () => contacts.filter((c) => c.accountId === accountId),
     [contacts, accountId],
   );
+  // Child accounts (for Integration roll-up)
+  const childAccounts = useMemo(
+    () => accounts.filter((a) => a.parentAccountId === accountId),
+    [accounts, accountId],
+  );
+  const aggregateAccountIds = useMemo(
+    () => [accountId, ...childAccounts.map((c) => c.id)],
+    [accountId, childAccounts],
+  );
+  const aggregateAccountNames = useMemo(
+    () => account ? [account.name, ...childAccounts.map((c) => c.name)] : [],
+    [account, childAccounts],
+  );
+
   const allAccountOpps = useMemo(
-    () => opportunities.filter((o) => o.accountId === accountId),
-    [opportunities, accountId],
+    () => opportunities.filter((o) => aggregateAccountIds.includes(o.accountId)),
+    [opportunities, aggregateAccountIds],
   );
   const openDeals = useMemo(
     () => allAccountOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost'),
     [allAccountOpps],
   );
-  const accountActivities = getActivitiesForAccount(accountId);
+  const accountActivities = useMemo(
+    () => activities.filter((a) => aggregateAccountIds.includes(a.accountId)),
+    [activities, aggregateAccountIds],
+  );
+  void getActivitiesForAccount;
   const accountTasks = useMemo(
-    () => tasks.filter((t) => t.relatedAccountId === accountId),
-    [tasks, accountId],
+    () => tasks.filter((t) => t.relatedAccountId && aggregateAccountIds.includes(t.relatedAccountId)),
+    [tasks, aggregateAccountIds],
   );
   const accountSales = useMemo(
-    () => account ? saleRecords.filter((r) => r.accountName === account.name) : [],
-    [saleRecords, account],
+    () => aggregateAccountNames.length > 0 ? saleRecords.filter((r) => aggregateAccountNames.includes(r.accountName)) : [],
+    [saleRecords, aggregateAccountNames],
   );
+
+  const hasChildren = childAccounts.length > 0;
 
   // --- KPIs ---
   const totalPurchases = useMemo(
@@ -272,20 +292,24 @@ export default function AccountDetailPage() {
                 <div style={{ fontSize: '20px', fontWeight: 500 }}>
                   {totalPurchases > 0 ? formatCurrency(totalPurchases) : '—'}
                 </div>
+                {hasChildren && <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>incl. {childAccounts.length} complex{childAccounts.length > 1 ? 'es' : ''}</div>}
               </div>
               <div>
                 <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>LAST PURCHASE</div>
                 <div style={{ fontSize: '20px', fontWeight: 500 }}>{lastPurchaseDate || '—'}</div>
+                {hasChildren && <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>across all complexes</div>}
               </div>
               <div>
                 <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>OPEN DEALS</div>
                 <div style={{ fontSize: '20px', fontWeight: 500 }}>{openDeals.length}</div>
+                {hasChildren && <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>incl. {childAccounts.length} complex{childAccounts.length > 1 ? 'es' : ''}</div>}
               </div>
               <div>
                 <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>PIPELINE VALUE</div>
                 <div style={{ fontSize: '20px', fontWeight: 500 }}>
                   {pipelineValue > 0 ? formatCurrency(pipelineValue) : '—'}
                 </div>
+                {hasChildren && <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '2px' }}>incl. {childAccounts.length} complex{childAccounts.length > 1 ? 'es' : ''}</div>}
               </div>
               <div>
                 <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>LAST CONTACT</div>
