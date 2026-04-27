@@ -23,9 +23,7 @@ import { useViewFilter } from '@/hooks/useViewFilter';
 const TODAY = new Date().toISOString().split('T')[0];
 const STAGES: Stage[] = [
   'Prospect',
-  'Prospecting',
   'Qualified',
-  'Qualification',
   'Trial Started',
   'Proposal',
   'Negotiation',
