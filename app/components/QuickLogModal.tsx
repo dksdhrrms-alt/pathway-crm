@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
-import { generateId, ActivityType } from '@/lib/data';
+import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 
 const ACTIVITY_TYPES: { id: ActivityType; emoji: string; label: string }[] = [
   { id: 'Call', emoji: '📞', label: 'Call' },
@@ -22,6 +22,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const { accounts, contacts, addActivity } = useCRM();
 
   const [type, setType] = useState<ActivityType>(initialType || 'Call');
+  const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
 
@@ -87,6 +88,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         ownerId: session?.user?.id || '',
         accountId: accountId || '',
         contactId: cid || '',
+        purpose: purpose || undefined,
       });
     });
 
@@ -138,6 +140,22 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Purpose */}
+        <select
+          value={purpose}
+          onChange={(e) => setPurpose(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 12px', fontSize: '13px',
+            border: '1px solid #e5e7eb', borderRadius: '8px',
+            marginBottom: '10px', boxSizing: 'border-box',
+            background: 'white', cursor: 'pointer',
+            color: purpose ? '#1f2937' : '#9ca3af',
+          }}
+        >
+          <option value="">— Purpose (optional) —</option>
+          {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }}>{p}</option>)}
+        </select>
 
         {/* Subject */}
         <input

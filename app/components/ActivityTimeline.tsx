@@ -83,6 +83,11 @@ export default function ActivityTimeline({
                       >
                         {activity.type}
                       </span>
+                      {activity.purpose && (
+                        <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                          {activity.purpose}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <time className="text-xs text-gray-500 whitespace-nowrap">

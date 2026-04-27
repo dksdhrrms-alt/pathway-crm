@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { Activity, ActivityType, generateId } from '@/lib/data';
+import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 
@@ -31,6 +31,7 @@ export default function LogActivityModal({
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
   const [type, setType] = useState<ActivityType>(defaultType);
+  const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -81,6 +82,7 @@ export default function LogActivityModal({
         ownerId,
         accountId: accountId || '',
         contactId: cid,
+        purpose: purpose || undefined,
       };
       addActivity(newActivity);
       last = newActivity;
@@ -111,19 +113,32 @@ export default function LogActivityModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as ActivityType)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              {ACTIVITY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as ActivityType)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {ACTIVITY_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Purpose <span className="text-gray-400 text-xs">(optional)</span></label>
+              <select
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">— Select purpose —</option>
+                {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
           </div>
 
           <div>

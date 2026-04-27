@@ -114,7 +114,21 @@ export interface Activity {
   ownerId: string;
   accountId: string;
   contactId?: string;
+  purpose?: string;
 }
+
+export const ACTIVITY_PURPOSES = [
+  'Introduction',
+  'Discovery',
+  'Sample / Trial',
+  'Pricing / Quote',
+  'Negotiation',
+  'Order Confirmation',
+  'Follow-up',
+  'Technical Support',
+  'Relationship Building',
+  'Other',
+];
 
 export interface Task {
   id: string;
