@@ -393,7 +393,24 @@ export default function AccountsPage() {
                       </td>
                       {visibleCols.map((col) => {
                         switch (col.id) {
-                          case 'name': return <td key={col.id} className="px-4 py-3"><Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link></td>;
+                          case 'name': {
+                            const parent = acct.parentAccountId ? allAccounts.find((a) => a.id === acct.parentAccountId) : null;
+                            const childCount = allAccounts.filter((a) => a.parentAccountId === acct.id).length;
+                            return (
+                              <td key={col.id} className="px-4 py-3">
+                                <div className="flex items-center gap-1.5">
+                                  {parent && <span className="text-gray-300 text-xs" title={`Child of ${parent.name}`}>↳</span>}
+                                  <Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: '#1a4731' }}>{acct.name}</Link>
+                                  {childCount > 0 && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium" title={`${childCount} child account${childCount > 1 ? 's' : ''}`}>
+                                      +{childCount}
+                                    </span>
+                                  )}
+                                </div>
+                                {parent && <p className="text-[11px] text-gray-400 mt-0.5">↳ <Link href={`/accounts/${parent.id}`} className="hover:underline">{parent.name}</Link></p>}
+                              </td>
+                            );
+                          }
                           case 'industry': return (
                             <td key={col.id} className="px-4 py-3">
                               <select value={acct.industry || ''}

@@ -6,6 +6,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import CountrySelect from './CountrySelect';
+import AccountParentSelector from './AccountParentSelector';
 
 const INDUSTRIES = [
   'Dairy/Beef', 'Poultry', 'Swine', 'Feed Mill / Premix', 'Aquaculture',
@@ -46,6 +47,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [location, setLocation] = useState(initialData?.location || '');
   const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
+  const [parentAccountId, setParentAccountId] = useState(initialData?.parentAccountId || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function handleSubmit(e: React.FormEvent) {
@@ -71,6 +73,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       location: location.trim(),
       state: stateVal.trim(),
       notes: notes.trim(),
+      parentAccountId: parentAccountId || undefined,
     };
 
     if (mode === 'new') {
@@ -178,6 +181,17 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
         <textarea value={location} onChange={(e) => setLocation(e.target.value)} rows={2} placeholder="Full address..."
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Parent Account <span className="text-gray-400 text-xs">(optional)</span></label>
+        <AccountParentSelector
+          value={parentAccountId}
+          onChange={setParentAccountId}
+          excludeAccountId={initialData?.id}
+          placeholder="Search to link as a child of another account..."
+        />
+        <p className="text-[11px] text-gray-400 mt-1">Use for headquarters → branch / parent company → subsidiary relationships</p>
       </div>
 
       <div>

@@ -24,6 +24,7 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   budgetAmount: 'budget_amount',
   companyType: 'company_type',
   expectedStartDate: 'expected_start_date',
+  parentAccountId: 'parent_account_id',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};

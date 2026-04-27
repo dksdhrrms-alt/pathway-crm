@@ -189,6 +189,14 @@ export default function AccountDetailPage() {
                   {account.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
+                  {(() => {
+                    const parent = account.parentAccountId ? accounts.find((a) => a.id === account.parentAccountId) : null;
+                    return parent ? (
+                      <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '2px' }}>
+                        ↳ Child of <Link href={`/accounts/${parent.id}`} style={{ color: 'white', textDecoration: 'underline' }}>{parent.name}</Link>
+                      </div>
+                    ) : null;
+                  })()}
                   <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>{account.name}</h1>
                   <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '2px' }}>
                     {account.industry}
@@ -342,6 +350,32 @@ export default function AccountDetailPage() {
               <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>No summary yet. Click &quot;+ Add Summary&quot; to capture key context about this account.</p>
             )}
           </div>
+
+          {/* ========== CHILD ACCOUNTS ========== */}
+          {(() => {
+            const children = accounts.filter((a) => a.parentAccountId === accountId);
+            if (children.length === 0) return null;
+            return (
+              <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Child Accounts ({children.length})</h3>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+                  {children.sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
+                    <Link key={c.id} href={`/accounts/${c.id}`} style={{ display: 'block', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', textDecoration: 'none', color: '#1a4731', background: '#f9fafb', transition: 'all 0.15s' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f7ee'; e.currentTarget.style.borderColor = '#1a4731'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.borderColor = '#e5e7eb'; }}>
+                      <div style={{ fontSize: '13px', fontWeight: 500 }}>{c.name}</div>
+                      <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                        {c.industry || '—'}
+                        {c.country ? ` · ${c.country}` : ''}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ========== 2-COLUMN LAYOUT ========== */}
           <div

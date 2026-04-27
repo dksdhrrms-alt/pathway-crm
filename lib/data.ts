@@ -31,6 +31,7 @@ export interface Account {
   companyType?: string;
   state?: string;
   notes?: string;
+  parentAccountId?: string;  // For Integration Account (parent-child hierarchy)
   createdAt?: string;
 }
 
