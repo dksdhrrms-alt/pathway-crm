@@ -351,27 +351,93 @@ export default function AccountDetailPage() {
             )}
           </div>
 
-          {/* ========== CHILD ACCOUNTS ========== */}
+          {/* ========== COMPLEXES (CHILD ACCOUNTS) ========== */}
           {(() => {
             const children = accounts.filter((a) => a.parentAccountId === accountId);
             if (children.length === 0) return null;
+            const todayMs = Date.now();
+            const rows = children
+              .map((c) => {
+                const acts = activities.filter((a) => a.accountId === c.id);
+                const lastDateStr = acts.length > 0 ? acts.map((a) => a.date).sort().reverse()[0] : '';
+                const lastMs = lastDateStr ? new Date(lastDateStr + 'T00:00:00').getTime() : 0;
+                const daysSince = lastMs > 0 ? Math.floor((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : -1;
+                const openDeals = opportunities.filter((o) => o.accountId === c.id && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+                const pipeline = openDeals.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+                return { c, lastDateStr, daysSince, openDealsCount: openDeals.length, pipeline };
+              })
+              .sort((a, b) => a.c.name.localeCompare(b.c.name));
+
+            // Aggregates
+            const totalChildren = rows.length;
+            const totalOpenDeals = rows.reduce((s, r) => s + r.openDealsCount, 0);
+            const totalPipeline = rows.reduce((s, r) => s + r.pipeline, 0);
+            const staleCount = rows.filter((r) => r.daysSince > 90 || r.daysSince === -1).length;
+
+            function statusBadge(daysSince: number) {
+              if (daysSince === -1) return { label: 'No contact', bg: '#fee2e2', color: '#991b1b' };
+              if (daysSince <= 30) return { label: 'Active', bg: '#d1fae5', color: '#065f46' };
+              if (daysSince <= 90) return { label: 'Stale', bg: '#fef3c7', color: '#92400e' };
+              return { label: 'Cold', bg: '#fee2e2', color: '#991b1b' };
+            }
+            function relativeDate(daysSince: number, dateStr: string) {
+              if (daysSince === -1) return '—';
+              if (daysSince === 0) return 'Today';
+              if (daysSince === 1) return 'Yesterday';
+              if (daysSince < 30) return `${daysSince}d ago`;
+              return formatDate(dateStr);
+            }
+
             return (
               <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Child Accounts ({children.length})</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Complexes ({totalChildren})</h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>All child accounts under this Integration</p>
+                  </div>
+                  {/* Roll-up stats */}
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
+                    <div><span style={{ color: '#888' }}>Open Deals:</span> <strong style={{ color: '#1a4731' }}>{totalOpenDeals}</strong></div>
+                    <div><span style={{ color: '#888' }}>Pipeline:</span> <strong style={{ color: '#1a4731' }}>{formatCurrency(totalPipeline)}</strong></div>
+                    {staleCount > 0 && <div><span style={{ color: '#888' }}>Need attention:</span> <strong style={{ color: '#dc2626' }}>{staleCount}</strong></div>}
+                  </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
-                  {children.sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
-                    <Link key={c.id} href={`/accounts/${c.id}`} style={{ display: 'block', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', textDecoration: 'none', color: '#1a4731', background: '#f9fafb', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f7ee'; e.currentTarget.style.borderColor = '#1a4731'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.borderColor = '#e5e7eb'; }}>
-                      <div style={{ fontSize: '13px', fontWeight: 500 }}>{c.name}</div>
-                      <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
-                        {c.industry || '—'}
-                        {c.country ? ` · ${c.country}` : ''}
-                      </div>
-                    </Link>
-                  ))}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Complex</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Owner</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Last Contact</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Open Deals</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pipeline</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(({ c, lastDateStr, daysSince, openDealsCount, pipeline }) => {
+                        const sb = statusBadge(daysSince);
+                        return (
+                          <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
+                            <td style={{ padding: '10px' }}>
+                              <Link href={`/accounts/${c.id}`} style={{ color: '#1a4731', fontWeight: 500, textDecoration: 'none' }}>{c.name}</Link>
+                              <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                                {c.industry || '—'}
+                                {c.country ? ` · ${c.country}` : ''}
+                              </div>
+                            </td>
+                            <td style={{ padding: '10px', fontSize: '12px', color: '#444' }}>{c.ownerName || getOwnerName(c.ownerId) || '—'}</td>
+                            <td style={{ padding: '10px', fontSize: '12px', color: daysSince > 30 ? '#dc2626' : '#444' }}>{relativeDate(daysSince, lastDateStr)}</td>
+                            <td style={{ padding: '10px' }}>
+                              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color }}>{sb.label}</span>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? '#1a4731' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? '#1a4731' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             );
