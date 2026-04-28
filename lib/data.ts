@@ -147,6 +147,9 @@ export const ACTIVITY_PURPOSES = [
   'Follow up - existing business',
   'maintenance - existing customer',
   'Industry call - informational',
+  'Internal meeting',
+  'Nutritionist call',
+  'Nutritionist Education Event',
 ];
 
 export interface Task {
