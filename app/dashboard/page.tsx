@@ -500,46 +500,99 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Recent Activity — each row links directly to its account */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
-              <span className="text-xs text-gray-400">Click to open account</span>
-            </div>
-            {recentActivities.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No recent activity yet.</p>
-            ) : (
-              <ul className="space-y-1">
-                {recentActivities.map((act) => {
-                  const contactName = getContactName(act.contactId);
-                  const accountName = getAccountName(act.accountId);
-                  const row = (
-                    <div className="flex gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-                      <span className="text-lg flex-shrink-0 mt-0.5">{typeIcon[act.type]}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-gray-800 leading-tight line-clamp-1">{act.subject}</p>
-                          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{formatDate(act.date)}</span>
+          {/* ============ Recent Activity + My Tasks 2-column ============ */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Recent Activity — each row links directly to its account */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
+                <span className="text-xs text-gray-400">Click to open account</span>
+              </div>
+              {recentActivities.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No recent activity yet.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {recentActivities.map((act) => {
+                    const contactName = getContactName(act.contactId);
+                    const accountName = getAccountName(act.accountId);
+                    const row = (
+                      <div className="flex gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <span className="text-lg flex-shrink-0 mt-0.5">{typeIcon[act.type]}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-800 leading-tight line-clamp-1">{act.subject}</p>
+                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{formatDate(act.date)}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {contactName && <span>{contactName}</span>}
+                            {contactName && accountName && <span className="text-gray-300"> · </span>}
+                            {accountName && <span style={{ color: '#1a4731' }} className="font-medium">{accountName}</span>}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{act.description}</p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {contactName && <span>{contactName}</span>}
-                          {contactName && accountName && <span className="text-gray-300"> · </span>}
-                          {accountName && <span style={{ color: '#1a4731' }} className="font-medium">{accountName}</span>}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{act.description}</p>
                       </div>
-                    </div>
-                  );
-                  return (
-                    <li key={act.id} className="border-b border-gray-50 last:border-0">
-                      {act.accountId ? (
-                        <Link href={`/accounts/${act.accountId}`} className="block">{row}</Link>
-                      ) : row}
+                    );
+                    return (
+                      <li key={act.id} className="border-b border-gray-50 last:border-0">
+                        {act.accountId ? (
+                          <Link href={`/accounts/${act.accountId}`} className="block">{row}</Link>
+                        ) : row}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {/* My Tasks — open tasks, sorted by due date with overdue / due-today badges */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900">My Tasks</h2>
+                <Link href="/tasks" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
+              </div>
+              {taskList.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-3xl mb-1">✅</div>
+                  <p className="text-sm font-medium text-gray-700">All caught up!</p>
+                  <p className="text-xs text-gray-400 mt-0.5">No open tasks right now.</p>
+                </div>
+              ) : (
+                <ul className="space-y-1">
+                  {taskList.slice(0, 12).map((task) => {
+                    const isOverdue = task.dueDate < TODAY;
+                    const isDueToday = task.dueDate === TODAY;
+                    const accountName = getAccountName(task.relatedAccountId);
+                    const priorityColor = task.priority === 'High' ? 'bg-red-50 text-red-600' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-500';
+                    return (
+                      <li key={task.id} className={`flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOverdue ? 'bg-red-50/30' : ''}`}>
+                        <button
+                          onClick={(e) => { e.preventDefault(); toggleTask(task.id); setToast('Task completed'); }}
+                          className="mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 transition-colors"
+                          aria-label="Mark complete"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{task.subject}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
+                              {isDueToday ? 'Due today' : isOverdue ? `Overdue · ${formatDate(task.dueDate)}` : `Due ${formatDate(task.dueDate)}`}
+                            </span>
+                            {accountName && <span className="text-xs text-gray-400 truncate">· {accountName}</span>}
+                          </div>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${priorityColor}`}>
+                          {task.priority}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {taskList.length > 12 && (
+                    <li className="text-center pt-2">
+                      <Link href="/tasks" className="text-xs text-gray-500 hover:text-gray-700 underline">+{taskList.length - 12} more</Link>
                     </li>
-                  );
-                })}
-              </ul>
-            )}
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
 
         </div>
