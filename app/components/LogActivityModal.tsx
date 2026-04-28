@@ -42,7 +42,17 @@ export default function LogActivityModal({
     new Set(contactId ? [contactId] : [])
   );
   const [contactSearch, setContactSearch] = useState('');
+  const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
+
+  const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
+  function toggleParticipant(id: string) {
+    setInternalParticipants((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   // When account selected: show all contacts of that account
   // When no account: only show contacts matching search query
@@ -84,6 +94,7 @@ export default function LogActivityModal({
         accountId: accountId || '',
         contactId: cid,
         purpose: purpose || undefined,
+        internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
       };
       addActivity(newActivity);
       last = newActivity;
@@ -228,6 +239,38 @@ export default function LogActivityModal({
               rows={4}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Internal Participants <span className="text-gray-400 text-xs">(team members who joined)</span>
+            </label>
+            {internalParticipants.size > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {Array.from(internalParticipants).map((id) => {
+                  const u = activeUsers.find((x) => x.id === id);
+                  if (!u) return null;
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-xs text-blue-700 border border-blue-200">
+                      {u.name}
+                      <button type="button" onClick={() => toggleParticipant(id)} className="text-blue-600 hover:text-blue-800 font-bold ml-1" aria-label="Remove">×</button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+              {activeUsers.filter((u) => u.id !== ownerId).map((u) => (
+                <label key={u.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0">
+                  <input type="checkbox" checked={internalParticipants.has(u.id)} onChange={() => toggleParticipant(u.id)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <span className="font-medium">{u.name}</span>
+                </label>
+              ))}
+            </div>
+            {internalParticipants.size > 0 && (
+              <p className="text-xs text-gray-500 mt-1">{internalParticipants.size} participant{internalParticipants.size > 1 ? 's' : ''} selected</p>
+            )}
           </div>
 
           <div>

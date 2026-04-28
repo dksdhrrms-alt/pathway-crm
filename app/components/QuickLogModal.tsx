@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
+import { useUsers } from '@/lib/UserContext';
 import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 
 const ACTIVITY_TYPES: { id: ActivityType; emoji: string; label: string }[] = [
@@ -20,12 +21,23 @@ interface Props {
 export default function QuickLogModal({ onClose, initialType }: Props) {
   const { data: session } = useSession();
   const { accounts, contacts, addActivity } = useCRM();
+  const { users: allUsers } = useUsers();
+  const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
   const [type, setType] = useState<ActivityType>(initialType || 'Call');
   const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
+  const [showParticipants, setShowParticipants] = useState(false);
+  function toggleParticipant(id: string) {
+    setInternalParticipants((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   // Account search
   const [accountSearch, setAccountSearch] = useState('');
@@ -90,6 +102,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         accountId: accountId || '',
         contactId: cid || '',
         purpose: purpose || undefined,
+        internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
       });
     });
 
@@ -353,10 +366,42 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           style={{
             width: '100%', padding: '10px 12px', fontSize: '13px',
             border: '1px solid #e5e7eb', borderRadius: '8px',
-            marginBottom: '16px', resize: 'none', boxSizing: 'border-box',
+            marginBottom: '10px', resize: 'none', boxSizing: 'border-box',
             fontFamily: 'inherit',
           }}
         />
+
+        {/* Internal Participants — collapsed by default */}
+        <div style={{ marginBottom: '16px' }}>
+          <button
+            type="button"
+            onClick={() => setShowParticipants(!showParticipants)}
+            style={{
+              width: '100%', padding: '8px 12px', fontSize: '12px',
+              border: '1px solid #e5e7eb', borderRadius: '8px',
+              background: internalParticipants.size > 0 ? '#eff6ff' : 'white',
+              borderColor: internalParticipants.size > 0 ? '#bfdbfe' : '#e5e7eb',
+              color: internalParticipants.size > 0 ? '#1e40af' : '#666',
+              cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', fontFamily: 'inherit',
+            }}
+          >
+            <span>👥 Internal Participants {internalParticipants.size > 0 && `(${internalParticipants.size})`}</span>
+            <span style={{ transform: showParticipants ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>▼</span>
+          </button>
+          {showParticipants && (
+            <div style={{ marginTop: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: 140, overflowY: 'auto' }}>
+              {activeUsers.filter((u) => u.id !== session?.user?.id).map((u) => (
+                <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '0.5px solid #f3f4f6' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}>
+                  <input type="checkbox" checked={internalParticipants.has(u.id)} onChange={() => toggleParticipant(u.id)} />
+                  <span>{u.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

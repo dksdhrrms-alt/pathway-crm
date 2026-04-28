@@ -138,6 +138,7 @@ export interface Activity {
   accountId: string;
   contactId?: string;
   purpose?: string;
+  internalParticipants?: string[];  // user IDs of internal team members who joined
 }
 
 export const ACTIVITY_PURPOSES = [

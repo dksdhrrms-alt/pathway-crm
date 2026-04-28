@@ -95,6 +95,24 @@ export default function ActivityTimeline({
                           {activity.purpose}
                         </span>
                       )}
+                      {activity.internalParticipants && activity.internalParticipants.length > 0 && (
+                        <span className="ml-1.5 inline-flex items-center gap-1 align-middle" title={`Internal participants: ${activity.internalParticipants.map((id) => users.find((u) => u.id === id)?.name || id).join(', ')}`}>
+                          {activity.internalParticipants.slice(0, 3).map((id, i) => {
+                            const u = users.find((x) => x.id === id);
+                            const initials = u ? u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+                            return (
+                              <span key={id} className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-semibold text-white border-2 border-white" style={{ backgroundColor: '#1e40af', marginLeft: i > 0 ? '-8px' : 0, zIndex: 3 - i }}>
+                                {initials}
+                              </span>
+                            );
+                          })}
+                          {activity.internalParticipants.length > 3 && (
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-semibold text-blue-700 bg-blue-100 border-2 border-white" style={{ marginLeft: '-8px' }}>
+                              +{activity.internalParticipants.length - 3}
+                            </span>
+                          )}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <time className="text-xs text-gray-500 whitespace-nowrap">
