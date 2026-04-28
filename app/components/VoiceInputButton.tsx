@@ -13,6 +13,11 @@ interface Props {
 // Hard cap to protect against runaway recordings (= ~$0.006/min Whisper cost)
 const DEFAULT_MAX_SECONDS = 60;
 
+// Module-level cache so multiple VoiceInputButton instances share the same
+// "permission already granted" knowledge across the page lifetime. Once granted,
+// subsequent recordings skip the permission-status check overhead.
+let permissionGrantedCache = false;
+
 export default function VoiceInputButton({ onTranscript, language = 'auto', size = 'md', title = 'Voice input', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -41,7 +46,24 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
       return;
     }
     try {
+      // Quick check via Permissions API — when permission was previously granted
+      // for this origin, skip extra UI/feedback. Browsers cache the decision so
+      // getUserMedia won't re-prompt; we use this to update local cache state.
+      if (!permissionGrantedCache && 'permissions' in navigator) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const status = await (navigator.permissions as any).query({ name: 'microphone' as PermissionName });
+          if (status.state === 'granted') permissionGrantedCache = true;
+          else if (status.state === 'denied') {
+            setState('error');
+            setErrorMsg('Microphone blocked — enable in browser settings');
+            return;
+          }
+        } catch { /* Permissions API not supported — fall through to getUserMedia */ }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      permissionGrantedCache = true;  // remember so subsequent clicks are instant
       streamRef.current = stream;
       const recorder = new MediaRecorder(stream);
       recorderRef.current = recorder;
