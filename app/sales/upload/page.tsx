@@ -32,7 +32,7 @@ export default function SalesUploadPage() {
   const [dragOver, setDragOver] = useState(false);
   const [step, setStep] = useState<'idle' | 'reading' | 'preview' | 'importing' | 'done'>('idle');
   const [parsed, setParsed] = useState<{ records: SaleRecord[]; errors: { row: number; reason: string }[]; totalRows: number } | null>(null);
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; newAccounts: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; newAccounts: string[]; autoLinkedToParent: number } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'single'; entry: UploadHistoryEntry } | { type: 'all' } | null>(null);
   const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -93,21 +93,52 @@ export default function SalesUploadPage() {
     // Assign batchId to all records
     const tagged = unique.map((r) => ({ ...r, uploadBatchId: batchId }));
 
-    // Auto-create accounts
+    // Auto-create accounts — and try to infer Integration parent linkage from name patterns
+    // (e.g. "Pilgrim's_Moorefield WV Feed Mill" → parent "Pilgrim's" if such an account exists).
     const existingAccountNames = new Set(accounts.map((a) => a.name.toLowerCase()));
     const newAccounts: string[] = [];
+    let autoLinkedToParent = 0;
+
+    function inferParentId(name: string): string {
+      const lower = name.toLowerCase();
+      // 1) Split-based: prefix before _ / " - " / " – " maps to an existing account
+      const splitCandidates = [name.split('_')[0], name.split(' - ')[0], name.split(' – ')[0]]
+        .map((s) => s.trim())
+        .filter((s) => s && s.length >= 3 && s.toLowerCase() !== lower);
+      for (const cand of splitCandidates) {
+        const m = accounts.find((a) => a.name.toLowerCase() === cand.toLowerCase() && !a.parentAccountId);
+        if (m) return m.id;
+      }
+      // 2) Prefix match: existing account's name is a prefix of this name (followed by _ or space)
+      let best: typeof accounts[number] | null = null;
+      let bestLen = 0;
+      for (const a of accounts) {
+        if (a.parentAccountId) continue; // only link to top-level parents
+        const an = a.name.toLowerCase();
+        if (an === lower) continue;
+        if (an.length < 3) continue;
+        if (lower.startsWith(an + '_') || lower.startsWith(an + ' ')) {
+          if (an.length > bestLen) { bestLen = an.length; best = a; }
+        }
+      }
+      return best?.id || '';
+    }
+
     for (const r of tagged) {
       const lower = r.accountName.toLowerCase();
       if (!existingAccountNames.has(lower) && r.accountName) {
         existingAccountNames.add(lower);
         newAccounts.push(r.accountName);
         const matchedUser = users.find((u) => u.name.toLowerCase() === r.ownerName.toLowerCase());
+        const parentId = inferParentId(r.accountName);
+        if (parentId) autoLinkedToParent += 1;
         addAccount({
           id: generateId(), name: r.accountName,
           industry: r.category === 'ruminants' ? 'Beef' : r.category === 'latam' ? 'Distributor' : 'Poultry',
           location: r.state ? `${r.state}, USA` : 'USA', annualRevenue: 0,
           ownerId: matchedUser?.id ?? session?.user?.id ?? '',
           website: '', contactIds: [], opportunityIds: [],
+          parentAccountId: parentId || undefined,
         });
       }
     }
@@ -131,7 +162,7 @@ export default function SalesUploadPage() {
       skippedCount: duplicates.length,
     };
     saveHistory([entry, ...uploadHistory]);
-    setImportResult({ imported: tagged.length, skipped: duplicates.length, newAccounts });
+    setImportResult({ imported: tagged.length, skipped: duplicates.length, newAccounts, autoLinkedToParent });
     setStep('done');
   }
 
@@ -273,6 +304,9 @@ export default function SalesUploadPage() {
               {importResult.newAccounts.length > 0 && (
                 <div className="bg-blue-50 rounded-lg px-4 py-3 mb-4 text-sm text-blue-800 text-left">
                   <strong>{importResult.newAccounts.length} new accounts created:</strong> {importResult.newAccounts.join(', ')}
+                  {importResult.autoLinkedToParent > 0 && (
+                    <p className="mt-1.5 text-xs text-blue-700">◆ {importResult.autoLinkedToParent} auto-linked to a parent Integration based on name pattern (e.g. <code>Pilgrim&apos;s_Moorefield</code> → Pilgrim&apos;s)</p>
+                  )}
                 </div>
               )}
               {skippedRecords.length > 0 && (

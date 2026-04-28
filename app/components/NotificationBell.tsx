@@ -7,7 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -16,7 +16,7 @@ interface Notification {
 
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -87,9 +87,36 @@ export default function NotificationBell() {
         });
       });
 
+    // 3a. Integration complex neglect — child accounts under any Integration parent
+    //     that haven't been contacted in 60+ days. Surfaces gaps in coverage that the
+    //     parent KPI roll-up would otherwise hide. Visible to all roles since each
+    //     owner needs to see their own neglected complexes.
+    const childAccounts = accounts.filter((a) => a.parentAccountId);
+    const scopedChildren = isAdmin ? childAccounts : childAccounts.filter((a) => a.ownerId === userId);
+    scopedChildren.slice(0, 50).forEach((child) => {
+      const acts = activities.filter((a) => a.accountId === child.id);
+      const sorted = [...acts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const daysSince = sorted.length > 0
+        ? Math.floor((todayMs - new Date(sorted[0].date + 'T00:00:00').getTime()) / 86400000)
+        : 999;
+      if (daysSince < 60) return;
+      const id = `complex_neglect_${child.id}`;
+      if (dismissed.has(id)) return;
+      const parent = accounts.find((a) => a.id === child.parentAccountId);
+      const parentLabel = parent ? `${parent.name} → ` : '';
+      result.push({
+        id, type: 'complex_neglect',
+        priority: daysSince >= 120 || daysSince === 999 ? 'high' : 'medium',
+        title: 'Complex Neglected',
+        body: `${parentLabel}${child.name} — ${daysSince === 999 ? 'never contacted' : `${daysSince}d since last activity`}`,
+        link: `/accounts/${child.id}`,
+      });
+    });
+
     // 3. Accounts not contacted in 30+ days (admin only)
+    //    Skip child accounts here — they're already covered by complex_neglect above.
     if (isAdmin) {
-      accounts.slice(0, 200).forEach((account) => {
+      accounts.slice(0, 200).filter((a) => !a.parentAccountId).forEach((account) => {
         const acctActivities = activities.filter((a) => a.accountId === account.id);
         const sorted = [...acctActivities].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
