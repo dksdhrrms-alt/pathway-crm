@@ -22,6 +22,7 @@ export default function QuickLogFAB() {
   const [type, setType] = useState<ActivityType>('Call');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Account search
   const [accountSearch, setAccountSearch] = useState('');
@@ -76,6 +77,7 @@ export default function QuickLogFAB() {
     setContactSearch('');
     setContactId('');
     setType('Call');
+    setDate(new Date().toISOString().split('T')[0]);
   }
 
   function handleSave() {
@@ -87,7 +89,7 @@ export default function QuickLogFAB() {
       type,
       subject: subject.trim(),
       description: description.trim(),
-      date: new Date().toISOString().split('T')[0],
+      date,
       ownerId: session?.user?.id || '',
       accountId: accountId || '',
       contactId: contactId || '',
@@ -155,6 +157,19 @@ export default function QuickLogFAB() {
                 </button>
               ))}
             </div>
+
+            {/* Date */}
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: '13px',
+                border: '1px solid #e5e7eb', borderRadius: '8px',
+                marginBottom: '10px', boxSizing: 'border-box',
+                background: 'white', color: '#1f2937', fontFamily: 'inherit',
+              }}
+            />
 
             {/* Subject */}
             <input
