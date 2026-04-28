@@ -217,7 +217,14 @@ export default function AccountDetailPage() {
                       </div>
                     ) : null;
                   })()}
-                  <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>{account.name}</h1>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 600 }}>{account.name}</h1>
+                    {hasChildren && (
+                      <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '999px', background: 'rgba(59,130,246,0.25)', color: '#dbeafe', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }} title={`Integration parent of ${childAccounts.length} complex${childAccounts.length > 1 ? 'es' : ''}`}>
+                        ◆ Integration · {childAccounts.length} {childAccounts.length === 1 ? 'complex' : 'complexes'}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '2px' }}>
                     {account.industry}
                     {account.country ? ` · ${account.country}` : account.location ? ` · ${account.location}` : ''}
@@ -380,23 +387,30 @@ export default function AccountDetailPage() {
             const children = accounts.filter((a) => a.parentAccountId === accountId);
             if (children.length === 0) return null;
             const todayMs = Date.now();
+            const THIRTY_DAYS_AGO = todayMs - 30 * 24 * 60 * 60 * 1000;
             const rows = children
               .map((c) => {
                 const acts = activities.filter((a) => a.accountId === c.id);
                 const lastDateStr = acts.length > 0 ? acts.map((a) => a.date).sort().reverse()[0] : '';
                 const lastMs = lastDateStr ? new Date(lastDateStr + 'T00:00:00').getTime() : 0;
                 const daysSince = lastMs > 0 ? Math.floor((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : -1;
+                const recentActivityCount = acts.filter((a) => new Date(a.date + 'T00:00:00').getTime() >= THIRTY_DAYS_AGO).length;
                 const openDeals = opportunities.filter((o) => o.accountId === c.id && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
                 const pipeline = openDeals.reduce((s, o) => s + (Number(o.amount) || 0), 0);
-                return { c, lastDateStr, daysSince, openDealsCount: openDeals.length, pipeline };
+                const sales = saleRecords.filter((r) => r.accountName === c.name).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+                return { c, lastDateStr, daysSince, recentActivityCount, openDealsCount: openDeals.length, pipeline, sales };
               })
-              .sort((a, b) => a.c.name.localeCompare(b.c.name));
+              .sort((a, b) => b.pipeline - a.pipeline || a.c.name.localeCompare(b.c.name));
 
             // Aggregates
             const totalChildren = rows.length;
             const totalOpenDeals = rows.reduce((s, r) => s + r.openDealsCount, 0);
             const totalPipeline = rows.reduce((s, r) => s + r.pipeline, 0);
+            const totalSales = rows.reduce((s, r) => s + r.sales, 0);
+            const activeComplexes = rows.filter((r) => r.daysSince >= 0 && r.daysSince <= 30).length;
             const staleCount = rows.filter((r) => r.daysSince > 90 || r.daysSince === -1).length;
+            const coveragePct = totalChildren > 0 ? Math.round((activeComplexes / totalChildren) * 100) : 0;
+            const topContributor = rows.length > 0 && rows[0].pipeline > 0 ? rows[0] : null;
 
             function statusBadge(daysSince: number) {
               if (daysSince === -1) return { label: 'No contact', bg: '#fee2e2', color: '#991b1b' };
@@ -414,18 +428,46 @@ export default function AccountDetailPage() {
 
             return (
               <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Complexes ({totalChildren})</h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>All child accounts under this Integration</p>
-                  </div>
-                  {/* Roll-up stats */}
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '12px' }}>
-                    <div><span style={{ color: '#888' }}>Open Deals:</span> <strong style={{ color: '#1a4731' }}>{totalOpenDeals}</strong></div>
-                    <div><span style={{ color: '#888' }}>Pipeline:</span> <strong style={{ color: '#1a4731' }}>{formatCurrency(totalPipeline)}</strong></div>
-                    {staleCount > 0 && <div><span style={{ color: '#888' }}>Need attention:</span> <strong style={{ color: '#dc2626' }}>{staleCount}</strong></div>}
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>Sorted by pipeline contribution · highest first</p>
                   </div>
                 </div>
+
+                {/* Roll-up summary strip */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                  <div style={{ background: '#f0f7ee', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '10px', color: '#047857', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coverage</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#0F6E56', marginTop: '2px' }}>{coveragePct}%</div>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>{activeComplexes}/{totalChildren} active in 30d</div>
+                  </div>
+                  <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pipeline</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</div>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>{totalOpenDeals} open deal{totalOpenDeals !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sales</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</div>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>lifetime · all complexes</div>
+                  </div>
+                  {topContributor && (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: '#92400e', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Top Contributor</div>
+                      <Link href={`/accounts/${topContributor.c.id}`} style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#854f0b', marginTop: '2px', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topContributor.c.name}</Link>
+                      <div style={{ fontSize: '10px', color: '#92400e', marginTop: '1px' }}>{formatCurrency(topContributor.pipeline)} · {totalPipeline > 0 ? Math.round((topContributor.pipeline / totalPipeline) * 100) : 0}% of pipeline</div>
+                    </div>
+                  )}
+                  {staleCount > 0 && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '10px', color: '#991b1b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Need Attention</div>
+                      <div style={{ fontSize: '17px', fontWeight: 600, color: '#dc2626', marginTop: '2px' }}>{staleCount}</div>
+                      <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>no contact 90d+</div>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
                     <thead>
@@ -434,13 +476,17 @@ export default function AccountDetailPage() {
                         <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Owner</th>
                         <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Last Contact</th>
                         <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>30d Acts</th>
                         <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Open Deals</th>
                         <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pipeline</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>% of Pipe</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Sales</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map(({ c, lastDateStr, daysSince, openDealsCount, pipeline }) => {
+                      {rows.map(({ c, lastDateStr, daysSince, recentActivityCount, openDealsCount, pipeline, sales }) => {
                         const sb = statusBadge(daysSince);
+                        const sharePct = totalPipeline > 0 ? Math.round((pipeline / totalPipeline) * 100) : 0;
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px' }}>
@@ -455,12 +501,25 @@ export default function AccountDetailPage() {
                             <td style={{ padding: '10px' }}>
                               <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color }}>{sb.label}</span>
                             </td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? '#0F6E56' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? '#1a4731' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? '#1a4731' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', color: sharePct > 30 ? '#854f0b' : '#888', fontWeight: sharePct > 30 ? 600 : 400 }}>{sharePct > 0 ? `${sharePct}%` : '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: sales > 0 ? '#444' : '#888' }}>{sales > 0 ? formatCurrency(sales) : '—'}</td>
                           </tr>
                         );
                       })}
                     </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
+                        <td style={{ padding: '10px', fontSize: '12px', fontWeight: 600, color: '#374151' }} colSpan={4}>TOTAL</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#0F6E56' }}>{rows.reduce((s, r) => s + r.recentActivityCount, 0) || '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalOpenDeals || '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#888' }}>100%</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#374151' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
@@ -528,7 +587,17 @@ export default function AccountDetailPage() {
                             </div>
                             <div style={{ flex: 1, paddingTop: '4px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 500 }}>{act.subject}</div>
+                                <div style={{ fontSize: '13px', fontWeight: 500 }}>
+                                  {act.subject}
+                                  {hasChildren && act.accountId !== accountId && (() => {
+                                    const fromChild = childAccounts.find((c) => c.id === act.accountId);
+                                    return fromChild ? (
+                                      <Link href={`/accounts/${fromChild.id}`} style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: '#dbeafe', color: '#1e40af', fontWeight: 500, textDecoration: 'none', verticalAlign: 'middle' }}>
+                                        ↳ {fromChild.name}
+                                      </Link>
+                                    ) : null;
+                                  })()}
+                                </div>
                                 <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap', marginLeft: '8px' }}>
                                   {formatDate(act.date)}
                                 </div>
