@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { generateId, ActivityType } from '@/lib/data';
+import VoiceInputButton from './VoiceInputButton';
 
 const TYPES: { id: ActivityType; emoji: string }[] = [
   { id: 'Call', emoji: '📞' },
@@ -348,19 +349,28 @@ export default function QuickLogFAB() {
               )}
             </div>
 
-            {/* Notes */}
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Notes (optional)"
-              rows={3}
-              style={{
-                width: '100%', padding: '10px 12px', fontSize: '13px',
-                border: '1px solid #e5e7eb', borderRadius: '8px',
-                marginBottom: '10px', resize: 'none', boxSizing: 'border-box',
-                fontFamily: 'inherit',
-              }}
-            />
+            {/* Notes + voice mic */}
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Notes (optional) — or click 🎤 to dictate"
+                rows={3}
+                style={{
+                  width: '100%', padding: '10px 12px', paddingRight: '46px', fontSize: '13px',
+                  border: '1px solid #e5e7eb', borderRadius: '8px',
+                  resize: 'none', boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ position: 'absolute', right: '6px', bottom: '6px' }}>
+                <VoiceInputButton
+                  size="sm"
+                  onTranscript={(text) => setDescription((prev) => prev ? `${prev} ${text}` : text)}
+                  title="Dictate notes via Whisper AI"
+                />
+              </div>
+            </div>
 
             {/* Internal Participants — collapsed by default */}
             <div style={{ marginBottom: '16px' }}>

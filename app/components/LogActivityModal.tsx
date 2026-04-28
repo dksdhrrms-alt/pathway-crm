@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
+import VoiceInputButton from './VoiceInputButton';
 
 interface LogActivityModalProps {
   accountId?: string;
@@ -231,11 +232,18 @@ export default function LogActivityModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <VoiceInputButton
+                size="sm"
+                onTranscript={(text) => setDescription((prev) => prev ? `${prev} ${text}` : text)}
+                title="Click to dictate notes via Whisper AI"
+              />
+            </div>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detailed notes..."
+              placeholder="Detailed notes... (or click 🎤 to dictate)"
               rows={4}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
