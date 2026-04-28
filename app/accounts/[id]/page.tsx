@@ -614,16 +614,46 @@ export default function AccountDetailPage() {
                             </div>
                             <div style={{ flex: 1, paddingTop: '4px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ fontSize: '13px', fontWeight: 500 }}>
-                                  {act.subject}
+                                <div style={{ fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                  <span>{act.subject}</span>
                                   {hasChildren && act.accountId !== accountId && (() => {
                                     const fromChild = childAccounts.find((c) => c.id === act.accountId);
                                     return fromChild ? (
-                                      <Link href={`/accounts/${fromChild.id}`} style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: '#dbeafe', color: '#1e40af', fontWeight: 500, textDecoration: 'none', verticalAlign: 'middle' }}>
+                                      <Link href={`/accounts/${fromChild.id}`} style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '999px', background: '#dbeafe', color: '#1e40af', fontWeight: 500, textDecoration: 'none' }}>
                                         ↳ {fromChild.name}
                                       </Link>
                                     ) : null;
                                   })()}
+                                  {act.internalParticipants && act.internalParticipants.length > 0 && (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }} title={`Internal participants: ${act.internalParticipants.map((id) => getOwnerName(id)).join(', ')}`}>
+                                      {act.internalParticipants.slice(0, 3).map((id, i) => {
+                                        const name = getOwnerName(id);
+                                        const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                                        return (
+                                          <span key={id} style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '20px', height: '20px', borderRadius: '50%',
+                                            fontSize: '8px', fontWeight: 600, color: 'white',
+                                            border: '2px solid white', background: '#1e40af',
+                                            marginLeft: i > 0 ? '-8px' : '0',
+                                            zIndex: 3 - i,
+                                          }}>
+                                            {initials}
+                                          </span>
+                                        );
+                                      })}
+                                      {act.internalParticipants.length > 3 && (
+                                        <span style={{
+                                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                          width: '20px', height: '20px', borderRadius: '50%',
+                                          fontSize: '9px', fontWeight: 600, color: '#1e40af',
+                                          background: '#dbeafe', border: '2px solid white',
+                                          marginLeft: '-8px',
+                                        }}>+{act.internalParticipants.length - 3}</span>
+                                      )}
+                                      <span style={{ marginLeft: '4px', fontSize: '10px', color: '#1e40af', fontWeight: 500 }}>joint</span>
+                                    </span>
+                                  )}
                                 </div>
                                 <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap', marginLeft: '8px' }}>
                                   {formatDate(act.date)}
@@ -642,7 +672,13 @@ export default function AccountDetailPage() {
                                 </div>
                               )}
                               <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
-                                Logged by {ownerName}
+                                Logged by <span style={{ color: '#555', fontWeight: 500 }}>{ownerName}</span>
+                                {act.internalParticipants && act.internalParticipants.length > 0 && (
+                                  <>
+                                    {' with '}
+                                    <span style={{ color: '#1e40af', fontWeight: 500 }}>{act.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
+                                  </>
+                                )}
                               </div>
                             </div>
                             <button
