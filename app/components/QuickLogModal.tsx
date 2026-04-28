@@ -25,11 +25,15 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const { users: allUsers } = useUsers();
   const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
+  const userId = session?.user?.id ?? '';
+  const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
+
   const [type, setType] = useState<ActivityType>(initialType || 'Call');
   const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [ownerId, setOwnerId] = useState(userId);
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [showParticipants, setShowParticipants] = useState(false);
   function toggleParticipant(id: string) {
@@ -99,7 +103,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         subject: subject.trim(),
         description: description.trim(),
         date,
-        ownerId: session?.user?.id || '',
+        ownerId: ownerId || session?.user?.id || '',
         accountId: accountId || '',
         contactId: cid || '',
         purpose: purpose || undefined,
@@ -380,6 +384,22 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             />
           </div>
         </div>
+
+        {/* Logged By — admin only */}
+        {isAdmin && (
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 500 }}>Logged By</label>
+            <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: '13px',
+                border: '1px solid #e5e7eb', borderRadius: '8px',
+                background: 'white', cursor: 'pointer', boxSizing: 'border-box',
+                color: '#1f2937', fontFamily: 'inherit',
+              }}>
+              {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        )}
 
         {/* Internal Participants — collapsed by default */}
         <div style={{ marginBottom: '16px' }}>

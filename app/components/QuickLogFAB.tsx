@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
-import { generateId, ActivityType } from '@/lib/data';
+import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 import VoiceInputButton from './VoiceInputButton';
 
 const TYPES: { id: ActivityType; emoji: string }[] = [
@@ -22,11 +22,16 @@ export default function QuickLogFAB() {
   const { users: allUsers } = useUsers();
   const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
+  const userId = session?.user?.id ?? '';
+  const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
+
   const [isOpen, setIsOpen] = useState(false);
   const [type, setType] = useState<ActivityType>('Call');
+  const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [ownerId, setOwnerId] = useState(userId);
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [showParticipants, setShowParticipants] = useState(false);
   function toggleParticipant(id: string) {
@@ -90,7 +95,9 @@ export default function QuickLogFAB() {
     setContactSearch('');
     setContactId('');
     setType('Call');
+    setPurpose('');
     setDate(new Date().toISOString().split('T')[0]);
+    setOwnerId(userId);
     setInternalParticipants(new Set());
     setShowParticipants(false);
   }
@@ -105,9 +112,10 @@ export default function QuickLogFAB() {
       subject: subject.trim(),
       description: description.trim(),
       date,
-      ownerId: session?.user?.id || '',
+      ownerId: ownerId || session?.user?.id || '',
       accountId: accountId || '',
       contactId: contactId || '',
+      purpose: purpose || undefined,
       internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
     });
 
@@ -174,18 +182,48 @@ export default function QuickLogFAB() {
               ))}
             </div>
 
-            {/* Date */}
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={{
-                width: '100%', padding: '10px 12px', fontSize: '13px',
-                border: '1px solid #e5e7eb', borderRadius: '8px',
-                marginBottom: '10px', boxSizing: 'border-box',
-                background: 'white', color: '#1f2937', fontFamily: 'inherit',
-              }}
-            />
+            {/* Date + Purpose */}
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '10px' }}>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{
+                  padding: '10px 10px', fontSize: '13px',
+                  border: '1px solid #e5e7eb', borderRadius: '8px',
+                  boxSizing: 'border-box', background: 'white', color: '#1f2937', fontFamily: 'inherit',
+                }}
+              />
+              <select
+                value={purpose}
+                onChange={(e) => setPurpose(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', fontSize: '13px',
+                  border: '1px solid #e5e7eb', borderRadius: '8px',
+                  boxSizing: 'border-box', background: 'white', cursor: 'pointer',
+                  color: purpose ? '#1f2937' : '#9ca3af', fontFamily: 'inherit',
+                }}
+              >
+                <option value="">— Purpose (optional) —</option>
+                {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }}>{p}</option>)}
+              </select>
+            </div>
+
+            {/* Logged By — admin only */}
+            {isAdmin && (
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'block', fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 500 }}>Logged By</label>
+                <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', fontSize: '13px',
+                    border: '1px solid #e5e7eb', borderRadius: '8px',
+                    background: 'white', cursor: 'pointer', boxSizing: 'border-box',
+                    color: '#1f2937', fontFamily: 'inherit',
+                  }}>
+                  {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            )}
 
             {/* Subject */}
             <input
