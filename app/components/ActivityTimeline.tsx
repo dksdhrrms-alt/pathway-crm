@@ -111,6 +111,7 @@ export default function ActivityTimeline({
                               +{activity.internalParticipants.length - 3}
                             </span>
                           )}
+                          <span className="ml-1 text-[10px] text-blue-700 font-medium">joint</span>
                         </span>
                       )}
                     </div>

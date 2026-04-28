@@ -125,22 +125,26 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   // Team member IDs for scoping
   const teamMemberIds = useMemo(() => new Set(activeUsers.map((u) => u.id)), [activeUsers]);
 
-  // Scoped activities
+  // Scoped activities — owner OR internal participant counts as "participating"
   const filteredActivities = useMemo(() => {
+    const includesUser = (a: typeof allActivities[number], uid: string) => a.ownerId === uid || (a.internalParticipants || []).includes(uid);
+    const includesAnyOf = (a: typeof allActivities[number], ids: Set<string>) =>
+      ids.has(a.ownerId) || (a.internalParticipants || []).some((id) => ids.has(id));
+
     let acts = [...allActivities];
     // Team scoping
-    if (teamFilter !== 'all') acts = acts.filter((a) => teamMemberIds.has(a.ownerId));
+    if (teamFilter !== 'all') acts = acts.filter((a) => includesAnyOf(a, teamMemberIds));
     // Role scoping
-    else if (!canViewAll) acts = acts.filter((a) => a.ownerId === userId);
+    else if (!canViewAll) acts = acts.filter((a) => includesUser(a, userId));
     // Date filter
     if (fromDate) acts = acts.filter((a) => a.date >= fromDate);
     acts = acts.filter((a) => a.date <= toDate);
-    // User filter (admin/ceo/coo only)
-    if (canViewAll && selectedUserId !== 'all') acts = acts.filter((a) => a.ownerId === selectedUserId);
+    // User filter (admin/ceo/coo only) — selected user as owner OR participant
+    if (canViewAll && selectedUserId !== 'all') acts = acts.filter((a) => includesUser(a, selectedUserId));
     // Activity type filter
     if (activityTypeFilter !== 'all') acts = acts.filter((a) => a.type === activityTypeFilter);
     return acts.sort((a, b) => b.date.localeCompare(a.date));
-  }, [allActivities, canViewAll, userId, fromDate, toDate, selectedUserId, activityTypeFilter]);
+  }, [allActivities, canViewAll, userId, fromDate, toDate, selectedUserId, activityTypeFilter, teamFilter, teamMemberIds]);
 
   function getUserName(id: string): string {
     return allUsers.find((u) => u.id === id)?.name ?? '—';
@@ -485,7 +489,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 })();
                 const totalCount = baseActs.length;
                 const usersWithCounts = activeUsers
-                  .map((u) => ({ u, count: baseActs.filter((a) => a.ownerId === u.id).length }))
+                  .map((u) => ({ u, count: baseActs.filter((a) => a.ownerId === u.id || (a.internalParticipants || []).includes(u.id)).length }))
                   .filter((x) => x.count > 0)
                   .sort((a, b) => b.count - a.count);
                 if (usersWithCounts.length === 0) return null;
@@ -536,10 +540,34 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
                           <span className="font-medium text-gray-900 text-sm">{activity.subject}</span>
+                          {activity.internalParticipants && activity.internalParticipants.length > 0 && (
+                            <span className="inline-flex items-center gap-1" title={`Internal participants: ${activity.internalParticipants.map((id) => getUserName(id)).join(', ')}`}>
+                              {activity.internalParticipants.slice(0, 3).map((id, i) => {
+                                const initials = (allUsers.find((u) => u.id === id)?.name || '?').split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                                return (
+                                  <span key={id} className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[8px] font-semibold text-white border-2 border-white" style={{ backgroundColor: '#1e40af', marginLeft: i > 0 ? '-8px' : 0, zIndex: 3 - i }}>
+                                    {initials}
+                                  </span>
+                                );
+                              })}
+                              {activity.internalParticipants.length > 3 && (
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-semibold text-blue-700 bg-blue-100 border-2 border-white" style={{ marginLeft: '-8px' }}>
+                                  +{activity.internalParticipants.length - 3}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-blue-700 ml-1 font-medium">joint</span>
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400">{formatDate(activity.date)}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
                           <span>{getUserName(activity.ownerId)}</span>
+                          {activity.internalParticipants && activity.internalParticipants.length > 0 && (
+                            <>
+                              <span className="text-gray-300">+</span>
+                              <span className="text-blue-700">{activity.internalParticipants.map((id) => getUserName(id)).join(', ')}</span>
+                            </>
+                          )}
                           {activity.accountId && (
                             <>
                               <span className="text-gray-300">·</span>

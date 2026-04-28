@@ -83,5 +83,21 @@ export function useViewFilter() {
     return data.filter((item) => item.ownerId === userId);
   }, [activeView, teamMemberIds, userId]);
 
-  return { activeView, setActiveView, filterByView, teamLabel, viewLabel, isAdminOrCeo, canViewCompany, canViewTeam, userId, teamMemberIds };
+  // Activity-aware filter: includes records where the user (or any team member) is the
+  // owner OR is listed as an internal participant. Use this for activities so that a
+  // joint meeting shows up in everyone's Personal/Team view, not just the logger's.
+  const filterActivitiesByView = useCallback(<T extends { ownerId: string; internalParticipants?: string[] }>(data: T[]): T[] => {
+    if (activeView === 'company') return data;
+    if (activeView === 'team') {
+      return data.filter((item) =>
+        teamMemberIds.includes(item.ownerId) ||
+        (item.internalParticipants || []).some((id) => teamMemberIds.includes(id))
+      );
+    }
+    return data.filter((item) =>
+      item.ownerId === userId || (item.internalParticipants || []).includes(userId)
+    );
+  }, [activeView, teamMemberIds, userId]);
+
+  return { activeView, setActiveView, filterByView, filterActivitiesByView, teamLabel, viewLabel, isAdminOrCeo, canViewCompany, canViewTeam, userId, teamMemberIds };
 }
