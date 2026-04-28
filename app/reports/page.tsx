@@ -215,7 +215,8 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
 
   // Build team summaries — split monogastrics into poultry + swine
   const teamSummariesForReport = useMemo(() => {
-    const result: Record<string, { teamName: string; activities: typeof allActivities; tasks: typeof allTasks; opportunities: typeof allOpps }> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: Record<string, { teamName: string; activities: any[]; tasks: any[]; opportunities: any[] }> = {};
     const teams = [
       { id: 'poultry', teamFilter: 'monogastrics', label: 'Poultry' },
       { id: 'swine', teamFilter: 'swine', label: 'Swine' },
@@ -224,6 +225,26 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       { id: 'marketing', teamFilter: 'marketing', label: 'Marketing' },
       { id: 'management', teamFilter: 'management', label: 'Management' },
     ];
+
+    // Enrich raw records with resolved names so the API/AI doesn't have to
+    // guess from raw UUIDs.
+    const enrichActivity = (a: typeof allActivities[number]) => ({
+      ...a,
+      ownerName: getUserName(a.ownerId),
+      accountName: a.accountId ? getAccountName(a.accountId) : '',
+      contactName: a.contactId ? getContactName(a.contactId) : '',
+    });
+    const enrichTask = (t: typeof allTasks[number]) => ({
+      ...t,
+      ownerName: getUserName(t.ownerId),
+      accountName: t.relatedAccountId ? getAccountName(t.relatedAccountId) : '',
+    });
+    const enrichOpp = (o: typeof allOpps[number]) => ({
+      ...o,
+      ownerName: getUserName(o.ownerId),
+      accountName: o.accountId ? getAccountName(o.accountId) : '',
+    });
+
     teams.forEach(({ id, teamFilter, label }) => {
       const members = activeUsers.filter((u) => {
         const uTeam = (u as { team?: string }).team;
@@ -233,13 +254,14 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       const memberIds = new Set(members.map((u) => u.id));
       result[id] = {
         teamName: label,
-        activities: allActivities.filter((a) => memberIds.has(a.ownerId)),
-        tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed'),
-        opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost'),
+        activities: allActivities.filter((a) => memberIds.has(a.ownerId)).map(enrichActivity),
+        tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed').map(enrichTask),
+        opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost').map(enrichOpp),
       };
     });
     return result;
-  }, [allActivities, allTasks, allOpps, activeUsers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allActivities, allTasks, allOpps, activeUsers, accounts, contacts, allUsers]);
 
   async function handleAISummary() {
     setIsGenerating(true);
