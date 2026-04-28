@@ -7,9 +7,13 @@ interface Props {
   language?: 'en' | 'ko' | 'auto';               // hint to Whisper
   size?: 'sm' | 'md';
   title?: string;
+  maxSeconds?: number;                           // auto-stop after this many seconds (default 60)
 }
 
-export default function VoiceInputButton({ onTranscript, language = 'auto', size = 'md', title = 'Voice input' }: Props) {
+// Hard cap to protect against runaway recordings (= ~$0.006/min Whisper cost)
+const DEFAULT_MAX_SECONDS = 60;
+
+export default function VoiceInputButton({ onTranscript, language = 'auto', size = 'md', title = 'Voice input', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [elapsed, setElapsed] = useState(0);
@@ -56,7 +60,17 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
       recorder.start();
       setState('recording');
       setElapsed(0);
-      intervalRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+      intervalRef.current = setInterval(() => {
+        setElapsed((s) => {
+          const next = s + 1;
+          // Hard cutoff at maxSeconds — auto-stop to prevent runaway costs
+          if (next >= maxSeconds) {
+            try { recorder.stop(); } catch { /* */ }
+            setState('processing');
+          }
+          return next;
+        });
+      }, 1000);
     } catch (err) {
       console.error('[VoiceInput] mic error:', err);
       setState('error');
@@ -102,13 +116,20 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
   }
 
   const dim = size === 'sm' ? 28 : 36;
+  const remaining = Math.max(0, maxSeconds - elapsed);
+  const nearingLimit = state === 'recording' && remaining <= 10;
   const icon = (() => {
     if (state === 'recording') return '⏺';
     if (state === 'processing') return '⏳';
     if (state === 'error') return '⚠';
     return '🎤';
   })();
-  const bg = state === 'recording' ? '#dc2626' : state === 'processing' ? '#f59e0b' : state === 'error' ? '#fee2e2' : 'white';
+  // Switch to amber when ≤10s remaining as a visual warning
+  const bg = state === 'recording'
+    ? (nearingLimit ? '#f59e0b' : '#dc2626')
+    : state === 'processing' ? '#f59e0b'
+    : state === 'error' ? '#fee2e2'
+    : 'white';
   const color = state === 'recording' || state === 'processing' ? 'white' : state === 'error' ? '#991b1b' : '#1a4731';
   const border = state === 'idle' ? '1px solid #e5e7eb' : state === 'error' ? '1px solid #fecaca' : 'none';
 
@@ -117,7 +138,10 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
       type="button"
       onClick={handleClick}
       disabled={state === 'processing'}
-      title={state === 'recording' ? `Recording… ${elapsed}s — click to stop` : state === 'processing' ? 'Transcribing…' : errorMsg || title}
+      title={state === 'recording'
+        ? `Recording… ${elapsed}s / ${maxSeconds}s — auto-stops in ${remaining}s. Click to stop now.`
+        : state === 'processing' ? 'Transcribing…'
+        : errorMsg || `${title} (max ${maxSeconds}s)`}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         gap: '6px', padding: '0 10px',
@@ -126,11 +150,13 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
         cursor: state === 'processing' ? 'default' : 'pointer',
         fontSize: size === 'sm' ? '12px' : '13px',
         fontWeight: 500, transition: 'all 0.15s',
-        boxShadow: state === 'recording' ? '0 0 0 4px rgba(220,38,38,0.15)' : 'none',
+        boxShadow: state === 'recording' ? `0 0 0 4px ${nearingLimit ? 'rgba(245,158,11,0.2)' : 'rgba(220,38,38,0.15)'}` : 'none',
       }}
     >
       <span style={{ animation: state === 'recording' ? 'pulse 1s infinite' : 'none' }}>{icon}</span>
-      {state === 'recording' && <span>{elapsed}s</span>}
+      {state === 'recording' && (
+        <span>{elapsed}s{nearingLimit && ` · ${remaining}s left`}</span>
+      )}
       {state === 'processing' && <span>Transcribing…</span>}
       <style>{`
         @keyframes pulse {
