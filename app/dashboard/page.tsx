@@ -214,91 +214,73 @@ export default function DashboardPage() {
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
 
-          {/* Urgent alert banner */}
-          {(overdueTaskCount > 0 || closingTodayCount > 0) && (
-            <div
-              style={{
-                background: '#FCEBEB', border: '1px solid #F09595',
-                borderRadius: '10px', padding: '12px 16px',
-                marginTop: '24px', marginBottom: '0',
-                display: 'flex', alignItems: 'center', gap: '12px',
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>&#9888;&#65039;</span>
-              <div style={{ flex: 1, fontSize: '13px', color: '#A32D2D' }}>
-                {overdueTaskCount > 0 && (
-                  <span><strong>{overdueTaskCount}</strong> overdue task{overdueTaskCount > 1 ? 's' : ''}</span>
-                )}
-                {overdueTaskCount > 0 && closingTodayCount > 0 && ' \u00B7 '}
-                {closingTodayCount > 0 && (
-                  <span><strong>{closingTodayCount}</strong> deal{closingTodayCount > 1 ? 's' : ''} closing today</span>
-                )}
-              </div>
-              <a
-                href="/tasks"
-                style={{
-                  fontSize: '12px', color: '#A32D2D', fontWeight: 500,
-                  textDecoration: 'none', padding: '4px 10px',
-                  border: '1px solid #F09595', borderRadius: '6px',
-                }}
-              >
-                View &rarr;
-              </a>
-            </div>
-          )}
+          {/* Urgent alert banner \u2014 replaced by My Focus panel */}
 
-          <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
+          {/* ============ NEW HEADER ============ */}
+          <div className="mt-6 mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-sm text-gray-500 mt-0.5">
-                Welcome back, {userName.split(' ')[0]}.
-                <span className="ml-2 text-xs font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: '#e8f5e9', color: '#1a4731' }}>
-                  {activeTab === 'company' ? 'Company-wide view' : activeTab === 'team' ? `${teamLabel} team view` : 'Personal view'}
-                </span>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; })()},{' '}
+                <span style={{ color: '#1a4731' }}>{userName.split(' ')[0] || 'there'}</span>
+                <span className="text-gray-400">.</span>
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {activeTab === 'company' ? '🏢 Company-wide view' : activeTab === 'team' ? `👥 ${teamLabel} team view` : '👤 Your personal view'}
+                <span className="text-gray-300 ml-2">·</span> <span className="text-gray-400">Last updated just now</span>
               </p>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Quick Log shortcuts */}
-              <div className="flex gap-1.5">
-                {(['Call', 'Meeting', 'Email', 'Note'] as ActivityType[]).map((t) => {
-                  const label = t === 'Call' ? 'Call / Text' : t;
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setQuickLogType(t)}
-                      className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs hover:border-gray-300 hover:shadow-sm transition-all flex items-center gap-1"
-                    >
-                      {t === 'Call' ? '📞' : t === 'Meeting' ? '🤝' : t === 'Email' ? '📧' : '📝'}
-                      <span className="hidden sm:inline">{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {/* View tabs — hidden entirely for staff who only see personal */}
-              {(canViewCompany || canViewTeam) && (
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                  {canViewCompany && (
-                    <button onClick={() => setActiveTab('company')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                      style={activeTab === 'company' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                      Company-wide
-                    </button>
-                  )}
-                  {canViewTeam && (
-                    <button onClick={() => setActiveTab('team')}
-                      className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                      style={activeTab === 'team' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                      {teamLabel || 'Team'}
-                    </button>
-                  )}
-                  <button onClick={() => setActiveTab('personal')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    style={activeTab === 'personal' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
-                    Personal
+            {/* View tabs */}
+            {(canViewCompany || canViewTeam) && (
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                {canViewCompany && (
+                  <button onClick={() => setActiveTab('company')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    style={activeTab === 'company' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                    Company-wide
                   </button>
+                )}
+                {canViewTeam && (
+                  <button onClick={() => setActiveTab('team')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    style={activeTab === 'team' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                    {teamLabel || 'Team'}
+                  </button>
+                )}
+                <button onClick={() => setActiveTab('personal')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  style={activeTab === 'personal' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
+                  Personal
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ============ QUICK ACTIONS ============ */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { id: 'log', label: 'Log Activity', sub: 'Quick log a call/meeting', emoji: '📝', onClick: () => setQuickLogType('Call') },
+              { id: 'task', label: 'New Task', sub: 'Schedule a follow-up', emoji: '✅', href: '/tasks' },
+              { id: 'opp', label: 'New Opportunity', sub: 'Add a deal', emoji: '🎯', href: '/opportunities' },
+              { id: 'account', label: 'New Account', sub: 'Add a customer', emoji: '🏢', href: '/accounts' },
+            ].map((a) => {
+              const inner = (
+                <div className="bg-white border border-gray-200 hover:border-green-400 hover:shadow-md transition-all rounded-xl p-4 cursor-pointer h-full">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0" style={{ backgroundColor: '#f0f7ee' }}>{a.emoji}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">+ {a.label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{a.sub}</p>
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+              return a.href ? (
+                <Link key={a.id} href={a.href} className="block">{inner}</Link>
+              ) : (
+                <button key={a.id} onClick={a.onClick} className="text-left">{inner}</button>
+              );
+            })}
           </div>
 
           {/* Team members chips */}
@@ -324,16 +306,136 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-            <MetricCard title="Open Opportunities" value={openOpps.length} subtitle="Active pipeline deals" />
-            <MetricCard title="Pipeline Value" value={formatCurrency(pipelineValue)} subtitle="Sum of open deal amounts" />
-            <MetricCard title="Tasks Due Today" value={dueTodayCount} subtitle={TODAY} />
-            <MetricCard title="Overdue Tasks" value={overdueCount} subtitle="Past due, still open" valueClassName={overdueCount > 0 ? 'text-red-600' : ''} />
+          {/* ============ MY FOCUS + MY DEALS ============ */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+            {/* MY FOCUS — left column */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">🎯 My Focus</h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5">What needs your attention today</p>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {(() => {
+                  const todayMs = new Date().getTime();
+                  const items: Array<{ icon: string; label: string; sub: string; count: number; link: string; color: string }> = [];
+                  // Overdue tasks (own)
+                  const myOverdue = allTasks.filter((t) => t.ownerId === userId && t.status !== 'Completed' && t.dueDate && t.dueDate < TODAY);
+                  if (myOverdue.length > 0) items.push({ icon: '⚠️', label: 'Overdue tasks', sub: `Past due deadline`, count: myOverdue.length, link: '/tasks', color: '#dc2626' });
+                  // Due today
+                  const myDueToday = allTasks.filter((t) => t.ownerId === userId && t.status !== 'Completed' && t.dueDate === TODAY);
+                  if (myDueToday.length > 0) items.push({ icon: '📋', label: 'Tasks due today', sub: 'Wrap up by end of day', count: myDueToday.length, link: '/tasks', color: '#d97706' });
+                  // Closing within 7 days (own)
+                  const myClosing = allOpps.filter((o) => {
+                    if (o.ownerId !== userId || !o.closeDate || o.stage === 'Closed Won' || o.stage === 'Closed Lost') return false;
+                    const days = Math.floor((new Date(o.closeDate + 'T00:00:00').getTime() - todayMs) / 86400000);
+                    return days >= 0 && days <= 7;
+                  });
+                  if (myClosing.length > 0) items.push({ icon: '🎯', label: 'Deals closing this week', sub: `${formatCompact(myClosing.reduce((s, o) => s + (Number(o.amount) || 0), 0))} at stake`, count: myClosing.length, link: '/opportunities', color: '#2563eb' });
+                  // Complexes neglected (own children, 60+ days)
+                  const myNeglectedChildren = accounts
+                    .filter((a) => a.parentAccountId && a.ownerId === userId)
+                    .filter((a) => {
+                      const acts = allActivities.filter((x) => x.accountId === a.id);
+                      const last = acts.length > 0 ? acts.map((x) => x.date).sort().reverse()[0] : '';
+                      const days = last ? Math.floor((todayMs - new Date(last + 'T00:00:00').getTime()) / 86400000) : 999;
+                      return days >= 60;
+                    });
+                  if (myNeglectedChildren.length > 0) items.push({ icon: '◆', label: 'Complexes neglected', sub: 'No contact in 60+ days', count: myNeglectedChildren.length, link: '/accounts', color: '#7c3aed' });
+                  // Birthdays this week
+                  const today = new Date();
+                  const upcomingBirthdays = contacts.filter((c) => {
+                    if (!c.birthday) return false;
+                    const md = c.birthday.substring(5);
+                    const eventDate = new Date(today.getFullYear(), parseInt(md.split('-')[0]) - 1, parseInt(md.split('-')[1]));
+                    const diff = Math.floor((eventDate.getTime() - today.getTime()) / 86400000);
+                    return diff >= 0 && diff <= 7;
+                  });
+                  if (upcomingBirthdays.length > 0) items.push({ icon: '🎂', label: 'Birthdays this week', sub: 'Send a quick note', count: upcomingBirthdays.length, link: '/contacts', color: '#db2777' });
+
+                  if (items.length === 0) {
+                    return (
+                      <div className="p-8 text-center">
+                        <div className="text-4xl mb-2">🌟</div>
+                        <p className="text-sm font-medium text-gray-700">All clear!</p>
+                        <p className="text-xs text-gray-400 mt-1">Nothing urgent today. Great work.</p>
+                      </div>
+                    );
+                  }
+                  return items.map((item, i) => (
+                    <Link key={i} href={item.link} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                      <span className="text-xl flex-shrink-0">{item.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                        <p className="text-[11px] text-gray-400">{item.sub}</p>
+                      </div>
+                      <span className="text-base font-bold flex-shrink-0" style={{ color: item.color }}>{item.count}</span>
+                      <span className="text-gray-300">→</span>
+                    </Link>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* MY DEALS — right column (spans 2) */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">💼 My Deals</h2>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Pipeline snapshot</p>
+                </div>
+                <Link href="/opportunities" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50">
+                <div className="p-5">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Open Deals</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{openOpps.length}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Active pipeline</p>
+                </div>
+                <div className="p-5">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Pipeline Value</p>
+                  <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCompact(pipelineValue)}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Sum of open</p>
+                </div>
+                <div className="p-5">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weighted</p>
+                  <p className="text-2xl font-bold text-blue-700 mt-1">{formatCompact(openOpps.reduce((s, o) => s + (Number(o.amount) || 0) * ((Number(o.probability) || 0) / 100), 0))}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">× probability</p>
+                </div>
+                <div className="p-5">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Won This Month</p>
+                  <p className="text-2xl font-bold text-green-600 mt-1">{wonThisMonth.length}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{formatCompact(wonAmount)}</p>
+                </div>
+              </div>
+              {/* Mini stage strip */}
+              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Stage Distribution</p>
+                <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-gray-200">
+                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
+                    <div
+                      key={s.stage}
+                      style={{ width: `${pipelineValue > 0 ? (s.amount / pipelineValue) * 100 : 0}%`, backgroundColor: s.fill }}
+                      title={`${s.stage}: ${formatCurrency(s.amount)}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
+                    <div key={s.stage} className="flex items-center gap-1 text-[11px]">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill }} />
+                      <span className="text-gray-600">{s.stage}</span>
+                      <span className="text-gray-400">· {formatCompact(s.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Activity Leaderboard */}
-          {leaderboard.length > 0 && (
+          {/* Activity Leaderboard — DISABLED per redesign. Set to `true` to re-enable. */}
+          {false && leaderboard.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
