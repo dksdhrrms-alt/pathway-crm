@@ -254,14 +254,24 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       const memberIds = new Set(members.map((u) => u.id));
       result[id] = {
         teamName: label,
-        activities: allActivities.filter((a) => memberIds.has(a.ownerId)).map(enrichActivity),
-        tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed').map(enrichTask),
-        opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost').map(enrichOpp),
+        // Apply the same date range filter as Activity Details so the AI report
+        // only sees activities/tasks within the selected window (fromDate ~ toDate).
+        activities: allActivities
+          .filter((a) => memberIds.has(a.ownerId))
+          .filter((a) => (!fromDate || a.date >= fromDate) && a.date <= toDate)
+          .map(enrichActivity),
+        tasks: allTasks
+          .filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed')
+          .filter((t) => !t.dueDate || ((!fromDate || t.dueDate >= fromDate) && t.dueDate <= toDate))
+          .map(enrichTask),
+        opportunities: allOpps
+          .filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost')
+          .map(enrichOpp),
       };
     });
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allActivities, allTasks, allOpps, activeUsers, accounts, contacts, allUsers]);
+  }, [allActivities, allTasks, allOpps, activeUsers, accounts, contacts, allUsers, fromDate, toDate]);
 
   async function handleAISummary() {
     setIsGenerating(true);
