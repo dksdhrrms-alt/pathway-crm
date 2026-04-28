@@ -487,6 +487,10 @@ export default function AccountDetailPage() {
                       {rows.map(({ c, lastDateStr, daysSince, recentActivityCount, openDealsCount, pipeline, sales }) => {
                         const sb = statusBadge(daysSince);
                         const sharePct = totalPipeline > 0 ? Math.round((pipeline / totalPipeline) * 100) : 0;
+                        const salesPct = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
+                        // Color buckets for share — emphasize bigger contributors
+                        const shareColor = sharePct >= 50 ? '#1a4731' : sharePct >= 25 ? '#2d6a4f' : sharePct >= 10 ? '#52a672' : '#9ca3af';
+                        const salesColor = salesPct >= 50 ? '#1a4731' : salesPct >= 25 ? '#2d6a4f' : salesPct >= 10 ? '#52a672' : '#9ca3af';
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px' }}>
@@ -504,8 +508,31 @@ export default function AccountDetailPage() {
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? '#0F6E56' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? '#1a4731' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? '#1a4731' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', color: sharePct > 30 ? '#854f0b' : '#888', fontWeight: sharePct > 30 ? 600 : 400 }}>{sharePct > 0 ? `${sharePct}%` : '—'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: sales > 0 ? '#444' : '#888' }}>{sales > 0 ? formatCurrency(sales) : '—'}</td>
+                            <td style={{ padding: '10px', minWidth: 130 }}>
+                              {sharePct > 0 ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <div style={{ flex: 1, height: '6px', background: '#f3f4f6', borderRadius: '999px', overflow: 'hidden', minWidth: 60 }}>
+                                    <div style={{ width: `${Math.min(sharePct, 100)}%`, height: '100%', background: shareColor, borderRadius: '999px', transition: 'width 0.3s' }} />
+                                  </div>
+                                  <span style={{ fontSize: '11px', fontWeight: 600, color: shareColor, minWidth: 32, textAlign: 'right' }}>{sharePct}%</span>
+                                </div>
+                              ) : <span style={{ fontSize: '11px', color: '#9ca3af' }}>—</span>}
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: sales > 0 ? '#444' : '#888' }}>
+                              {sales > 0 ? (
+                                <div>
+                                  <div>{formatCurrency(sales)}</div>
+                                  {salesPct > 0 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', marginTop: '3px' }}>
+                                      <div style={{ width: 50, height: '4px', background: '#f3f4f6', borderRadius: '999px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${Math.min(salesPct, 100)}%`, height: '100%', background: salesColor, borderRadius: '999px' }} />
+                                      </div>
+                                      <span style={{ fontSize: '10px', color: salesColor, fontWeight: 500, minWidth: 26, textAlign: 'right' }}>{salesPct}%</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : '—'}
+                            </td>
                           </tr>
                         );
                       })}
