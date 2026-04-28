@@ -76,6 +76,8 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const userId = session?.user?.id ?? '';
 
   const canViewAll = ['administrative_manager','admin','ceo','sales_director','coo'].includes(role ?? '');
+  // Sales Director: individual breakdown only — hide By Team toggle.
+  const isSalesDirector = role === 'sales_director';
   const MONO_GROUP = ['monogastrics', 'swine'];
 
   const { activities: allActivities, accounts, contacts, tasks: allTasks, opportunities: allOpps, saleRecords, salesBudgets, loading } = useCRM();
@@ -267,8 +269,8 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
               <p className="text-sm text-gray-500 mt-0.5">{reportSubtitle}</p>
             </div>
             <div className="flex items-center gap-3">
-              {/* View toggle */}
-              {canViewAll && (
+              {/* View toggle — Sales Director sees individual breakdown only */}
+              {canViewAll && !isSalesDirector && (
                 <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                   <button onClick={() => setViewMode('individual')}
                     className={`px-3 py-1 text-xs font-medium rounded transition-all ${viewMode === 'individual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
