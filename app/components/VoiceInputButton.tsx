@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 
 interface Props {
   onTranscript: (text: string) => void;          // called with the transcribed text
-  language?: 'en' | 'ko' | 'auto';               // hint to Whisper
   size?: 'sm' | 'md';
   title?: string;
   maxSeconds?: number;                           // auto-stop after this many seconds (default 60)
@@ -18,7 +17,7 @@ const DEFAULT_MAX_SECONDS = 60;
 // subsequent recordings skip the permission-status check overhead.
 let permissionGrantedCache = false;
 
-export default function VoiceInputButton({ onTranscript, language = 'auto', size = 'md', title = 'Voice input', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
+export default function VoiceInputButton({ onTranscript, size = 'md', title = 'Voice input', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [elapsed, setElapsed] = useState(0);
@@ -111,7 +110,6 @@ export default function VoiceInputButton({ onTranscript, language = 'auto', size
     try {
       const formData = new FormData();
       formData.append('audio', blob, 'audio.webm');
-      if (language !== 'auto') formData.append('language', language);
       const res = await fetch('/api/whisper', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok || !data.text) {

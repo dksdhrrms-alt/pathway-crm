@@ -24,14 +24,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
   }
 
-  // Optional language hint ("en", "ko", or omit for auto-detect)
-  const language = (incoming.get('language') as string | null) || '';
-
+  // Intentionally omit `language` — passing a hint can cause Whisper to translate
+  // (e.g. Korean speech rendered as English). Without the param, Whisper auto-detects
+  // the source language and transcribes in that same language.
   const openaiForm = new FormData();
   // Whisper accepts mp3/mp4/m4a/mpeg/mpga/wav/webm — MediaRecorder default is webm
   openaiForm.append('file', audio, 'audio.webm');
   openaiForm.append('model', 'whisper-1');
-  if (language && language !== 'auto') openaiForm.append('language', language);
   openaiForm.append('response_format', 'json');
 
   try {
