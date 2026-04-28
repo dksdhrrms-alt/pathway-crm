@@ -149,8 +149,16 @@ export default function ActivityTimeline({
                   <p className="mt-1 text-sm text-gray-600 leading-relaxed">
                     {activity.description}
                   </p>
-                  <div className="mt-1 flex items-center gap-3">
-                    <p className="text-xs text-gray-400">Logged by {getOwnerName(activity.ownerId)}</p>
+                  <div className="mt-1 flex items-center gap-3 flex-wrap">
+                    <p className="text-xs text-gray-400">
+                      Logged by <span className="font-medium text-gray-600">{getOwnerName(activity.ownerId)}</span>
+                      {activity.internalParticipants && activity.internalParticipants.length > 0 && (
+                        <>
+                          <span className="mx-1">with</span>
+                          <span className="font-medium text-blue-700">{activity.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
+                        </>
+                      )}
+                    </p>
                     <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
                       className="text-xs text-gray-400 hover:text-gray-600" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       {showComments === activity.id ? 'Hide replies' : 'Reply'}

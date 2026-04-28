@@ -76,28 +76,20 @@ export function useViewFilter() {
         ? `${teamLabel} team view`
         : 'My personal view';
 
-  // Filter by ownerId — stable reference via useCallback
-  const filterByView = useCallback(<T extends { ownerId: string }>(data: T[]): T[] => {
+  // Filter by ownerId — automatically includes activities where the user (or a team
+  // member) is an internal participant. Records without `internalParticipants` (e.g.
+  // Opportunities, Tasks) keep the original owner-only behavior.
+  const filterByView = useCallback(<T extends { ownerId: string; internalParticipants?: string[] }>(data: T[]): T[] => {
     if (activeView === 'company') return data;
-    if (activeView === 'team') return data.filter((item) => teamMemberIds.includes(item.ownerId));
-    return data.filter((item) => item.ownerId === userId);
+    const matches = (item: T, idCheck: (id: string) => boolean) =>
+      idCheck(item.ownerId) || (item.internalParticipants || []).some(idCheck);
+    if (activeView === 'team') return data.filter((item) => matches(item, (id) => teamMemberIds.includes(id)));
+    return data.filter((item) => matches(item, (id) => id === userId));
   }, [activeView, teamMemberIds, userId]);
 
-  // Activity-aware filter: includes records where the user (or any team member) is the
-  // owner OR is listed as an internal participant. Use this for activities so that a
-  // joint meeting shows up in everyone's Personal/Team view, not just the logger's.
-  const filterActivitiesByView = useCallback(<T extends { ownerId: string; internalParticipants?: string[] }>(data: T[]): T[] => {
-    if (activeView === 'company') return data;
-    if (activeView === 'team') {
-      return data.filter((item) =>
-        teamMemberIds.includes(item.ownerId) ||
-        (item.internalParticipants || []).some((id) => teamMemberIds.includes(id))
-      );
-    }
-    return data.filter((item) =>
-      item.ownerId === userId || (item.internalParticipants || []).includes(userId)
-    );
-  }, [activeView, teamMemberIds, userId]);
+  // Alias for callers that want to make participant-awareness explicit. Same behavior
+  // as filterByView — kept for backwards compatibility / readability.
+  const filterActivitiesByView = filterByView;
 
   return { activeView, setActiveView, filterByView, filterActivitiesByView, teamLabel, viewLabel, isAdminOrCeo, canViewCompany, canViewTeam, userId, teamMemberIds };
 }
