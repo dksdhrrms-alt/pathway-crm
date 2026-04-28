@@ -493,127 +493,15 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Quota Achievement */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-            <div className="flex flex-wrap items-center gap-8">
-              <div className="flex-shrink-0">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Monthly Quota</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(wonAmount)}</p>
-                <p className="text-sm text-gray-400">Goal: {formatCurrency(quotaTarget)}</p>
-              </div>
-              <div className="flex-1 min-w-[200px]">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold" style={{ color: quotaColor }}>{quotaPct}%</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-3">
-                  <div
-                    className="h-3 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(quotaPct, 100)}%`, backgroundColor: quotaColor }}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{wonThisMonth.length}</p>
-                  <p className="text-xs text-gray-500">Won This Month</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-500">{lostThisMonth.length}</p>
-                  <p className="text-xs text-gray-500">Lost This Month</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-800">{winRate}%</p>
-                  <p className="text-xs text-gray-500">Win Rate</p>
-                </div>
-              </div>
+          {/* Recent Activity — kept */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
+              <Link href="/accounts" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
             </div>
-            <button
-              onClick={() => setShowQuotaModal(true)}
-              className="mt-3 text-xs font-medium hover:underline"
-              style={{ color: '#1a4731' }}
-            >
-              Set Quota Target
-            </button>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Pipeline by Stage</h2>
-              <div style={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pipelineByStage} layout="vertical" margin={{ left: 10, right: 30 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" tickFormatter={formatCompact} />
-                    <YAxis type="category" dataKey="stage" width={100} tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
-                      {pipelineByStage.map((entry, i) => (
-                        <rect key={i} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Activity Trend</h2>
-              <div style={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={activityTrend} margin={{ left: 0, right: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="Calls" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="Meetings" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Tasks + Recent Activity */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">My Open Tasks</h2>
-                <Link href="/tasks" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
-              </div>
-              {taskList.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">All tasks complete!</p>
-              ) : (
-                <ul className="space-y-2">
-                  {taskList.map((task) => {
-                    const isOverdue = task.dueDate < TODAY;
-                    const isDueToday = task.dueDate === TODAY;
-                    const accountName = getAccountName(task.relatedAccountId);
-                    return (
-                      <li key={task.id} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                        <button onClick={() => toggleTask(task.id)} className="mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-500 transition-colors" aria-label="Mark complete" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{task.subject}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
-                              {isDueToday ? 'Due today' : isOverdue ? `Overdue · ${formatDate(task.dueDate)}` : formatDate(task.dueDate)}
-                            </span>
-                            {accountName && <span className="text-xs text-gray-400 truncate">· {accountName}</span>}
-                          </div>
-                        </div>
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${task.priority === 'High' ? 'bg-red-50 text-red-600' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-500'}`}>
-                          {task.priority}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            {recentActivities.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No recent activity yet.</p>
+            ) : (
               <ul className="space-y-3">
                 {recentActivities.map((act) => {
                   const contactName = getContactName(act.contactId);
@@ -637,31 +525,11 @@ export default function DashboardPage() {
                   );
                 })}
               </ul>
-            </div>
+            )}
           </div>
 
         </div>
       </main>
-
-      {/* Quota Modal */}
-      {showQuotaModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setShowQuotaModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Set Monthly Quota</h2>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Quota Target ($)</label>
-            <input
-              type="number"
-              value={quotaInput}
-              onChange={(e) => setQuotaInput(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
-            />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowQuotaModal(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-              <button onClick={saveQuota} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
 
