@@ -574,6 +574,144 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
               ))}
             </div>
           </div>
+
+          {/* Section C: Task Details */}
+          {(() => {
+            // Build base task list (apply same scoping as activities, except using dueDate)
+            const baseTasks = (() => {
+              let ts = [...allTasks];
+              if (teamFilter !== 'all') ts = ts.filter((t) => teamMemberIds.has(t.ownerId));
+              else if (!canViewAll) ts = ts.filter((t) => t.ownerId === userId);
+              if (fromDate) ts = ts.filter((t) => !t.dueDate || t.dueDate >= fromDate);
+              ts = ts.filter((t) => !t.dueDate || t.dueDate <= toDate);
+              return ts;
+            })();
+            const filteredTasks = baseTasks
+              .filter((t) => canViewAll && selectedUserId !== 'all' ? t.ownerId === selectedUserId : true)
+              .sort((a, b) => {
+                // Overdue open tasks first, then by due date asc
+                const aOverdue = a.status === 'Open' && a.dueDate && a.dueDate < TODAY_STR ? 1 : 0;
+                const bOverdue = b.status === 'Open' && b.dueDate && b.dueDate < TODAY_STR ? 1 : 0;
+                if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+                return (a.dueDate || '').localeCompare(b.dueDate || '');
+              });
+            const overdueCount = filteredTasks.filter((t) => t.status === 'Open' && t.dueDate && t.dueDate < TODAY_STR).length;
+            const openCount = filteredTasks.filter((t) => t.status === 'Open').length;
+            const completedCount = filteredTasks.filter((t) => t.status === 'Completed').length;
+
+            return (
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h2 className="text-base font-semibold text-gray-900">Task Details</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} · <span className="text-gray-400">Open: {openCount}</span> · <span className="text-gray-400">Completed: {completedCount}</span>
+                        {overdueCount > 0 && <> · <span className="text-red-600 font-medium">⚠ {overdueCount} overdue</span></>}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Per-user filter chips (admin tier only) — reuses Activity Details selectedUserId */}
+                  {canViewAll && (() => {
+                    const usersWithCounts = activeUsers
+                      .map((u) => ({ u, count: baseTasks.filter((t) => t.ownerId === u.id).length, overdue: baseTasks.filter((t) => t.ownerId === u.id && t.status === 'Open' && t.dueDate && t.dueDate < TODAY_STR).length }))
+                      .filter((x) => x.count > 0)
+                      .sort((a, b) => b.overdue - a.overdue || b.count - a.count);
+                    if (usersWithCounts.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        <button onClick={() => setSelectedUserId('all')}
+                          className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                          style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
+                          All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400'}`}>({baseTasks.length})</span>
+                        </button>
+                        {usersWithCounts.map(({ u, count, overdue }) => {
+                          const active = selectedUserId === u.id;
+                          const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                          return (
+                            <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                              style={active ? { backgroundColor: '#1a4731' } : {}}>
+                              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
+                                style={!active ? { backgroundColor: '#1a4731' } : {}}>
+                                {initials}
+                              </span>
+                              {u.name}
+                              <span className={active ? 'opacity-80' : 'text-gray-400'}>({count})</span>
+                              {overdue > 0 && (
+                                <span className={`text-[9px] px-1 rounded font-bold ${active ? 'bg-white/30 text-white' : 'bg-red-100 text-red-700'}`}>!{overdue}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="divide-y divide-gray-50">
+                  {filteredTasks.length === 0 && (
+                    <div className="px-6 py-8 text-center text-sm text-gray-400">No tasks match your filters.</div>
+                  )}
+                  {filteredTasks.slice(0, 200).map((task) => {
+                    const isOverdue = task.status === 'Open' && task.dueDate && task.dueDate < TODAY_STR;
+                    const isDueToday = task.status === 'Open' && task.dueDate === TODAY_STR;
+                    const priorityColor = task.priority === 'High' ? 'bg-red-50 text-red-700' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600';
+                    return (
+                      <div key={task.id} className={`px-6 py-3 hover:bg-gray-50/60 transition-colors ${isOverdue ? 'bg-red-50/20' : ''}`}>
+                        <div className="flex items-start gap-3">
+                          {/* Status indicator */}
+                          <span className={`flex-shrink-0 mt-1 w-2.5 h-2.5 rounded-full ${task.status === 'Completed' ? 'bg-green-500' : isOverdue ? 'bg-red-500' : isDueToday ? 'bg-amber-500' : 'bg-gray-300'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-sm ${task.status === 'Completed' ? 'text-gray-500 line-through' : 'font-medium text-gray-900'}`}>{task.subject}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor}`}>{task.priority}</span>
+                              {isOverdue && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-600 text-white">OVERDUE</span>
+                              )}
+                              {isDueToday && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-100 text-amber-800">DUE TODAY</span>
+                              )}
+                              {task.status === 'Completed' && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-100 text-green-700">✓ DONE</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                              <span>{getUserName(task.ownerId)}</span>
+                              {task.dueDate && (
+                                <>
+                                  <span className="text-gray-300">·</span>
+                                  <span className={isOverdue ? 'text-red-600 font-medium' : ''}>Due {formatDate(task.dueDate)}</span>
+                                </>
+                              )}
+                              {task.relatedAccountId && (
+                                <>
+                                  <span className="text-gray-300">·</span>
+                                  <span>{getAccountName(task.relatedAccountId)}</span>
+                                </>
+                              )}
+                              {task.relatedContactId && (
+                                <>
+                                  <span className="text-gray-300">·</span>
+                                  <span>{getContactName(task.relatedContactId)}</span>
+                                </>
+                              )}
+                            </div>
+                            {task.description && (
+                              <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredTasks.length > 200 && (
+                    <div className="px-6 py-3 text-center text-xs text-gray-400">Showing first 200 of {filteredTasks.length} tasks</div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
           </>) : (
           <>
           {/* Team View — Expandable */}
