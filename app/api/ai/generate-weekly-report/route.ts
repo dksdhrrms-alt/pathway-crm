@@ -162,24 +162,31 @@ async function generateMonogastricReport(
     const taskCount = data.tasks?.length || 0;
     if (hasAI && (actCount > 0 || taskCount > 0)) {
       try {
-        // Structured format: User | Account | Content | Type | Date
+        // Structured format: User | Account | Contact | Content | Type | Date
+        // Empty fields are omitted entirely (no "—" filler).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const actText = (data.activities || []).map((a: any) => {
-          const user = sanitize(a.ownerName || a.ownerId || '—');
-          const acct = sanitize(a.accountName || '—');
-          const content = sanitize(a.subject || '');
-          const t = sanitize(a.type || 'Note');
-          const d = sanitize((a.date || '').slice(5).replace('-', '/')); // MM/DD
-          return `- ${user} | ${acct} | ${content} | ${t} | ${d}`;
+          const parts = [
+            a.ownerName || a.ownerId,
+            a.accountName,
+            a.contactName,
+            a.subject,
+            a.type || 'Note',
+            (a.date || '').slice(5).replace('-', '/'),
+          ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+          return `- ${parts.join(' | ')}`;
         }).join('\n') || 'None';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const taskText = (data.tasks || []).map((t: any) => {
-          const user = sanitize(t.ownerName || t.ownerId || '—');
-          const subject = sanitize(t.subject || '');
-          const due = sanitize((t.dueDate || '').slice(5).replace('-', '/'));
-          return `- ${user} | ${subject} | Due ${due}`;
+          const parts = [
+            t.ownerName || t.ownerId,
+            t.accountName,
+            t.subject,
+            t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+          ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+          return `- ${parts.join(' | ')}`;
         }).join('\n') || 'None';
-        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet using this exact format: "- User | Account | Content | Type | Date". Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate or summarize multiple activities into one bullet.\n- nextWeek: copy EACH task verbatim as its own bullet using format: "- User | Subject | Due Date".\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate. If a field is missing, simply skip it (do NOT insert "—" or placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
         const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
         if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
         else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -392,24 +399,30 @@ async function generateRuminantReport(
 
   if (hasAI && (actCount > 0 || taskCount > 0)) {
     try {
-      // Structured format: User | Account | Content | Type | Date
+      // Structured format: User | Account | Contact | Content | Type | Date — empty fields skipped
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const actText = (rumData.activities || []).map((a: any) => {
-        const user = sanitize(a.ownerName || a.ownerId || '—');
-        const acct = sanitize(a.accountName || '—');
-        const content = sanitize(a.subject || '');
-        const t = sanitize(a.type || 'Note');
-        const d = sanitize((a.date || '').slice(5).replace('-', '/'));
-        return `- ${user} | ${acct} | ${content} | ${t} | ${d}`;
+        const parts = [
+          a.ownerName || a.ownerId,
+          a.accountName,
+          a.contactName,
+          a.subject,
+          a.type || 'Note',
+          (a.date || '').slice(5).replace('-', '/'),
+        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+        return `- ${parts.join(' | ')}`;
       }).join('\n') || 'None';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const taskText = (rumData.tasks || []).map((t: any) => {
-        const user = sanitize(t.ownerName || t.ownerId || '—');
-        const subject = sanitize(t.subject || '');
-        const due = sanitize((t.dueDate || '').slice(5).replace('-', '/'));
-        return `- ${user} | ${subject} | Due ${due}`;
+        const parts = [
+          t.ownerName || t.ownerId,
+          t.accountName,
+          t.subject,
+          t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+        return `- ${parts.join(' | ')}`;
       }).join('\n') || 'None';
-      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet using this exact format: "- User | Account | Content | Type | Date". Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate.\n- nextWeek: copy EACH task verbatim as its own bullet using format: "- User | Subject | Due Date".\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by". Do NOT consolidate. Skip missing fields (no "—" placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
       const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); rumSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
       else { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -596,24 +609,30 @@ async function generateLATAMReport(
 
   if (hasAI && (actCount > 0 || taskCount > 0)) {
     try {
-      // Structured format: User | Account | Content | Type | Date
+      // Structured format: User | Account | Contact | Content | Type | Date — empty fields skipped
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const actText = (latData.activities || []).map((a: any) => {
-        const user = sanitize(a.ownerName || a.ownerId || '—');
-        const acct = sanitize(a.accountName || '—');
-        const content = sanitize(a.subject || '');
-        const t = sanitize(a.type || 'Note');
-        const d = sanitize((a.date || '').slice(5).replace('-', '/'));
-        return `- ${user} | ${acct} | ${content} | ${t} | ${d}`;
+        const parts = [
+          a.ownerName || a.ownerId,
+          a.accountName,
+          a.contactName,
+          a.subject,
+          a.type || 'Note',
+          (a.date || '').slice(5).replace('-', '/'),
+        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+        return `- ${parts.join(' | ')}`;
       }).join('\n') || 'None';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const taskText = (latData.tasks || []).map((t: any) => {
-        const user = sanitize(t.ownerName || t.ownerId || '—');
-        const subject = sanitize(t.subject || '');
-        const due = sanitize((t.dueDate || '').slice(5).replace('-', '/'));
-        return `- ${user} | ${subject} | Due ${due}`;
+        const parts = [
+          t.ownerName || t.ownerId,
+          t.accountName,
+          t.subject,
+          t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+        return `- ${parts.join(' | ')}`;
       }).join('\n') || 'None';
-      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet using this exact format: "- User | Account | Content | Type | Date". Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate. Organize by country when possible.\n- nextWeek: copy EACH task verbatim as its own bullet using format: "- User | Subject | Due Date".\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by". Do NOT consolidate. Skip missing fields. Organize by country when possible.\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
       const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); latSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
       else { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }

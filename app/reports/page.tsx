@@ -276,10 +276,63 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   async function handleAISummary() {
     setIsGenerating(true);
     try {
+      // Always restrict the Weekly Report to "this week" — Monday 00:00 to today,
+      // regardless of the page's date filter. The page filter is for browsing
+      // history; the report is a snapshot of the current week's activity.
+      const today = new Date();
+      const dow = today.getDay(); // 0=Sun
+      const daysToMonday = dow === 0 ? 6 : dow - 1;
+      const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysToMonday);
+      const fromIso = monday.toISOString().split('T')[0];
+      const toIso = today.toISOString().split('T')[0];
+
+      // Rebuild summaries with the locked date window (this overrides the page's
+      // current fromDate/toDate). Same enrichment as teamSummariesForReport.
+      const enrichA = (a: typeof allActivities[number]) => ({
+        ...a,
+        ownerName: getUserName(a.ownerId),
+        accountName: a.accountId ? getAccountName(a.accountId) : '',
+        contactName: a.contactId ? getContactName(a.contactId) : '',
+      });
+      const enrichT = (t: typeof allTasks[number]) => ({
+        ...t,
+        ownerName: getUserName(t.ownerId),
+        accountName: t.relatedAccountId ? getAccountName(t.relatedAccountId) : '',
+      });
+      const enrichO = (o: typeof allOpps[number]) => ({
+        ...o,
+        ownerName: getUserName(o.ownerId),
+        accountName: o.accountId ? getAccountName(o.accountId) : '',
+      });
+      const teamDefs = [
+        { id: 'poultry', teamFilter: 'monogastrics', label: 'Poultry' },
+        { id: 'swine', teamFilter: 'swine', label: 'Swine' },
+        { id: 'ruminants', teamFilter: 'ruminants', label: 'Ruminant' },
+        { id: 'latam', teamFilter: 'latam', label: 'LATAM' },
+        { id: 'marketing', teamFilter: 'marketing', label: 'Marketing' },
+        { id: 'management', teamFilter: 'management', label: 'Management' },
+      ];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const weekSummaries: Record<string, { teamName: string; activities: any[]; tasks: any[]; opportunities: any[] }> = {};
+      teamDefs.forEach(({ id, teamFilter: tf, label }) => {
+        const members = activeUsers.filter((u) => {
+          const uTeam = (u as { team?: string }).team;
+          if (id === 'management') return uTeam === 'management' || (!uTeam && ['admin', 'administrative_manager', 'ceo'].includes(u.role));
+          return uTeam === tf;
+        });
+        const memberIds = new Set(members.map((u) => u.id));
+        weekSummaries[id] = {
+          teamName: label,
+          activities: allActivities.filter((a) => memberIds.has(a.ownerId)).filter((a) => a.date >= fromIso && a.date <= toIso).map(enrichA),
+          tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed').map(enrichT),
+          opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost').map(enrichO),
+        };
+      });
+
       const res = await fetch('/api/ai/generate-weekly-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamSummaries: teamSummariesForReport, reportType: teamFilter }),
+        body: JSON.stringify({ teamSummaries: weekSummaries, reportType: teamFilter }),
       });
       if (!res.ok) throw new Error('Failed');
       const blob = await res.blob();
