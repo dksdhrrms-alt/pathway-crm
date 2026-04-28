@@ -163,11 +163,11 @@ async function generateMonogastricReport(
     if (hasAI && (actCount > 0 || taskCount > 0)) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const actText = (data.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+        const actText = (data.activities || []).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}" — Logged by ${sanitize(a.ownerName || a.ownerId || 'Unknown')}`).join('\n') || 'None';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const taskText = (data.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
-        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRespond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-4 bullets each)`);
-        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] }) });
+        const taskText = (data.tasks || []).map((t: any) => `- ${sanitize(t.subject || '')} — Owner ${sanitize(t.ownerName || t.ownerId || 'Unknown')}`).join('\n') || 'None';
+        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: list EACH activity as its own bullet point (one bullet per activity, do NOT consolidate). Each bullet must include the logger's name as "Logged by NAME".\n- nextWeek: list EACH task as its own bullet, owner name included.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
         if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
         else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
       } catch { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -380,11 +380,11 @@ async function generateRuminantReport(
   if (hasAI && (actCount > 0 || taskCount > 0)) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actText = (rumData.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+      const actText = (rumData.activities || []).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}" — Logged by ${sanitize(a.ownerName || a.ownerId || 'Unknown')}`).join('\n') || 'None';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const taskText = (rumData.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
-      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRespond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (3-4 bullets each)`);
-      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: prompt }] }) });
+      const taskText = (rumData.tasks || []).map((t: any) => `- ${sanitize(t.subject || '')} — Owner ${sanitize(t.ownerName || t.ownerId || 'Unknown')}`).join('\n') || 'None';
+      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: list EACH activity as its own bullet point (one bullet per activity, do NOT consolidate). Each bullet must include the logger's name as "Logged by NAME".\n- nextWeek: list EACH task as its own bullet, owner name included.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); rumSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
       else { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
     } catch { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -571,11 +571,11 @@ async function generateLATAMReport(
   if (hasAI && (actCount > 0 || taskCount > 0)) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actText = (latData.activities || []).slice(0, 12).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}"`).join('\n') || 'None';
+      const actText = (latData.activities || []).map((a: any) => `[${sanitize(a.type || 'Note')}] "${sanitize(a.subject || '')}" — Logged by ${sanitize(a.ownerName || a.ownerId || 'Unknown')}`).join('\n') || 'None';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const taskText = (latData.tasks || []).slice(0, 6).map((t: any) => `- ${sanitize(t.subject || '')}`).join('\n') || 'None';
-      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nOrganize by country when possible. Respond ONLY JSON: {"thisWeek":"- pt1\\n- pt2","nextWeek":"- pt1\\n- pt2"} (4-5 bullets each)`);
-      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 600, messages: [{ role: 'user', content: prompt }] }) });
+      const taskText = (latData.tasks || []).map((t: any) => `- ${sanitize(t.subject || '')} — Owner ${sanitize(t.ownerName || t.ownerId || 'Unknown')}`).join('\n') || 'None';
+      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: list EACH activity as its own bullet point (one bullet per activity, do NOT consolidate). Each bullet must include the logger's name as "Logged by NAME". Organize by country when possible.\n- nextWeek: list EACH task as its own bullet, owner name included.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); latSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
       else { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
     } catch { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
