@@ -342,7 +342,14 @@ export default function DashboardPage() {
                       const days = last ? Math.floor((todayMs - new Date(last + 'T00:00:00').getTime()) / 86400000) : 999;
                       return days >= 60;
                     });
-                  if (myNeglectedChildren.length > 0) items.push({ icon: '◆', label: 'Complexes neglected', sub: 'No contact in 60+ days', count: myNeglectedChildren.length, link: '/accounts', color: '#7c3aed' });
+                  if (myNeglectedChildren.length > 0) {
+                    // For single neglected complex → go to that account directly.
+                    // For multiple → go to the parent integration's detail (shows full Complex table with status).
+                    const first = myNeglectedChildren[0];
+                    const allSameParent = myNeglectedChildren.every((c) => c.parentAccountId === first.parentAccountId);
+                    const targetId = (myNeglectedChildren.length === 1 || !allSameParent) ? first.id : (first.parentAccountId || first.id);
+                    items.push({ icon: '◆', label: 'Complexes neglected', sub: 'No contact in 60+ days', count: myNeglectedChildren.length, link: `/accounts/${targetId}`, color: '#7c3aed' });
+                  }
                   // Birthdays this week
                   const today = new Date();
                   const upcomingBirthdays = contacts.filter((c) => {
@@ -493,21 +500,21 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Recent Activity — kept */}
+          {/* Recent Activity — each row links directly to its account */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
-              <Link href="/accounts" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
+              <span className="text-xs text-gray-400">Click to open account</span>
             </div>
             {recentActivities.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No recent activity yet.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-1">
                 {recentActivities.map((act) => {
                   const contactName = getContactName(act.contactId);
                   const accountName = getAccountName(act.accountId);
-                  return (
-                    <li key={act.id} className="flex gap-3 pb-3 border-b border-gray-50 last:border-0">
+                  const row = (
+                    <div className="flex gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
                       <span className="text-lg flex-shrink-0 mt-0.5">{typeIcon[act.type]}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
@@ -517,10 +524,17 @@ export default function DashboardPage() {
                         <p className="text-xs text-gray-500 mt-0.5">
                           {contactName && <span>{contactName}</span>}
                           {contactName && accountName && <span className="text-gray-300"> · </span>}
-                          {accountName && <Link href={`/accounts/${act.accountId}`} className="hover:underline" style={{ color: '#1a4731' }}>{accountName}</Link>}
+                          {accountName && <span style={{ color: '#1a4731' }} className="font-medium">{accountName}</span>}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{act.description}</p>
                       </div>
+                    </div>
+                  );
+                  return (
+                    <li key={act.id} className="border-b border-gray-50 last:border-0">
+                      {act.accountId ? (
+                        <Link href={`/accounts/${act.accountId}`} className="block">{row}</Link>
+                      ) : row}
                     </li>
                   );
                 })}
