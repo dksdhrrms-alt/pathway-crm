@@ -11,6 +11,9 @@ import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Toast from '@/app/components/Toast';
 import QuickLogModal from '@/app/components/QuickLogModal';
+import NewTaskModal from '@/app/components/NewTaskModal';
+import NewOpportunityModal from '@/app/components/NewOpportunityModal';
+import NewAccountModal from '@/app/components/NewAccountModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -75,6 +78,9 @@ export default function DashboardPage() {
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [quotaInput, setQuotaInput] = useState('500000');
   const [quickLogType, setQuickLogType] = useState<ActivityType | null>(null);
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [showNewOpp, setShowNewOpp] = useState(false);
+  const [showNewAccount, setShowNewAccount] = useState(false);
 
   useEffect(() => {
     try {
@@ -256,15 +262,15 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ============ QUICK ACTIONS ============ */}
+          {/* ============ QUICK ACTIONS — open modals directly ============ */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               { id: 'log', label: 'Log Activity', sub: 'Quick log a call/meeting', emoji: '📝', onClick: () => setQuickLogType('Call') },
-              { id: 'task', label: 'New Task', sub: 'Schedule a follow-up', emoji: '✅', href: '/tasks' },
-              { id: 'opp', label: 'New Opportunity', sub: 'Add a deal', emoji: '🎯', href: '/opportunities' },
-              { id: 'account', label: 'New Account', sub: 'Add a customer', emoji: '🏢', href: '/accounts' },
-            ].map((a) => {
-              const inner = (
+              { id: 'task', label: 'New Task', sub: 'Schedule a follow-up', emoji: '✅', onClick: () => setShowNewTask(true) },
+              { id: 'opp', label: 'New Opportunity', sub: 'Add a deal', emoji: '🎯', onClick: () => setShowNewOpp(true) },
+              { id: 'account', label: 'New Account', sub: 'Add a customer', emoji: '🏢', onClick: () => setShowNewAccount(true) },
+            ].map((a) => (
+              <button key={a.id} onClick={a.onClick} className="text-left">
                 <div className="bg-white border border-gray-200 hover:border-green-400 hover:shadow-md transition-all rounded-xl p-4 cursor-pointer h-full">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0" style={{ backgroundColor: '#f0f7ee' }}>{a.emoji}</div>
@@ -274,13 +280,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </div>
-              );
-              return a.href ? (
-                <Link key={a.id} href={a.href} className="block">{inner}</Link>
-              ) : (
-                <button key={a.id} onClick={a.onClick} className="text-left">{inner}</button>
-              );
-            })}
+              </button>
+            ))}
           </div>
 
           {/* Team members chips */}
@@ -604,6 +605,27 @@ export default function DashboardPage() {
         <QuickLogModal
           onClose={() => setQuickLogType(null)}
           initialType={quickLogType}
+        />
+      )}
+
+      {showNewTask && (
+        <NewTaskModal
+          onClose={() => setShowNewTask(false)}
+          onSave={() => { setShowNewTask(false); setToast('Task created'); }}
+        />
+      )}
+
+      {showNewOpp && (
+        <NewOpportunityModal
+          onClose={() => setShowNewOpp(false)}
+          onSave={() => { setShowNewOpp(false); setToast('Opportunity created'); }}
+        />
+      )}
+
+      {showNewAccount && (
+        <NewAccountModal
+          onClose={() => setShowNewAccount(false)}
+          onSave={() => { setShowNewAccount(false); setToast('Account created'); }}
         />
       )}
     </div>
