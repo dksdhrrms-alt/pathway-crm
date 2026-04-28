@@ -14,6 +14,7 @@ import QuickLogModal from '@/app/components/QuickLogModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
 import NewOpportunityModal from '@/app/components/NewOpportunityModal';
 import NewAccountModal from '@/app/components/NewAccountModal';
+import NewContactModal from '@/app/components/NewContactModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -81,6 +82,7 @@ export default function DashboardPage() {
   const [showNewTask, setShowNewTask] = useState(false);
   const [showNewOpp, setShowNewOpp] = useState(false);
   const [showNewAccount, setShowNewAccount] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
 
   useEffect(() => {
     try {
@@ -263,12 +265,13 @@ export default function DashboardPage() {
           </div>
 
           {/* ============ QUICK ACTIONS — open modals directly ============ */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
             {[
               { id: 'log', label: 'Log Activity', sub: 'Quick log a call/meeting', emoji: '📝', onClick: () => setQuickLogType('Call') },
               { id: 'task', label: 'New Task', sub: 'Schedule a follow-up', emoji: '✅', onClick: () => setShowNewTask(true) },
               { id: 'opp', label: 'New Opportunity', sub: 'Add a deal', emoji: '🎯', onClick: () => setShowNewOpp(true) },
               { id: 'account', label: 'New Account', sub: 'Add a customer', emoji: '🏢', onClick: () => setShowNewAccount(true) },
+              { id: 'contact', label: 'New Contact', sub: 'Add a person', emoji: '👤', onClick: () => setShowNewContact(true) },
             ].map((a) => (
               <button key={a.id} onClick={a.onClick} className="text-left">
                 <div className="bg-white border border-gray-200 hover:border-green-400 hover:shadow-md transition-all rounded-xl p-4 cursor-pointer h-full">
@@ -626,6 +629,13 @@ export default function DashboardPage() {
         <NewAccountModal
           onClose={() => setShowNewAccount(false)}
           onSave={() => { setShowNewAccount(false); setToast('Account created'); }}
+        />
+      )}
+
+      {showNewContact && (
+        <NewContactModal
+          onClose={() => setShowNewContact(false)}
+          onSave={() => { setShowNewContact(false); setToast('Contact created'); }}
         />
       )}
     </div>
