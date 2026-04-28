@@ -463,13 +463,58 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
             </table>
           </div>
 
-          {/* Section B: Activity Timeline */}
+          {/* Section B: Activity Details */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Activity Timeline</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{filteredActivities.length} activities — click a row to expand</p>
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-gray-900">Activity Details</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">{filteredActivities.length} activities — click a row to expand</p>
+                </div>
               </div>
+              {/* Per-user filter chips (admin tier only) */}
+              {canViewAll && (() => {
+                // Compute activity count per active user, ignoring the user filter itself
+                const baseActs = (() => {
+                  let acts = [...allActivities];
+                  if (teamFilter !== 'all') acts = acts.filter((a) => teamMemberIds.has(a.ownerId));
+                  if (fromDate) acts = acts.filter((a) => a.date >= fromDate);
+                  acts = acts.filter((a) => a.date <= toDate);
+                  if (activityTypeFilter !== 'all') acts = acts.filter((a) => a.type === activityTypeFilter);
+                  return acts;
+                })();
+                const totalCount = baseActs.length;
+                const usersWithCounts = activeUsers
+                  .map((u) => ({ u, count: baseActs.filter((a) => a.ownerId === u.id).length }))
+                  .filter((x) => x.count > 0)
+                  .sort((a, b) => b.count - a.count);
+                if (usersWithCounts.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    <button onClick={() => setSelectedUserId('all')}
+                      className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                      style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
+                      All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400'}`}>({totalCount})</span>
+                    </button>
+                    {usersWithCounts.map(({ u, count }) => {
+                      const active = selectedUserId === u.id;
+                      const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                      return (
+                        <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                          style={active ? { backgroundColor: '#1a4731' } : {}}>
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
+                            style={!active ? { backgroundColor: '#1a4731' } : {}}>
+                            {initials}
+                          </span>
+                          {u.name}
+                          <span className={active ? 'opacity-80' : 'text-gray-400'}>({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="divide-y divide-gray-50">
