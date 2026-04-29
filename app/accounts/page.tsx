@@ -243,6 +243,14 @@ export default function AccountsPage() {
       return next;
     });
   }
+  const contactCountByAccount = useMemo(() => {
+    const map: Record<string, number> = {};
+    contacts.forEach((c) => {
+      if (c.accountId) map[c.accountId] = (map[c.accountId] || 0) + 1;
+    });
+    return map;
+  }, [contacts]);
+
   const childrenByParent = useMemo(() => {
     const map: Record<string, typeof allAccounts> = {};
     allAccounts.forEach((a) => {
@@ -490,6 +498,12 @@ export default function AccountsPage() {
                                   {childCount > 0 && (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium" title={`${childCount} child account${childCount > 1 ? 's' : ''}`}>
                                       +{childCount}
+                                    </span>
+                                  )}
+                                  {(contactCountByAccount[acct.id] || 0) > 0 && (
+                                    <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium" title={`${contactCountByAccount[acct.id]} contact${contactCountByAccount[acct.id] > 1 ? 's' : ''}`}>
+                                      <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                      {contactCountByAccount[acct.id]}
                                     </span>
                                   )}
                                 </div>
