@@ -59,6 +59,7 @@ export default function SalesDashboardPage() {
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showAcctBudgetModal, setShowAcctBudgetModal] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const [expandedAccount, setExpandedAccount] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [editingMonth, setEditingMonth] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -244,6 +245,48 @@ export default function SalesDashboardPage() {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
   }, [salesData, year, category, totalActual, crmAccounts]);
+
+  // Build a product × month breakdown for an expanded account, including its
+  // children (Integration roll-up). Returns sorted product list with monthly
+  // amounts (12 entries) + total.
+  const productBreakdownByAccount = useMemo(() => {
+    const map: Record<string, { name: string; monthly: number[]; total: number }[]> = {};
+
+    // Pre-compute included raw account names per top account
+    const includedNamesByTop: Record<string, Set<string>> = {};
+    for (const top of topAccounts) {
+      const set = new Set<string>([top.name.toLowerCase()]);
+      crmAccounts.forEach((a) => {
+        if (!a.parentAccountId) return;
+        const parent = crmAccounts.find((p) => p.id === a.parentAccountId);
+        if (parent && parent.name.toLowerCase() === top.name.toLowerCase()) {
+          set.add(a.name.toLowerCase());
+        }
+      });
+      includedNamesByTop[top.name] = set;
+    }
+
+    for (const top of topAccounts) {
+      const includedNames = includedNamesByTop[top.name];
+      // product → 12-month amounts
+      const matrix: Record<string, number[]> = {};
+      for (const r of salesData) {
+        if (!r.accountName || !includedNames.has(r.accountName.toLowerCase())) continue;
+        const d = String(r.date || '').split('-');
+        const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
+        if (rYear !== year) continue;
+        if (category !== 'all' && r.category !== category) continue;
+        if (!rMonth || rMonth < 1 || rMonth > 12) continue;
+        const prod = r.productName || 'Unknown';
+        if (!matrix[prod]) matrix[prod] = new Array(12).fill(0);
+        matrix[prod][rMonth - 1] += Number(r.amount) || 0;
+      }
+      map[top.name] = Object.entries(matrix)
+        .map(([name, monthly]) => ({ name, monthly, total: monthly.reduce((a, b) => a + b, 0) }))
+        .sort((a, b) => b.total - a.total);
+    }
+    return map;
+  }, [topAccounts, salesData, year, category, crmAccounts]);
 
   // Inline budget edit
   async function saveInlineEdit(month: number) {
@@ -543,30 +586,99 @@ export default function SalesDashboardPage() {
                 <tbody>
                   {topAccounts.map((a, i) => {
                     const trend = a.lastYear > 0 ? Math.round(((a.amount - a.lastYear) / a.lastYear) * 100) : null;
+                    const isOpen = expandedAccount === a.name;
+                    const products = productBreakdownByAccount[a.name] || [];
                     return (
-                      <tr key={a.name} className="border-b border-gray-50">
-                        <td className="text-center px-3 py-3 text-gray-400 text-xs">{i + 1}</td>
-                        <td className="px-4 py-3 font-medium">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
-                              <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
-                            ) : <span className="text-gray-800">{a.name}</span>; })()}
-                            {a.isIntegration && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
-                                ◆ Integration · +{a.childCount}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 capitalize">{a.category}</span></td>
-                        <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{fmt(a.amount)}</td>
-                        <td className="px-4 py-3 text-right text-gray-500">{a.pctOfTotal}%</td>
-                        <td className="px-4 py-3 text-right">
-                          {trend !== null ? (
-                            <span className={trend >= 0 ? 'text-green-600' : 'text-red-600'}>{trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>
-                          ) : <span className="text-gray-400">—</span>}
-                        </td>
-                      </tr>
+                      <React.Fragment key={a.name}>
+                        <tr
+                          onClick={() => setExpandedAccount(isOpen ? null : a.name)}
+                          className={`border-b border-gray-50 cursor-pointer transition-colors ${isOpen ? 'bg-green-50/40' : 'hover:bg-gray-50/60'}`}
+                        >
+                          <td className="text-center px-3 py-3 text-gray-400 text-xs">
+                            <span className="inline-flex items-center gap-1">
+                              <span style={{ display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s', fontSize: '9px' }}>▶</span>
+                              {i + 1}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-medium">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
+                                <a href={`/accounts/${match.id}`} onClick={(e) => e.stopPropagation()} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
+                              ) : <span className="text-gray-800">{a.name}</span>; })()}
+                              {a.isIntegration && (
+                                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
+                                  ◆ Integration · +{a.childCount}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 capitalize">{a.category}</span></td>
+                          <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{fmt(a.amount)}</td>
+                          <td className="px-4 py-3 text-right text-gray-500">{a.pctOfTotal}%</td>
+                          <td className="px-4 py-3 text-right">
+                            {trend !== null ? (
+                              <span className={trend >= 0 ? 'text-green-600' : 'text-red-600'}>{trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>
+                            ) : <span className="text-gray-400">—</span>}
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="border-b border-gray-100 bg-gray-50/40">
+                            <td colSpan={6} className="p-0">
+                              <div className="px-6 py-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Product × Month — {a.name} ({year})</p>
+                                  {a.isIntegration && (
+                                    <span className="text-[10px] text-blue-600">includes {a.childCount} child account{a.childCount > 1 ? 's' : ''}</span>
+                                  )}
+                                </div>
+                                {products.length === 0 ? (
+                                  <p className="text-sm text-gray-400 text-center py-4">No product data for this account in {year}.</p>
+                                ) : (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-xs border border-gray-200 rounded">
+                                      <thead>
+                                        <tr className="bg-white border-b border-gray-200">
+                                          <th className="text-left px-3 py-2 font-medium text-gray-500 sticky left-0 bg-white z-10" style={{ minWidth: 200 }}>Product</th>
+                                          {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m) => (
+                                            <th key={m} className="text-right px-2 py-2 font-medium text-gray-500" style={{ minWidth: 70 }}>{m}</th>
+                                          ))}
+                                          <th className="text-right px-3 py-2 font-medium text-gray-700 bg-gray-100" style={{ minWidth: 90 }}>Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {products.map((p) => (
+                                          <tr key={p.name} className="border-b border-gray-100 hover:bg-white">
+                                            <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-gray-50/40 hover:bg-white z-10">{p.name}</td>
+                                            {p.monthly.map((amt, mi) => (
+                                              <td key={mi} className={`text-right px-2 py-1.5 ${amt > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
+                                                {amt > 0 ? fmt(amt) : '—'}
+                                              </td>
+                                            ))}
+                                            <td className="text-right px-3 py-1.5 font-semibold bg-gray-50" style={{ color: '#1a4731' }}>{fmt(p.total)}</td>
+                                          </tr>
+                                        ))}
+                                        {/* Monthly totals row */}
+                                        <tr className="border-t-2 border-gray-300 bg-white">
+                                          <td className="px-3 py-2 font-semibold text-gray-700 sticky left-0 bg-white z-10">TOTAL</td>
+                                          {Array.from({ length: 12 }).map((_, mi) => {
+                                            const monthTotal = products.reduce((s, p) => s + p.monthly[mi], 0);
+                                            return (
+                                              <td key={mi} className={`text-right px-2 py-2 font-semibold ${monthTotal > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
+                                                {monthTotal > 0 ? fmt(monthTotal) : '—'}
+                                              </td>
+                                            );
+                                          })}
+                                          <td className="text-right px-3 py-2 font-bold" style={{ color: '#1a4731', backgroundColor: '#e8f5e9' }}>{fmt(a.amount)}</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
