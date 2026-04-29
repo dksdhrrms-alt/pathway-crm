@@ -155,7 +155,7 @@ async function generateMonogastricReport(
   const hasAI = apiKey && !apiKey.includes('placeholder');
   const aiSummaries: Record<string, { thisWeek: string; nextWeek: string }> = {};
 
-  for (const team of ['poultry', 'swine']) {
+  for (const team of ['poultry', 'swine', 'b2bDistribution']) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = (teamSummaries?.[team] || { activities: [], tasks: [], opportunities: [] }) as any;
     const actCount = data.activities?.length || 0;
@@ -186,7 +186,8 @@ async function generateMonogastricReport(
           ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
           return `- ${parts.join(' | ')}`;
         }).join('\n') || 'None';
-        const prompt = sanitize(`Write ${team === 'poultry' ? 'Poultry' : 'Swine'} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate. If a field is missing, simply skip it (do NOT insert "—" or placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+        const teamLabel = team === 'poultry' ? 'Poultry' : team === 'swine' ? 'Swine' : 'B2B Distribution (distributor accounts)';
+        const prompt = sanitize(`Write ${teamLabel} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate. If a field is missing, simply skip it (do NOT insert "—" or placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
         const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
         if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
         else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -305,8 +306,8 @@ async function generateMonogastricReport(
           ] }),
           new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
             teamCell('(B2B)\nDistribution', { bg: 'EEEDFE', width: actColW[0], color: '534AB7' }),
-            activityCell('', { width: actColW[1] }),
-            activityCell('', { width: actColW[2] }),
+            activityCell(aiSummaries.b2bDistribution?.thisWeek || '', { width: actColW[1] }),
+            activityCell(aiSummaries.b2bDistribution?.nextWeek || '', { width: actColW[2] }),
           ] }),
         ] }),
         new Paragraph({ spacing: { before: 200, after: 120 }, children: [] }),

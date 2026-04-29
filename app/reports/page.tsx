@@ -329,6 +329,23 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
         };
       });
 
+      // B2B Distribution = all activities on accounts where companyType='Distributor',
+      // regardless of which team the activity owner belongs to. Used in the
+      // Monogastric weekly report's "(B2B) Distribution" row.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const distributorAccountIds = new Set(accounts.filter((a) => (a as any).companyType === 'Distributor').map((a) => a.id));
+      weekSummaries['b2bDistribution'] = {
+        teamName: 'B2B Distribution',
+        activities: allActivities
+          .filter((a) => a.accountId && distributorAccountIds.has(a.accountId))
+          .filter((a) => a.date >= fromIso && a.date <= toIso)
+          .map(enrichA),
+        tasks: allTasks
+          .filter((t) => t.relatedAccountId && distributorAccountIds.has(t.relatedAccountId) && t.status !== 'Completed')
+          .map(enrichT),
+        opportunities: [],
+      };
+
       const res = await fetch('/api/ai/generate-weekly-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
