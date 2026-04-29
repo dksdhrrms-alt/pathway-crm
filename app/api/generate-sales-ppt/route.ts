@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+// JSZip MUST be a top-level static import — Vercel's serverless bundler does
+// not resolve `await import('jszip')` correctly when invoked transitively from
+// pptxgenjs (results in 500 "Cannot find module 'jszip'" at runtime).
+// Importing it here forces it into the function bundle.
+import 'jszip';
 
 // Sales Meeting PPT — replicates the "Cumulative Achievement" template:
 //   - Bold title top-left
@@ -7,10 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
 //   - Bottom table: monthly Cum.% row
 //   - Pathway navy decorative shape bottom-right
 //
-// IMPORTANT: pptxgenjs and jszip pull in Node-only / browser-conditional code
-// (canvas, fs, sax). Static imports break the Vercel build in some environments.
-// We dynamic-import inside the handler so the modules only load at request time
-// under the explicit nodejs runtime.
+// pptxgenjs is still loaded dynamically (it's heavier and only the value, not
+// types, is needed at runtime — see the dynamic import inside POST below).
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
@@ -109,14 +112,9 @@ export async function POST(req: NextRequest) {
   const cumPctByMonth = cumBudget.map((b, i) => (b > 0 ? Math.round((cumSales[i] / b) * 100) : 0));
 
   // ── Build PPT ────────────────────────────────────────────────────────
-  // Dynamic imports — keep build-time bundle clean and only load Node-only
-  // module code at request time. (jszip is pulled in transitively by pptxgenjs;
-  // eager-loading it via dynamic import here surfaces any runtime resolution
-  // issues immediately instead of mid-render.)
-  const [{ default: PptxGenJS }] = await Promise.all([
-    import('pptxgenjs'),
-    import('jszip'),
-  ]);
+  // pptxgenjs lazy-loaded; jszip is statically imported at the top of the file
+  // so Vercel's bundler ships it with the function (dynamic import broke 500).
+  const { default: PptxGenJS } = await import('pptxgenjs');
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';                // 13.33 x 7.5 inches
   pptx.title = `Pathway Intermediates USA — ${categoryLabel(category)} Cumulative Achievement ${year}`;
