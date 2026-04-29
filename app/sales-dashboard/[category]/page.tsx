@@ -188,17 +188,38 @@ export default function SalesDashboardPage() {
     });
   }, [category, salesData, year, budgets]);
 
-  // Top accounts
+  // Top accounts — roll up child account sales to their parent (Integration).
+  // Accounts with companyType-set Distributors and other children get attributed to
+  // the top-level parent, with a badge to indicate the totals include children.
   const topAccounts = useMemo(() => {
     const curMonth = CURRENT_MONTH;
-    const accts: Record<string, { amount: number; category: string; lastYear: number }> = {};
+
+    // Build accountName → parentAccountName map (case-insensitive lookup via lowercase keys)
+    const acctByLowerName: Record<string, typeof crmAccounts[number]> = {};
+    crmAccounts.forEach((a) => { acctByLowerName[a.name.toLowerCase()] = a; });
+    function resolveParent(rawName: string): { rolledName: string; isParentRollup: boolean; sourceWasChild: boolean } {
+      const found = acctByLowerName[rawName.toLowerCase()];
+      if (!found || !found.parentAccountId) return { rolledName: rawName, isParentRollup: false, sourceWasChild: false };
+      const parent = crmAccounts.find((p) => p.id === found.parentAccountId);
+      if (!parent) return { rolledName: rawName, isParentRollup: false, sourceWasChild: false };
+      return { rolledName: parent.name, isParentRollup: true, sourceWasChild: true };
+    }
+
+    // Track per rolled-up account: whether it's an integration parent + child contributors
+    const accts: Record<string, { amount: number; category: string; lastYear: number; isIntegration: boolean; childContributors: Set<string> }> = {};
+
     for (const r of salesData) {
       const d = String(r.date || '').split('-');
-      const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
+      const rYear = parseInt(d[0]);
       if (rYear !== year) continue;
       if (category !== 'all' && r.category !== category) continue;
-      if (!accts[r.accountName]) accts[r.accountName] = { amount: 0, category: r.category, lastYear: 0 };
-      accts[r.accountName].amount += r.amount;
+      const { rolledName, sourceWasChild } = resolveParent(r.accountName);
+      if (!accts[rolledName]) accts[rolledName] = { amount: 0, category: r.category, lastYear: 0, isIntegration: false, childContributors: new Set() };
+      accts[rolledName].amount += r.amount;
+      if (sourceWasChild) {
+        accts[rolledName].isIntegration = true;
+        accts[rolledName].childContributors.add(r.accountName);
+      }
     }
     // Compare same period (Jan through current month) of previous year
     for (const r of salesData) {
@@ -207,13 +228,22 @@ export default function SalesDashboardPage() {
       if (rYear !== year - 1) continue;
       if (year === CURRENT_YEAR && rMonth > curMonth) continue; // same period only
       if (category !== 'all' && r.category !== category) continue;
-      if (accts[r.accountName]) accts[r.accountName].lastYear += r.amount;
+      const { rolledName } = resolveParent(r.accountName);
+      if (accts[rolledName]) accts[rolledName].lastYear += r.amount;
     }
     return Object.entries(accts)
-      .map(([name, d]) => ({ name, ...d, pctOfTotal: totalActual > 0 ? Math.round((d.amount / totalActual) * 100) : 0 }))
+      .map(([name, d]) => ({
+        name,
+        amount: d.amount,
+        category: d.category,
+        lastYear: d.lastYear,
+        isIntegration: d.isIntegration,
+        childCount: d.childContributors.size,
+        pctOfTotal: totalActual > 0 ? Math.round((d.amount / totalActual) * 100) : 0,
+      }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
-  }, [salesData, year, category, totalActual]);
+  }, [salesData, year, category, totalActual, crmAccounts]);
 
   // Inline budget edit
   async function saveInlineEdit(month: number) {
@@ -517,9 +547,16 @@ export default function SalesDashboardPage() {
                       <tr key={a.name} className="border-b border-gray-50">
                         <td className="text-center px-3 py-3 text-gray-400 text-xs">{i + 1}</td>
                         <td className="px-4 py-3 font-medium">
-                          {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
-                            <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
-                          ) : <span className="text-gray-800">{a.name}</span>; })()}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
+                              <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
+                            ) : <span className="text-gray-800">{a.name}</span>; })()}
+                            {a.isIntegration && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
+                                ◆ Integration · +{a.childCount}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 capitalize">{a.category}</span></td>
                         <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{fmt(a.amount)}</td>
