@@ -105,6 +105,33 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [pptYear, setPptYear] = useState(new Date().getFullYear());
+  const [pptQuarter, setPptQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4' | 'YTD'>(`Q${Math.ceil((new Date().getMonth() + 1) / 3)}` as 'Q1' | 'Q2' | 'Q3' | 'Q4');
+  const [isGeneratingPpt, setIsGeneratingPpt] = useState(false);
+
+  async function handleGeneratePpt() {
+    setIsGeneratingPpt(true);
+    try {
+      const res = await fetch('/api/generate-sales-ppt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: pptYear, quarter: pptQuarter, saleRecords }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Sales-Meeting-${pptYear}-${pptQuarter}.pptx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('[PPT]', err);
+      alert('Failed to generate PPT. Check console for details.');
+    } finally {
+      setIsGeneratingPpt(false);
+    }
+  }
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
@@ -396,6 +423,33 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
               >
                 {isGenerating ? '⏳ Generating...' : '✨ AI Weekly Report'}
               </button>
+
+              {/* Sales Meeting PPT — year + quarter + generate */}
+              <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg pl-2">
+                <span className="text-[11px] text-gray-500 font-medium">📊 Sales PPT:</span>
+                <select value={pptYear} onChange={(e) => setPptYear(parseInt(e.target.value))}
+                  className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer py-1.5">
+                  {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <select value={pptQuarter} onChange={(e) => setPptQuarter(e.target.value as 'Q1')}
+                  className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer py-1.5">
+                  <option value="Q1">Q1</option>
+                  <option value="Q2">Q2</option>
+                  <option value="Q3">Q3</option>
+                  <option value="Q4">Q4</option>
+                  <option value="YTD">YTD</option>
+                </select>
+                <button
+                  onClick={handleGeneratePpt}
+                  disabled={isGeneratingPpt}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md transition-all border-l border-gray-200"
+                  style={{ backgroundColor: isGeneratingPpt ? '#e5e7eb' : '#0F6E56', color: isGeneratingPpt ? '#888' : 'white', cursor: isGeneratingPpt ? 'not-allowed' : 'pointer' }}
+                >
+                  {isGeneratingPpt ? '⏳' : 'Generate'}
+                </button>
+              </div>
             </div>
           </div>
 
