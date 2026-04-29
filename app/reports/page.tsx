@@ -106,7 +106,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
   const [isGenerating, setIsGenerating] = useState(false);
   const [pptYear, setPptYear] = useState(new Date().getFullYear());
-  const [pptQuarter, setPptQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4' | 'YTD'>(`Q${Math.ceil((new Date().getMonth() + 1) / 3)}` as 'Q1' | 'Q2' | 'Q3' | 'Q4');
+  const [pptCategory, setPptCategory] = useState<string>('all');
   const [isGeneratingPpt, setIsGeneratingPpt] = useState(false);
 
   async function handleGeneratePpt() {
@@ -115,14 +115,14 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       const res = await fetch('/api/generate-sales-ppt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year: pptYear, quarter: pptQuarter, saleRecords }),
+        body: JSON.stringify({ year: pptYear, category: pptCategory, saleRecords, budgets: salesBudgets }),
       });
       if (!res.ok) throw new Error('Failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Sales-Meeting-${pptYear}-${pptQuarter}.pptx`;
+      a.download = `Sales-Meeting-${pptCategory}-${pptYear}.pptx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -424,7 +424,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 {isGenerating ? '⏳ Generating...' : '✨ AI Weekly Report'}
               </button>
 
-              {/* Sales Meeting PPT — year + quarter + generate */}
+              {/* Sales Meeting PPT — year + category + generate */}
               <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg pl-2">
                 <span className="text-[11px] text-gray-500 font-medium">📊 Sales PPT:</span>
                 <select value={pptYear} onChange={(e) => setPptYear(parseInt(e.target.value))}
@@ -433,19 +433,19 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
-                <select value={pptQuarter} onChange={(e) => setPptQuarter(e.target.value as 'Q1')}
+                <select value={pptCategory} onChange={(e) => setPptCategory(e.target.value)}
                   className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer py-1.5">
-                  <option value="Q1">Q1</option>
-                  <option value="Q2">Q2</option>
-                  <option value="Q3">Q3</option>
-                  <option value="Q4">Q4</option>
-                  <option value="YTD">YTD</option>
+                  <option value="all">Total</option>
+                  <option value="monogastrics">Monogastric</option>
+                  <option value="ruminants">Ruminant</option>
+                  <option value="latam">LATAM</option>
+                  <option value="familyb2b">Family/B2B</option>
                 </select>
                 <button
                   onClick={handleGeneratePpt}
                   disabled={isGeneratingPpt}
                   className="px-3 py-1.5 text-xs font-medium rounded-md transition-all border-l border-gray-200"
-                  style={{ backgroundColor: isGeneratingPpt ? '#e5e7eb' : '#0F6E56', color: isGeneratingPpt ? '#888' : 'white', cursor: isGeneratingPpt ? 'not-allowed' : 'pointer' }}
+                  style={{ backgroundColor: isGeneratingPpt ? '#e5e7eb' : '#0F2A47', color: isGeneratingPpt ? '#888' : 'white', cursor: isGeneratingPpt ? 'not-allowed' : 'pointer' }}
                 >
                   {isGeneratingPpt ? '⏳' : 'Generate'}
                 </button>
