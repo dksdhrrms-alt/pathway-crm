@@ -9,6 +9,9 @@ interface Props {
   maxSeconds?: number;                           // auto-stop after this many seconds (default 60)
 }
 
+// Whisper transcription is locked to English (language=en) on the server side
+// to prevent mobile mis-detection that would render Korean instead of English.
+
 // Hard cap to protect against runaway recordings (= ~$0.006/min Whisper cost)
 const DEFAULT_MAX_SECONDS = 60;
 
@@ -17,7 +20,7 @@ const DEFAULT_MAX_SECONDS = 60;
 // subsequent recordings skip the permission-status check overhead.
 let permissionGrantedCache = false;
 
-export default function VoiceInputButton({ onTranscript, size = 'md', title = 'Voice input', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
+export default function VoiceInputButton({ onTranscript, size = 'md', title = 'Voice input (English)', maxSeconds = DEFAULT_MAX_SECONDS }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'processing' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [elapsed, setElapsed] = useState(0);

@@ -24,13 +24,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
   }
 
-  // Intentionally omit `language` — passing a hint can cause Whisper to translate
-  // (e.g. Korean speech rendered as English). Without the param, Whisper auto-detects
-  // the source language and transcribes in that same language.
+  // Force English transcription. On mobile, auto-detect occasionally misidentifies
+  // an English-with-accent speaker as Korean and transcribes Korean text — passing
+  // language=en + an English-domain prompt locks Whisper to English output.
   const openaiForm = new FormData();
   // Whisper accepts mp3/mp4/m4a/mpeg/mpga/wav/webm — MediaRecorder default is webm
   openaiForm.append('file', audio, 'audio.webm');
   openaiForm.append('model', 'whisper-1');
+  openaiForm.append('language', 'en');
+  // The `prompt` field biases Whisper toward this vocabulary/style. Helps with
+  // proper nouns, industry jargon, and reinforces English context.
+  openaiForm.append(
+    'prompt',
+    'This is a sales activity note for Pathway Intermediates USA, a livestock feed additive distributor serving poultry, swine, dairy, and beef customers across North and Latin America. Notes describe customer calls, meetings, follow-ups, samples, trials, pricing discussions, and integrator relationships. Common terms: Tyson, Pilgrim\'s, Cargill, JBS, Smithfield, integrator, complex, feed mill, nutritionist, broiler, layer, swine, ruminant.'
+  );
   openaiForm.append('response_format', 'json');
 
   try {
