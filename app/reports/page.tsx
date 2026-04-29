@@ -105,43 +105,6 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [pptYear, setPptYear] = useState(new Date().getFullYear());
-  const [pptCategory, setPptCategory] = useState<string>('all');
-  const [isGeneratingPpt, setIsGeneratingPpt] = useState(false);
-
-  async function handleGeneratePpt() {
-    setIsGeneratingPpt(true);
-    try {
-      const res = await fetch('/api/generate-sales-ppt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year: pptYear, category: pptCategory, saleRecords, budgets: salesBudgets }),
-      });
-      if (!res.ok) {
-        // Try to surface the actual server-side error message
-        let errMsg = `HTTP ${res.status}`;
-        try {
-          const errBody = await res.json();
-          errMsg = errBody.detail || errBody.error || errMsg;
-          console.error('[PPT] Server error:', errBody);
-        } catch { /* response wasn't JSON */ }
-        throw new Error(errMsg);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Sales-Meeting-${pptCategory}-${pptYear}.pptx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[PPT]', err);
-      alert(`Failed to generate PPT:\n\n${msg}\n\nCheck console for full stack trace.`);
-    } finally {
-      setIsGeneratingPpt(false);
-    }
-  }
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
@@ -434,32 +397,6 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 {isGenerating ? '⏳ Generating...' : '✨ AI Weekly Report'}
               </button>
 
-              {/* Sales Meeting PPT — year + category + generate */}
-              <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg pl-2">
-                <span className="text-[11px] text-gray-500 font-medium">📊 Sales PPT:</span>
-                <select value={pptYear} onChange={(e) => setPptYear(parseInt(e.target.value))}
-                  className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer py-1.5">
-                  {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-                <select value={pptCategory} onChange={(e) => setPptCategory(e.target.value)}
-                  className="text-xs border-0 bg-transparent focus:outline-none cursor-pointer py-1.5">
-                  <option value="all">Total</option>
-                  <option value="monogastrics">Monogastric</option>
-                  <option value="ruminants">Ruminant</option>
-                  <option value="latam">LATAM</option>
-                  <option value="familyb2b">Family/B2B</option>
-                </select>
-                <button
-                  onClick={handleGeneratePpt}
-                  disabled={isGeneratingPpt}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md transition-all border-l border-gray-200"
-                  style={{ backgroundColor: isGeneratingPpt ? '#e5e7eb' : '#0F2A47', color: isGeneratingPpt ? '#888' : 'white', cursor: isGeneratingPpt ? 'not-allowed' : 'pointer' }}
-                >
-                  {isGeneratingPpt ? '⏳' : 'Generate'}
-                </button>
-              </div>
             </div>
           </div>
 
