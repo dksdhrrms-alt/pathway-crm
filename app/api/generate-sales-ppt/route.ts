@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import PptxGenJS from 'pptxgenjs';
 
 // Sales Meeting PPT — replicates the "Cumulative Achievement" template:
 //   - Bold title top-left
@@ -7,8 +6,16 @@ import PptxGenJS from 'pptxgenjs';
 //   - Combo chart: bar (cumulative achievement/budget) + line (cumulative sales)
 //   - Bottom table: monthly Cum.% row
 //   - Pathway navy decorative shape bottom-right
+//
+// IMPORTANT: pptxgenjs and jszip pull in Node-only / browser-conditional code
+// (canvas, fs, sax). Static imports break the Vercel build in some environments.
+// We dynamic-import inside the handler so the modules only load at request time
+// under the explicit nodejs runtime.
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PptxRow = any[];
 
 interface SaleRow { date?: string; accountName?: string; productName?: string; category?: string; amount?: number | string; }
 interface BudgetRow { year?: number; month?: number; category?: string; amount?: number | string; }
@@ -102,6 +109,14 @@ export async function POST(req: NextRequest) {
   const cumPctByMonth = cumBudget.map((b, i) => (b > 0 ? Math.round((cumSales[i] / b) * 100) : 0));
 
   // ── Build PPT ────────────────────────────────────────────────────────
+  // Dynamic imports — keep build-time bundle clean and only load Node-only
+  // module code at request time. (jszip is pulled in transitively by pptxgenjs;
+  // eager-loading it via dynamic import here surfaces any runtime resolution
+  // issues immediately instead of mid-render.)
+  const [{ default: PptxGenJS }] = await Promise.all([
+    import('pptxgenjs'),
+    import('jszip'),
+  ]);
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';                // 13.33 x 7.5 inches
   pptx.title = `Pathway Intermediates USA — ${categoryLabel(category)} Cumulative Achievement ${year}`;
@@ -157,11 +172,11 @@ export async function POST(req: NextRequest) {
     );
 
     // Bottom monthly cum.% table
-    const headerRow: PptxGenJS.TableRow = [
+    const headerRow: PptxRow = [
       { text: '', options: { fill: { color: PRIMARY_NAVY }, color: 'FFFFFF', bold: true } },
       ...MONTH_NAMES.map((m) => ({ text: m, options: { fill: { color: PRIMARY_NAVY }, color: 'FFFFFF', bold: true, align: 'center' as const } })),
     ];
-    const cumRow: PptxGenJS.TableRow = [
+    const cumRow: PptxRow = [
       { text: 'Cum.', options: { bold: true, color: TEXT_DARK, fill: { color: 'FFFFFF' } } },
       ...cumPctByMonth.map((p, i) => {
         // Show empty for future months (no sales data)
