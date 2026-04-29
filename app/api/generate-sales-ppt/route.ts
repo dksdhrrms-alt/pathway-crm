@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
   const { year, saleRecords = [], budgets = [], category = 'all' } = body;
   if (!year) return NextResponse.json({ error: 'year required' }, { status: 400 });
 
+  try {
+
   // Compute currently selected month — use latest month with sales data, fallback to current month
   const today = new Date();
   const currentMonth = year === today.getFullYear() ? today.getMonth() + 1 : 12;
@@ -138,8 +140,11 @@ export async function POST(req: NextRequest) {
     // Title
     s.addText('Cumulative Achievement', { x: 0.4, y: 0.25, w: 11, h: 0.85, fontSize: 36, color: PRIMARY_NAVY, fontFace: 'Calibri', bold: true, italic: true });
 
-    // Pathway logo top-right (use SVG file from public)
-    try { s.addImage({ path: 'public/pathway-logo.svg', x: 11.3, y: 0.3, w: 1.7, h: 0.7 }); } catch { /* ignore if missing */ }
+    // Pathway logo top-right — render as text for now. (Vercel serverless
+    // functions don't bundle files in `public/`, so addImage with `path:`
+    // throws a 500. To restore an actual logo, fetch the URL or embed base64.)
+    s.addText('PATHWAY', { x: 11.0, y: 0.3, w: 2.0, h: 0.3, fontSize: 14, color: PRIMARY_NAVY, fontFace: 'Calibri', bold: true, align: 'right' });
+    s.addText('INTERMEDIATES', { x: 11.0, y: 0.6, w: 2.0, h: 0.3, fontSize: 10, color: PRIMARY_NAVY, fontFace: 'Calibri', align: 'right' });
 
     // Annotation lines
     s.addText(`Annual Budget & Achievement: ${fmt$(annualBudget)} / ${fmt$(annualAchievement)} (${annualPct}%)`, { x: 0.4, y: 1.25, w: 12.5, h: 0.35, fontSize: 14, color: TEXT_DARK, fontFace: 'Calibri' });
@@ -202,4 +207,13 @@ export async function POST(req: NextRequest) {
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
+  } catch (err) {
+    console.error('[PPT] Generation failed:', err);
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? (err.stack || '').split('\n').slice(0, 8).join('\n') : '';
+    return NextResponse.json(
+      { error: 'PPT generation failed', detail: msg, stack },
+      { status: 500 }
+    );
+  }
 }

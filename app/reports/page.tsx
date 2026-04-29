@@ -117,7 +117,16 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ year: pptYear, category: pptCategory, saleRecords, budgets: salesBudgets }),
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        // Try to surface the actual server-side error message
+        let errMsg = `HTTP ${res.status}`;
+        try {
+          const errBody = await res.json();
+          errMsg = errBody.detail || errBody.error || errMsg;
+          console.error('[PPT] Server error:', errBody);
+        } catch { /* response wasn't JSON */ }
+        throw new Error(errMsg);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -126,8 +135,9 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('[PPT]', err);
-      alert('Failed to generate PPT. Check console for details.');
+      alert(`Failed to generate PPT:\n\n${msg}\n\nCheck console for full stack trace.`);
     } finally {
       setIsGeneratingPpt(false);
     }
