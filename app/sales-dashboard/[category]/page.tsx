@@ -98,6 +98,14 @@ export default function SalesDashboardPage() {
 
   useEffect(() => { loadBudgets(); }, [loadBudgets]);
 
+  // Category matcher — Monogastrics rolls up swine records too (matches the
+  // logic used by the Weekly Report so dashboard ↔ report numbers agree).
+  const categoryMatches = useCallback((recordCat: string | undefined): boolean => {
+    if (category === 'all') return true;
+    if (category === 'monogastrics') return recordCat === 'monogastrics' || recordCat === 'swine';
+    return recordCat === category;
+  }, [category]);
+
   // Compute actuals from raw sales data
   const monthlyActuals = useMemo(() => {
     const result: number[] = new Array(12).fill(0);
@@ -107,7 +115,7 @@ export default function SalesDashboardPage() {
       const y = parseInt(parts[0]);
       const m = parseInt(parts[1]);
       if (y !== year || !m || m < 1 || m > 12) continue;
-      if (category !== 'all' && r.category !== category) continue;
+      if (!categoryMatches(r.category)) continue;
       result[m - 1] += (Number(r.amount) || 0);
     }
     return result;
@@ -122,7 +130,7 @@ export default function SalesDashboardPage() {
       const y = parseInt(parts[0]);
       const m = parseInt(parts[1]);
       if (y !== year - 1 || !m || m < 1 || m > 12) continue;
-      if (category !== 'all' && r.category !== category) continue;
+      if (!categoryMatches(r.category)) continue;
       result[m - 1] += (Number(r.amount) || 0);
     }
     return result;
@@ -213,7 +221,7 @@ export default function SalesDashboardPage() {
       const d = String(r.date || '').split('-');
       const rYear = parseInt(d[0]);
       if (rYear !== year) continue;
-      if (category !== 'all' && r.category !== category) continue;
+      if (!categoryMatches(r.category)) continue;
       const { rolledName, sourceWasChild } = resolveParent(r.accountName);
       if (!accts[rolledName]) accts[rolledName] = { amount: 0, category: r.category, lastYear: 0, isIntegration: false, childContributors: new Set() };
       accts[rolledName].amount += r.amount;
@@ -228,7 +236,7 @@ export default function SalesDashboardPage() {
       const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
       if (rYear !== year - 1) continue;
       if (year === CURRENT_YEAR && rMonth > curMonth) continue; // same period only
-      if (category !== 'all' && r.category !== category) continue;
+      if (!categoryMatches(r.category)) continue;
       const { rolledName } = resolveParent(r.accountName);
       if (accts[rolledName]) accts[rolledName].lastYear += r.amount;
     }
@@ -275,7 +283,7 @@ export default function SalesDashboardPage() {
         const d = String(r.date || '').split('-');
         const rYear = parseInt(d[0]); const rMonth = parseInt(d[1]);
         if (rYear !== year) continue;
-        if (category !== 'all' && r.category !== category) continue;
+        if (!categoryMatches(r.category)) continue;
         if (!rMonth || rMonth < 1 || rMonth > 12) continue;
         const prod = r.productName || 'Unknown';
         if (!matrix[prod]) matrix[prod] = new Array(12).fill(0);
