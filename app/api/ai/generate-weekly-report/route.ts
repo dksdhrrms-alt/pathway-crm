@@ -111,20 +111,38 @@ async function generateMonogastricReport(
     acctBudgets = data || [];
   } catch { /* table might not exist */ }
 
+  // Fetch CRM accounts to build child→parent rollup map (Integration Accounts)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let accountsList: any[] = [];
+  try {
+    const accSb = createClient(sbUrl, sbKey);
+    const { data } = await accSb.from('accounts').select('id, name, parent_account_id');
+    accountsList = data || [];
+  } catch { /* */ }
+  const parentByName: Record<string, string> = {};
+  accountsList.forEach((a) => {
+    if (a.parent_account_id && a.name) {
+      const parent = accountsList.find((p) => p.id === a.parent_account_id);
+      if (parent && parent.name) parentByName[String(a.name).toLowerCase()] = parent.name;
+    }
+  });
+  const rollUp = (raw: string): string => parentByName[raw.toLowerCase()] || raw;
+
   // Initialize accounts from budget table first (ensures all budget accounts appear)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const monoBudgetAccts = acctBudgets.filter((b: any) => b.category === 'monogastrics' || b.category === 'swine');
   const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [...new Set(monoBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
-    byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  [...new Set(monoBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((rawAcct: string) => {
+    const acct = rollUp(rawAcct);
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
   });
 
-  // Fill in sales data (monogastrics + swine)
+  // Fill in sales data (monogastrics + swine) — child sales rolled up to parent
   const monoRecords = records.filter((r: { category?: string }) => r.category === 'monogastrics' || r.category === 'swine');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   monoRecords.forEach((r: any) => {
-    const acct = r.account_name || r.accountName || 'Unknown';
+    const acct = rollUp(r.account_name || r.accountName || 'Unknown');
     if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
     const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
     const amt = Number(r.amount) || 0;
@@ -134,13 +152,17 @@ async function generateMonogastricReport(
     if (yr === m3.y && mo === m3.m) byAccount[acct].v3 += amt;
     if (yr === curYear && mo <= curMonth) byAccount[acct].cum += amt;
   });
-  // Apply account-level budgets
+  // Apply account-level budgets — roll up child account budgets to parent too
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acctBudgetsRolled = acctBudgets.map((b: any) => ({ ...b, _rolledName: rollUp(b.account_name || b.accountName || '') }));
   Object.values(byAccount).forEach((a) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const monthBgt = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
-    a.bgt = Number(monthBgt?.budget_amount || monthBgt?.budgetAmount) || 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+    const monthBgt = acctBudgetsRolled
+      .filter((b) => b._rolledName === a.name && Number(b.month) === curMonth)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
+    a.bgt = monthBgt;
+    a.annBgt = acctBudgetsRolled
+      .filter((b) => b._rolledName === a.name)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
   });
   // Include accounts with budget OR sales, sort by budget first then revenue
   const acctList = Object.values(byAccount)
@@ -351,19 +373,33 @@ async function generateRuminantReport(
   let acctBudgets: any[] = [];
   try { const abSb = createClient(sbUrl, sbKey); const { data } = await abSb.from('account_budgets').select('*').eq('year', curYear); acctBudgets = data || []; } catch { /* */ }
 
-  // Initialize from budget accounts
+  // Fetch CRM accounts for parent rollup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let accountsList: any[] = [];
+  try { const accSb = createClient(sbUrl, sbKey); const { data } = await accSb.from('accounts').select('id, name, parent_account_id'); accountsList = data || []; } catch { /* */ }
+  const parentByName: Record<string, string> = {};
+  accountsList.forEach((a) => {
+    if (a.parent_account_id && a.name) {
+      const parent = accountsList.find((p) => p.id === a.parent_account_id);
+      if (parent && parent.name) parentByName[String(a.name).toLowerCase()] = parent.name;
+    }
+  });
+  const rollUp = (raw: string): string => parentByName[raw.toLowerCase()] || raw;
+
+  // Initialize from budget accounts (rolled up)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rumBudgetAccts = acctBudgets.filter((b: any) => b.category === 'ruminants');
   const byAccount: Record<string, { name: string; prev: number; v1: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [...new Set(rumBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
-    byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  [...new Set(rumBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((rawAcct: string) => {
+    const acct = rollUp(rawAcct);
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
   });
 
-  // Fill in sales
+  // Fill in sales — child sales rolled up to parent
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   records.filter((r: { category?: string }) => r.category === 'ruminants').forEach((r: any) => {
-    const acct = r.account_name || r.accountName || 'Unknown';
+    const acct = rollUp(r.account_name || r.accountName || 'Unknown');
     if (!byAccount[acct]) byAccount[acct] = { name: acct, prev: 0, v1: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
     const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
     const amt = Number(r.amount) || 0;
@@ -375,12 +411,13 @@ async function generateRuminantReport(
   });
 
   // Apply budgets
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acctBudgetsRolled = acctBudgets.map((b: any) => ({ ...b, _rolledName: rollUp(b.account_name || b.accountName || '') }));
   Object.values(byAccount).forEach((a) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mb = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
-    a.bgt = Number(mb?.budget_amount || mb?.budgetAmount) || 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+    a.bgt = acctBudgetsRolled.filter((b) => b._rolledName === a.name && Number(b.month) === curMonth)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
+    a.annBgt = acctBudgetsRolled.filter((b) => b._rolledName === a.name)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
   });
 
   const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt > 0)
@@ -563,19 +600,33 @@ async function generateLATAMReport(
   let acctBudgets: any[] = [];
   try { const abSb = createClient(sbUrl, sbKey); const { data } = await abSb.from('account_budgets').select('*').eq('year', curYear); acctBudgets = data || []; } catch { /* */ }
 
-  // Initialize from budget accounts
+  // Fetch CRM accounts for parent rollup
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let accountsList: any[] = [];
+  try { const accSb = createClient(sbUrl, sbKey); const { data } = await accSb.from('accounts').select('id, name, parent_account_id'); accountsList = data || []; } catch { /* */ }
+  const parentByName: Record<string, string> = {};
+  accountsList.forEach((a) => {
+    if (a.parent_account_id && a.name) {
+      const parent = accountsList.find((p) => p.id === a.parent_account_id);
+      if (parent && parent.name) parentByName[String(a.name).toLowerCase()] = parent.name;
+    }
+  });
+  const rollUp = (raw: string): string => parentByName[raw.toLowerCase()] || raw;
+
+  // Initialize from budget accounts (rolled up)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const latBudgetAccts = acctBudgets.filter((b: any) => b.category === 'latam');
   const byAccount: Record<string, { name: string; ytd: number; v2: number; v3: number; cum: number; bgt: number; annBgt: number }> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [...new Set(latBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((acct: string) => {
-    byAccount[acct] = { name: acct, ytd: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
+  [...new Set(latBudgetAccts.map((b: any) => b.account_name || b.accountName).filter(Boolean))].forEach((rawAcct: string) => {
+    const acct = rollUp(rawAcct);
+    if (!byAccount[acct]) byAccount[acct] = { name: acct, ytd: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
   });
 
-  // Fill in sales
+  // Fill in sales — child sales rolled up to parent
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   records.filter((r: { category?: string }) => r.category === 'latam').forEach((r: any) => {
-    const acct = r.account_name || r.accountName || 'Unknown';
+    const acct = rollUp(r.account_name || r.accountName || 'Unknown');
     if (!byAccount[acct]) byAccount[acct] = { name: acct, ytd: 0, v2: 0, v3: 0, cum: 0, bgt: 0, annBgt: 0 };
     const d = String(r.date || ''); const yr = parseInt(d.split('-')[0]); const mo = parseInt(d.split('-')[1]);
     const amt = Number(r.amount) || 0;
@@ -584,13 +635,14 @@ async function generateLATAMReport(
     if (yr === curYear && mo <= curMonth) { byAccount[acct].cum += amt; byAccount[acct].ytd += amt; }
   });
 
-  // Apply budgets
+  // Apply budgets — rolled up
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acctBudgetsRolled = acctBudgets.map((b: any) => ({ ...b, _rolledName: rollUp(b.account_name || b.accountName || '') }));
   Object.values(byAccount).forEach((a) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mb = acctBudgets.find((b: any) => (b.account_name || b.accountName) === a.name && Number(b.month) === curMonth);
-    a.bgt = Number(mb?.budget_amount || mb?.budgetAmount) || 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    a.annBgt = acctBudgets.filter((b: any) => (b.account_name || b.accountName) === a.name).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
+    a.bgt = acctBudgetsRolled.filter((b) => b._rolledName === a.name && Number(b.month) === curMonth)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
+    a.annBgt = acctBudgetsRolled.filter((b) => b._rolledName === a.name)
+      .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
   });
 
   const acctList = Object.values(byAccount).filter((a) => a.ytd + a.annBgt > 0)
