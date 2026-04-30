@@ -93,26 +93,32 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   function handleSave() {
     if (!subject.trim() || saving) return;
     setSaving(true);
-
-    const ids = Array.from(selectedContactIds);
-    const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
-    contactList.forEach((cid) => {
-      addActivity({
-        id: generateId(),
-        type,
-        subject: subject.trim(),
-        description: description.trim(),
-        date,
-        ownerId: ownerId || session?.user?.id || '',
-        accountId: accountId || '',
-        contactId: cid || '',
-        purpose: purpose || undefined,
-        internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+    try {
+      const ids = Array.from(selectedContactIds);
+      const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
+      contactList.forEach((cid) => {
+        addActivity({
+          id: generateId(),
+          type,
+          subject: subject.trim(),
+          description: description.trim(),
+          date,
+          ownerId: ownerId || session?.user?.id || '',
+          accountId: accountId || '',
+          contactId: cid || '',
+          purpose: purpose || undefined,
+          internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+        });
       });
-    });
-
-    setSaved(true);
-    setTimeout(() => onClose(), 1200);
+      setSaved(true);
+      setTimeout(() => onClose(), 1200);
+    } catch (err) {
+      console.error('[QuickLog] save failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to save activity:\n\n${msg}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

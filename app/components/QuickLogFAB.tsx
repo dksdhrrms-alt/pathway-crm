@@ -105,22 +105,28 @@ export default function QuickLogFAB() {
   function handleSave() {
     if (!subject.trim() || saving) return;
     setSaving(true);
-
-    addActivity({
-      id: generateId(),
-      type,
-      subject: subject.trim(),
-      description: description.trim(),
-      date,
-      ownerId: ownerId || session?.user?.id || '',
-      accountId: accountId || '',
-      contactId: contactId || '',
-      purpose: purpose || undefined,
-      internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
-    });
-
-    setSaved(true);
-    setTimeout(resetAll, 1200);
+    try {
+      addActivity({
+        id: generateId(),
+        type,
+        subject: subject.trim(),
+        description: description.trim(),
+        date,
+        ownerId: ownerId || session?.user?.id || '',
+        accountId: accountId || '',
+        contactId: contactId || '',
+        purpose: purpose || undefined,
+        internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+      });
+      setSaved(true);
+      setTimeout(resetAll, 1200);
+    } catch (err) {
+      console.error('[QuickLogFAB] save failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to save activity:\n\n${msg}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (

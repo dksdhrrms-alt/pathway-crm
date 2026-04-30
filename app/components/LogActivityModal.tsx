@@ -80,28 +80,34 @@ export default function LogActivityModal({
       setError('Subject is required.');
       return;
     }
-    const ids = Array.from(selectedContactIds);
-    // If no contacts selected, create one activity with no contact
-    const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
-    let last: Activity | null = null;
-    contactList.forEach((cid) => {
-      const newActivity: Activity = {
-        id: generateId(),
-        type,
-        subject: subject.trim(),
-        description: description.trim(),
-        date,
-        ownerId,
-        accountId: accountId || '',
-        contactId: cid,
-        purpose: purpose || undefined,
-        internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
-      };
-      addActivity(newActivity);
-      last = newActivity;
-    });
-    if (last) onSave(last);
-    onClose();
+    try {
+      const ids = Array.from(selectedContactIds);
+      // If no contacts selected, create one activity with no contact
+      const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
+      let last: Activity | null = null;
+      contactList.forEach((cid) => {
+        const newActivity: Activity = {
+          id: generateId(),
+          type,
+          subject: subject.trim(),
+          description: description.trim(),
+          date,
+          ownerId,
+          accountId: accountId || '',
+          contactId: cid,
+          purpose: purpose || undefined,
+          internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+        };
+        addActivity(newActivity);
+        last = newActivity;
+      });
+      if (last) onSave(last);
+      onClose();
+    } catch (err) {
+      console.error('[LogActivity] save failed:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Failed to save: ${msg}`);
+    }
   }
 
   return (
