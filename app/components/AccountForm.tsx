@@ -7,6 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import CountrySelect from './CountrySelect';
 import AccountParentSelector from './AccountParentSelector';
+import SubmitButton from './SubmitButton';
 
 const INDUSTRIES = [
   'Dairy/Beef', 'Poultry', 'Swine', 'Feed Mill / Premix', 'Aquaculture',
@@ -59,66 +60,79 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
     setIsIntegration(Boolean(initialData?.parentAccountId));
   }, [initialData?.id, initialData?.parentAccountId]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSave).
+  const [submitting, setSubmitting] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = 'Account name is required.';
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    const selectedUser = activeUsers.find((u) => u.id === ownerId);
-    let ws = website.trim();
-    if (ws && !ws.startsWith('http') && ws.startsWith('www.')) ws = 'https://' + ws;
+    setSubmitting(true);
+    try {
+      const selectedUser = activeUsers.find((u) => u.id === ownerId);
+      let ws = website.trim();
+      if (ws && !ws.startsWith('http') && ws.startsWith('www.')) ws = 'https://' + ws;
 
-    const data: Partial<Account> = {
-      name: name.trim(),
-      industry: industry as Account['industry'],
-      ownerId: ownerId || '',
-      ownerName: selectedUser?.name || '',
-      country: country.trim(),
-      phone: phone.trim(),
-      employee: employee ? parseInt(employee) : null,
-      website: ws,
-      location: location.trim(),
-      state: stateVal.trim(),
-      notes: notes.trim(),
-      // Persist explicit empty string (not undefined) when clearing the link, so
-      // updateAccount actually overwrites the existing parent_account_id in the DB
-      // instead of silently skipping the field.
-      parentAccountId: isIntegration && parentAccountId ? parentAccountId : '',
-    };
+      const data: Partial<Account> = {
+        name: name.trim(),
+        industry: industry as Account['industry'],
+        ownerId: ownerId || '',
+        ownerName: selectedUser?.name || '',
+        country: country.trim(),
+        phone: phone.trim(),
+        employee: employee ? parseInt(employee) : null,
+        website: ws,
+        location: location.trim(),
+        state: stateVal.trim(),
+        notes: notes.trim(),
+        // Persist explicit empty string (not undefined) when clearing the link, so
+        // updateAccount actually overwrites the existing parent_account_id in the DB
+        // instead of silently skipping the field.
+        parentAccountId: isIntegration && parentAccountId ? parentAccountId : '',
+      };
 
-    if (mode === 'new') {
-      addAccount({
-        id: generateId(),
-        contactIds: [],
-        opportunityIds: [],
-        annualRevenue: 0,
-        createdAt: new Date().toISOString().split('T')[0],
-        ...data,
-      } as Account);
-    } else if (initialData?.id) {
-      // Track changed fields
-      const changed: string[] = [];
-      if (data.name !== initialData.name) changed.push('Name');
-      if (data.industry !== initialData.industry) changed.push('Species');
-      if (data.ownerName !== (initialData.ownerName || '')) changed.push('Sales Owner');
-      if (data.country !== (initialData.country || '')) changed.push('Country');
+      if (mode === 'new') {
+        addAccount({
+          id: generateId(),
+          contactIds: [],
+          opportunityIds: [],
+          annualRevenue: 0,
+          createdAt: new Date().toISOString().split('T')[0],
+          ...data,
+        } as Account);
+      } else if (initialData?.id) {
+        // Track changed fields
+        const changed: string[] = [];
+        if (data.name !== initialData.name) changed.push('Name');
+        if (data.industry !== initialData.industry) changed.push('Species');
+        if (data.ownerName !== (initialData.ownerName || '')) changed.push('Sales Owner');
+        if (data.country !== (initialData.country || '')) changed.push('Country');
 
-      updateAccount(initialData.id, data);
+        updateAccount(initialData.id, data);
 
-      if (changed.length > 0) {
-        addActivity({
-          id: generateId(), type: 'Note',
-          subject: 'Account information updated',
-          description: `Updated: ${changed.join(', ')}`,
-          date: new Date().toISOString().split('T')[0],
-          ownerId: '', accountId: initialData.id,
-        });
+        if (changed.length > 0) {
+          addActivity({
+            id: generateId(), type: 'Note',
+            subject: 'Account information updated',
+            description: `Updated: ${changed.join(', ')}`,
+            date: new Date().toISOString().split('T')[0],
+            ownerId: '', accountId: initialData.id,
+          });
+        }
       }
+      onSave();
+    } catch (err) {
+      console.error('AccountForm submit failed:', err);
+      // Re-enable the button so the user can retry instead of being stuck
+      // on a forever-disabled "Saving..." state.
+      setSubmitting(false);
     }
-    onSave();
   }
 
   return (
@@ -234,10 +248,12 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-        <button type="submit" className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+        <SubmitButton type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </SubmitButton>
+        <SubmitButton type="submit" pending={submitting} pendingText={mode === 'new' ? 'Creating...' : 'Saving...'}>
           {mode === 'new' ? 'Create Account' : 'Save Changes'}
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

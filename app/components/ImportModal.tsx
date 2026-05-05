@@ -6,6 +6,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { generateId, Account } from '@/lib/data';
 import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, generateContactTemplate, parseMondayCompanies, parseMondayContacts, ParsedAccount, ParsedContact, fuzzyMatchUser } from '@/lib/importParser';
+import SubmitButton from './SubmitButton';
 
 type ImportType = 'accounts' | 'contacts';
 type Step = 'upload' | 'mapping' | 'preview' | 'done';
@@ -43,6 +44,10 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
   const [mondayAccounts, setMondayAccounts] = useState<ParsedAccount[]>([]);
   const [mondayContacts, setMondayContacts] = useState<ParsedContact[]>([]);
   const [isMondayMode, setIsMondayMode] = useState(false);
+  // Guards against the user clicking "Import N Records" twice in quick
+  // succession, which would otherwise call addAccount/addContact for every
+  // row a second time and produce duplicates in the database.
+  const [submitting, setSubmitting] = useState(false);
 
   const fields = type === 'accounts' ? ACCOUNT_FIELDS : CONTACT_FIELDS;
 
@@ -96,6 +101,11 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
   }
 
   function doImport() {
+    // Hard guard: if the user clicks while a previous import is still
+    // running, ignore the second click entirely.
+    if (submitting) return;
+    setSubmitting(true);
+
     let imported = 0, skipped = 0, errors = 0;
     const userId = session?.user?.id ?? '';
 
@@ -201,6 +211,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
     }
     setResult({ imported, skipped, errors });
     setStep('done');
+    setSubmitting(false);
     onDone(imported);
   }
 
@@ -354,10 +365,10 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setStep(isMondayMode ? 'upload' : 'mapping')} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Back</button>
-              <button onClick={doImport} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+              <button onClick={() => setStep(isMondayMode ? 'upload' : 'mapping')} disabled={submitting} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed">Back</button>
+              <SubmitButton onClick={doImport} pending={submitting} pendingText="Importing...">
                 Import {isMondayMode ? (type === 'accounts' ? mondayAccounts.length : mondayContacts.length) : rows.length} Records
-              </button>
+              </SubmitButton>
             </div>
           </div>
         )}
