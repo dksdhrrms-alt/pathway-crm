@@ -188,15 +188,15 @@ export default function InsightsPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Data Insights</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Sales trends, pipeline analysis, and AI-powered recommendations</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Data Insights</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Sales trends, pipeline analysis, and AI-powered recommendations</p>
             </div>
             <div className="flex items-center gap-3">
               <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -220,7 +220,7 @@ export default function InsightsPage() {
               { label: 'Inactive Accounts', value: String(inactiveAccounts), sub: '30+ days no contact', color: inactiveAccounts > 5 ? '#E24B4A' : '#0F6E56' },
               { label: 'Overdue Tasks', value: String(overdueTasks), sub: 'Need attention', color: overdueTasks > 0 ? '#E24B4A' : '#0F6E56' },
             ].map((kpi) => (
-              <div key={kpi.label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div key={kpi.label} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                 <p className="text-xs font-medium text-gray-500 uppercase">{kpi.label}</p>
                 <p className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
                 <p className="text-xs mt-0.5" style={{ color: kpi.color }}>{kpi.sub}</p>

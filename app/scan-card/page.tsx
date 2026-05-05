@@ -105,13 +105,13 @@ export default function ScanCardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-lg mx-auto">
           <div className="mt-6 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Scan Business Card</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Take a photo or upload an image to extract contact info</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Scan Business Card</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Take a photo or upload an image to extract contact info</p>
           </div>
 
           {/* Upload area */}

@@ -87,12 +87,12 @@ export default function NewTaskModal({
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">New Task</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Task</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -103,33 +103,33 @@ export default function NewTaskModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Subject *</label>
             <input
               type="text"
               value={subject}
               onChange={(e) => { setSubject(e.target.value); setError(''); }}
               placeholder="Task subject"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Due Date</label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Priority</label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 {PRIORITIES.map((p) => (
                   <option key={p} value={p}>{p}</option>
@@ -139,14 +139,14 @@ export default function NewTaskModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Related Account</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Related Account</label>
             <select
               value={relatedAccountId}
               onChange={(e) => {
                 setRelatedAccountId(e.target.value);
                 setRelatedContactId('');
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="">— None —</option>
               {accounts.map((a) => (
@@ -156,11 +156,11 @@ export default function NewTaskModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Related Contact</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Related Contact</label>
             <select
               value={relatedContactId}
               onChange={(e) => setRelatedContactId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="">— None —</option>
               {filteredContacts.map((c) => (
@@ -173,11 +173,11 @@ export default function NewTaskModal({
 
           {isAdmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Owner</label>
               <select
                 value={ownerId}
                 onChange={(e) => setOwnerId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 {allUsers.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
@@ -187,13 +187,13 @@ export default function NewTaskModal({
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional details..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
           </div>
 

@@ -51,14 +51,14 @@ export default function SalesPage() {
   const tabs: Tab[] = ['all', 'monogastrics', 'ruminants', 'latam', 'familyb2b'];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sales</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{salesData.length} records · {formatCurrency(totalAmount)} total</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{salesData.length} records · {formatCurrency(totalAmount)} total</p>
             </div>
             <div className="flex gap-2">
               {isAdmin && (
@@ -74,7 +74,7 @@ export default function SalesPage() {
           </div>
 
           {salesData.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-16 text-center">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-16 text-center">
               <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -94,7 +94,7 @@ export default function SalesPage() {
             <>
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 uppercase">Total Revenue</p>
                   <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCurrency(totalAmount)}</p>
                 </div>
@@ -110,13 +110,13 @@ export default function SalesPage() {
 
               {/* Tabs + Search */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+                <div className="flex gap-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg p-1">
                   {tabs.map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       className={`px-3 py-1.5 text-sm font-medium rounded transition-all ${
-                        activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
                       style={activeTab === tab ? { backgroundColor: '#1a4731' } : {}}
                     >
@@ -134,7 +134,7 @@ export default function SalesPage() {
               </div>
 
               {/* Table */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">

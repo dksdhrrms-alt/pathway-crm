@@ -100,14 +100,14 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{openTaskCount} open &middot; {viewLabel}</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{openTaskCount} open &middot; {viewLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={canViewCompany} showTeam={canViewTeam} />
@@ -142,13 +142,13 @@ export default function TasksPage() {
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex gap-1 mb-4 bg-white border border-gray-200 rounded-lg p-1 w-fit">
+          <div className="flex gap-1 mb-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg p-1 w-fit">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center gap-1.5 ${
-                  activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
                 style={activeTab === tab ? { backgroundColor: '#1a4731' } : {}}
               >
@@ -169,7 +169,7 @@ export default function TasksPage() {
           </div>
 
           {/* Task Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
             {filtered.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
                 No tasks in this category.

@@ -154,7 +154,7 @@ export default function AccountDetailPage() {
 
   if (!account) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">Account not found.</p>
           <Link href="/accounts" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
@@ -175,7 +175,7 @@ export default function AccountDetailPage() {
     .map((c) => ({ email: c.email, name: `${c.firstName} ${c.lastName}`, contactId: c.id }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
@@ -339,7 +339,7 @@ export default function AccountDetailPage() {
           </div>
 
           {/* ========== SUMMARY ========== */}
-          <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+          <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="dark:bg-slate-900 dark:border-slate-700">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Summary</h3>
               {!editingNotes ? (
@@ -427,7 +427,7 @@ export default function AccountDetailPage() {
             }
 
             return (
-              <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="dark:bg-slate-900 dark:border-slate-700">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Complexes ({totalChildren})</h3>
@@ -566,6 +566,7 @@ export default function AccountDetailPage() {
                   background: 'white', border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px', marginBottom: '20px',
                 }}
+                className="dark:bg-slate-900 dark:border-slate-700"
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Activity Timeline</h3>
@@ -705,6 +706,7 @@ export default function AccountDetailPage() {
                   background: 'white', border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px',
                 }}
+                className="dark:bg-slate-900 dark:border-slate-700"
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
@@ -1072,6 +1074,7 @@ export default function AccountDetailPage() {
                   background: 'white', border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px',
                 }}
+                className="dark:bg-slate-900 dark:border-slate-700"
               >
                 <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>Open Tasks</h3>
                 {accountTasks.filter((t) => t.status !== 'Completed').length === 0 ? (

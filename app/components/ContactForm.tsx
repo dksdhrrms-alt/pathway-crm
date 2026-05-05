@@ -126,24 +126,24 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">First Name *</label>
           <input type="text" value={firstName} onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: '' })); }}
-            placeholder="First name" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.firstName ? 'border-red-400' : 'border-gray-300'}`} />
+            placeholder="First name" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 ${errors.firstName ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'}`} />
           {errors.firstName && <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Last Name *</label>
           <input type="text" value={lastName} onChange={(e) => { setLastName(e.target.value); setErrors((p) => ({ ...p, lastName: '' })); }}
-            placeholder="Last name" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.lastName ? 'border-red-400' : 'border-gray-300'}`} />
+            placeholder="Last name" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 ${errors.lastName ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'}`} />
           {errors.lastName && <p className="text-xs text-red-600 mt-1">{errors.lastName}</p>}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Species</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Species</label>
           <select value={species} onChange={(e) => setSpecies(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
             <option value="">Select species...</option>
             {SPECIES_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
@@ -159,28 +159,28 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Country</label>
           <CountrySelect value={country} onChange={setCountry} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 text-xs">(US only)</span>}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 dark:text-gray-500 text-xs">(US only)</span>}</label>
           {country === 'USA' || !country ? (
             <select value={stateVal} onChange={(e) => setStateVal(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">Select state...</option>
               {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
             </select>
           ) : (
             <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           )}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Owner (Sales Rep)</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Owner (Sales Rep)</label>
         <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
           <option value="">Select owner...</option>
           {activeUsers.sort((a, b) => a.name.localeCompare(b.name)).map((u) => (
             <option key={u.id} value={u.id}>{u.name} — {getRoleLabel(u.role)}</option>
@@ -189,9 +189,9 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Contact Type</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Contact Type</label>
         <select value={position} onChange={(e) => setPosition(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
           <option value="">Select contact type...</option>
           {CONTACT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           {position && !CONTACT_TYPES.includes(position) && <option value={position}>{position} (existing)</option>}
@@ -199,52 +199,52 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       </div>
 
       {/* Key Man toggle */}
-      <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isKeyMan ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+      <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isKeyMan ? 'border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/40' : 'border-gray-200 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800/60'}`}>
         <input type="checkbox" checked={isKeyMan} onChange={(e) => setIsKeyMan(e.target.checked)} className="hidden" />
         <span className="text-xl">{isKeyMan ? '★' : '☆'}</span>
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-800">Key Contact</p>
-          <p className="text-xs text-gray-500">{isKeyMan ? 'Marked as key contact' : 'Mark as key contact'}</p>
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Key Contact</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{isKeyMan ? 'Marked as key contact' : 'Mark as key contact'}</p>
         </div>
-        <span className={`text-xs font-medium ${isKeyMan ? 'text-amber-700' : 'text-gray-400'}`}>{isKeyMan ? 'Key Man ★' : 'Not key'}</span>
+        <span className={`text-xs font-medium ${isKeyMan ? 'text-amber-700 dark:text-amber-300' : 'text-gray-400 dark:text-gray-500'}`}>{isKeyMan ? 'Key Man ★' : 'Not key'}</span>
       </label>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cell Phone</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cell Phone</label>
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tel (office)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tel (office)</label>
           <input type="text" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Office telephone"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Birthday</label>
           <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Anniversary</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Anniversary</label>
           <input type="date" value={anniversary} onChange={(e) => setAnniversary(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Notes</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Personal notes, preferences, recent conversations..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

@@ -174,14 +174,14 @@ export default function OpportunitiesPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-full mx-auto">
           <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{scopedOpps.length} opportunit{scopedOpps.length !== 1 ? 'ies' : 'y'} &middot; {viewLabel}</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Opportunities</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{scopedOpps.length} opportunit{scopedOpps.length !== 1 ? 'ies' : 'y'} &middot; {viewLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={canViewCompany} showTeam={canViewTeam} />
@@ -192,11 +192,11 @@ export default function OpportunitiesPage() {
               >
                 + New Opportunity
               </button>
-              <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              <div className="flex gap-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg p-1">
                 <button
                   onClick={() => setView('kanban')}
                   className={`px-4 py-1.5 text-sm font-medium rounded transition-all ${
-                    view === 'kanban' ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                    view === 'kanban' ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
                   style={view === 'kanban' ? { backgroundColor: '#1a4731' } : {}}
                 >
@@ -256,7 +256,7 @@ export default function OpportunitiesPage() {
           {/* Kanban View */}
           {view === 'kanban' && (
             <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="flex gap-4 overflow-x-auto pb-4">
+              <div className="flex gap-4 overflow-x-auto pb-4 dark:bg-slate-950">
                 {STAGES.map((stage) => {
                   const stageOpps = columnOpps(stage);
                   const stageTotal = stageOpps.reduce((s, o) => s + o.amount, 0);
@@ -264,10 +264,10 @@ export default function OpportunitiesPage() {
                   return (
                     <div key={stage} className="flex-shrink-0 w-64">
                       <div
-                        className={`rounded-t-lg border-x border-t px-3 py-2.5 ${columnHeaderStyle[stage]}`}
+                        className={`rounded-t-lg border-x border-t px-3 py-2.5 ${columnHeaderStyle[stage]} dark:bg-slate-800 dark:border-slate-600`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={`text-xs font-semibold uppercase tracking-wide ${columnTitleStyle[stage]}`}>
+                          <span className={`text-xs font-semibold uppercase tracking-wide ${columnTitleStyle[stage]} dark:text-gray-300`}>
                             {stage}
                           </span>
                           <span className={`text-xs font-medium ${columnTitleStyle[stage]}`}>
@@ -295,8 +295,8 @@ export default function OpportunitiesPage() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`min-h-24 border border-gray-200 rounded-b-lg p-2 space-y-2 transition-colors ${
-                              snapshot.isDraggingOver ? 'bg-green-50' : 'bg-white'
+                            className={`min-h-24 border border-gray-200 dark:border-slate-700 rounded-b-lg p-2 space-y-2 transition-colors ${
+                              snapshot.isDraggingOver ? 'bg-green-50 dark:bg-green-950/40' : 'bg-white dark:bg-slate-900'
                             }`}
                           >
                             {stageOpps.map((opp, index) => {
@@ -313,30 +313,30 @@ export default function OpportunitiesPage() {
                                       ref={drag.innerRef}
                                       {...drag.draggableProps}
                                       {...drag.dragHandleProps}
-                                      className={`bg-white rounded-lg border p-3 shadow-sm cursor-grab active:cursor-grabbing transition-shadow ${
-                                        dragSnapshot.isDragging ? 'shadow-lg ring-2 ring-green-400' : isStale ? 'border-amber-300' : 'border-gray-200'
+                                      className={`bg-white dark:bg-slate-800 rounded-lg border p-3 shadow-sm cursor-grab active:cursor-grabbing transition-shadow ${
+                                        dragSnapshot.isDragging ? 'shadow-lg ring-2 ring-green-400' : isStale ? 'border-amber-300 dark:border-amber-700/50' : 'border-gray-200 dark:border-slate-700'
                                       }`}
                                     >
                                       <div className="flex items-start justify-between gap-1 mb-0.5">
-                                        <p className="text-xs text-gray-500 truncate flex-1">{accountName}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate flex-1">{accountName}</p>
                                         <div className="relative">
                                           <button
                                             onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === opp.id ? null : opp.id); }}
-                                            className="p-0.5 text-gray-300 hover:text-gray-600 rounded"
+                                            className="p-0.5 text-gray-300 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 rounded"
                                           >
                                             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                                               <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
                                             </svg>
                                           </button>
                                           {openMenuId === opp.id && (
-                                            <div className="absolute right-0 top-6 w-28 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                                            <div className="absolute right-0 top-6 w-28 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg z-10 py-1">
                                               <button onClick={() => { setEditOppId(opp.id); setOpenMenuId(null); }}
-                                                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors">
+                                                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                                                 Edit
                                               </button>
                                               <button
                                                 onClick={() => { setConfirmDeleteId(opp.id); setOpenMenuId(null); }}
-                                                className="w-full text-left px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+                                                className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                                               >
                                                 Delete
                                               </button>
@@ -353,7 +353,7 @@ export default function OpportunitiesPage() {
                                         {opp.name}
                                       </Link>
                                       <div className="flex items-center justify-between mt-2">
-                                        <span className="text-xs font-semibold text-gray-700">
+                                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                                           {formatCurrency(opp.amount)}
                                         </span>
                                         <span
@@ -410,17 +410,17 @@ export default function OpportunitiesPage() {
 
           {/* List View */}
           {view === 'list' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Opportunity</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Account</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Stage</th>
+                  <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Opportunity</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Account</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Stage</th>
                     <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Amount</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Close Date</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Close Date</th>
                     <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Prob %</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Owner</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Owner</th>
                     <th className="w-10 px-5 py-3"></th>
                   </tr>
                 </thead>
@@ -431,7 +431,7 @@ export default function OpportunitiesPage() {
                     return (
                       <tr
                         key={opp.id}
-                        className="border-b border-gray-50 hover:bg-green-50/30 transition-colors group"
+                        className="border-b border-gray-50 dark:border-slate-700 hover:bg-green-50/30 dark:hover:bg-slate-800/60 transition-colors group"
                       >
                         <td className="px-5 py-3.5">
                           <Link
@@ -516,15 +516,15 @@ export default function OpportunitiesPage() {
       {/* Confirm delete modal */}
       {confirmDeleteId && oppToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Opportunity</h2>
-            <p className="text-sm text-gray-600 mb-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Opportunity</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
               Are you sure you want to delete <strong>{oppToDelete.name}</strong>?
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
               >
                 Cancel
               </button>

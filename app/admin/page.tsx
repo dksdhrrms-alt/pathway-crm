@@ -160,13 +160,13 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-6">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Panel</h1>
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white bg-purple-600">Admin</span>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -176,7 +176,7 @@ export default function AdminPage() {
 
           {/* Seed Database (destructive: two-step confirm + hide on success) */}
           {!seedDone && (
-            <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Seed Database</p>
@@ -232,7 +232,7 @@ export default function AdminPage() {
 
           {/* Migrate Passwords (one-time: two-step confirm + hide on success) */}
           {!migrateDone && (
-            <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Secure Passwords</p>
@@ -286,11 +286,11 @@ export default function AdminPage() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+          <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
             <button
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'overview' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'overview' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               Team Overview
@@ -335,7 +335,7 @@ export default function AdminPage() {
             <>
               {/* Company totals */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Open Deals</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{totalOpenDeals}</p>
                   <p className="text-xs text-gray-400 mt-1">Across all reps</p>
@@ -353,7 +353,7 @@ export default function AdminPage() {
               </div>
 
               {/* Team table */}
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100">
                   <h2 className="text-base font-semibold text-gray-900">Team Overview</h2>
                   <p className="text-xs text-gray-500 mt-0.5">{allUsers.length} users</p>
@@ -614,7 +614,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100">
                   <h2 className="text-base font-semibold text-gray-900">Sales Data Without CRM Account</h2>
                   <p className="text-xs text-gray-500 mt-0.5">
@@ -678,9 +678,9 @@ export default function AdminPage() {
       {/* Delete User Confirmation */}
       {showDeleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete User Permanently</h2>
-            <p className="text-sm text-gray-600 mb-4">Are you sure you want to permanently delete <strong>{showDeleteUser.name}</strong>? This will remove their account from the system completely. This action cannot be undone.</p>
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete User Permanently</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Are you sure you want to permanently delete <strong>{showDeleteUser.name}</strong>? This will remove their account from the system completely. This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowDeleteUser(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
               <button onClick={confirmDeleteUser} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete Permanently</button>

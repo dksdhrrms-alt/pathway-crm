@@ -80,7 +80,7 @@ export default function OpportunityDetailPage() {
 
   if (!opp) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">Opportunity not found.</p>
           <Link href="/opportunities" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
@@ -92,7 +92,7 @@ export default function OpportunityDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
@@ -103,7 +103,7 @@ export default function OpportunityDetailPage() {
           </div>
 
           {/* Header Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 mt-3">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 mb-6 mt-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">{opp.name}</h1>
@@ -177,7 +177,7 @@ export default function OpportunityDetailPage() {
           {/* Middle Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Contact Roles */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Contact Roles</h2>
               {oppContacts.length === 0 ? (
                 <p className="text-sm text-gray-400">No contacts linked.</p>
@@ -208,7 +208,7 @@ export default function OpportunityDetailPage() {
             </div>
 
             {/* Related Tasks */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Related Tasks</h2>
               {relatedTasks.length === 0 ? (
                 <p className="text-sm text-gray-400">No tasks linked.</p>
@@ -298,9 +298,9 @@ export default function OpportunityDetailPage() {
 
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Opportunity</h2>
-            <p className="text-sm text-gray-600 mb-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Opportunity</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
               Are you sure you want to delete <strong>{opp.name}</strong>?
             </p>
             <div className="flex justify-end gap-3">

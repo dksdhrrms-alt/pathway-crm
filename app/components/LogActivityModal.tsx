@@ -126,12 +126,12 @@ export default function LogActivityModal({
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Log Activity</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Log Activity</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -143,11 +143,11 @@ export default function LogActivityModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Type</label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as ActivityType)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 {ACTIVITY_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -157,11 +157,11 @@ export default function LogActivityModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Purpose <span className="text-gray-400 text-xs">(optional)</span></label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Purpose <span className="text-gray-400 dark:text-gray-500 text-xs">(optional)</span></label>
               <select
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">— Select purpose —</option>
                 {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -170,9 +170,9 @@ export default function LogActivityModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Account {!initialAccountId && <span className="text-gray-400 text-xs">(optional)</span>}</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Account {!initialAccountId && <span className="text-gray-400 dark:text-gray-500 text-xs">(optional)</span>}</label>
             <select value={accountId} onChange={(e) => setAccountId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">— No account —</option>
               {[...accounts].sort((a, b) => a.name.localeCompare(b.name)).map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
@@ -181,17 +181,17 @@ export default function LogActivityModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contacts <span className="text-gray-400 text-xs">(select multiple — one activity per contact)</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Contacts <span className="text-gray-400 dark:text-gray-500 text-xs">(select multiple — one activity per contact)</span>
             </label>
 
             {/* Selected contact chips */}
             {selectedContactObjs.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {selectedContactObjs.map((c) => (
-                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-xs text-green-700 border border-green-200">
+                  <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-950/40 text-xs text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
                     {c.firstName} {c.lastName}
-                    <button type="button" onClick={() => toggleContact(c.id)} className="text-green-600 hover:text-green-800 font-bold ml-1" aria-label="Remove">×</button>
+                    <button type="button" onClick={() => toggleContact(c.id)} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 font-bold ml-1" aria-label="Remove">×</button>
                   </span>
                 ))}
               </div>
@@ -204,25 +204,25 @@ export default function LogActivityModal({
                 value={contactSearch}
                 onChange={(e) => setContactSearch(e.target.value)}
                 placeholder="Search contacts by name..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-1.5"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-1.5"
               />
             )}
 
             {availableContacts.length === 0 ? (
-              <div className="text-xs text-gray-400 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
+              <div className="text-xs text-gray-400 dark:text-gray-500 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-800">
                 {accountId ? 'No contacts for this account.' : contactSearch ? 'No contacts match search.' : 'Type to search contacts...'}
               </div>
             ) : (
-              <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+              <div className="border border-gray-300 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto">
                 {[...availableContacts].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)).map((c) => {
                   const acctName = accounts.find((a) => a.id === c.accountId)?.name;
                   return (
-                  <label key={c.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0">
+                  <label key={c.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer text-sm border-b border-gray-50 dark:border-slate-700 last:border-b-0">
                     <input type="checkbox" checked={selectedContactIds.has(c.id)} onChange={() => toggleContact(c.id)}
                       className="rounded border-gray-300 text-green-600 focus:ring-green-500" />
-                    <span className="font-medium">{c.firstName} {c.lastName}</span>
-                    {c.title && <span className="text-xs text-gray-400">· {c.title}</span>}
-                    {!accountId && acctName && <span className="text-xs text-blue-600">· {acctName}</span>}
+                    <span className="font-medium dark:text-gray-100">{c.firstName} {c.lastName}</span>
+                    {c.title && <span className="text-xs text-gray-400 dark:text-gray-500">· {c.title}</span>}
+                    {!accountId && acctName && <span className="text-xs text-blue-600 dark:text-blue-400">· {acctName}</span>}
                     {c.isKeyMan && <span className="text-amber-500 text-xs">★</span>}
                   </label>
                   );
@@ -230,25 +230,25 @@ export default function LogActivityModal({
               </div>
             )}
             {selectedContactIds.size > 0 && (
-              <p className="text-xs text-gray-500 mt-1">{selectedContactIds.size} contact{selectedContactIds.size > 1 ? 's' : ''} selected — will create {selectedContactIds.size} {selectedContactIds.size > 1 ? 'separate activities' : 'activity'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{selectedContactIds.size} contact{selectedContactIds.size > 1 ? 's' : ''} selected — will create {selectedContactIds.size} {selectedContactIds.size > 1 ? 'separate activities' : 'activity'}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Subject *</label>
             <input
               type="text"
               value={subject}
               onChange={(e) => { setSubject(e.target.value); setError(''); }}
               placeholder="Brief summary of the activity"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Description</label>
               <VoiceInputButton
                 size="sm"
                 onTranscript={(text) => setDescription((prev) => prev ? `${prev} ${text}` : text)}
@@ -260,13 +260,13 @@ export default function LogActivityModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detailed notes... (or click 🎤 to dictate)"
               rows={4}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Internal Participants <span className="text-gray-400 text-xs">(team members who joined)</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Internal Participants <span className="text-gray-400 dark:text-gray-500 text-xs">(team members who joined)</span>
             </label>
             {internalParticipants.size > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -274,45 +274,45 @@ export default function LogActivityModal({
                   const u = activeUsers.find((x) => x.id === id);
                   if (!u) return null;
                   return (
-                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-xs text-blue-700 border border-blue-200">
+                    <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-xs text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {u.name}
-                      <button type="button" onClick={() => toggleParticipant(id)} className="text-blue-600 hover:text-blue-800 font-bold ml-1" aria-label="Remove">×</button>
+                      <button type="button" onClick={() => toggleParticipant(id)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-bold ml-1" aria-label="Remove">×</button>
                     </span>
                   );
                 })}
               </div>
             )}
-            <div className="border border-gray-300 rounded-lg max-h-32 overflow-y-auto">
+            <div className="border border-gray-300 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto">
               {activeUsers.filter((u) => u.id !== ownerId).map((u) => (
-                <label key={u.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0">
+                <label key={u.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-800/60 cursor-pointer text-sm border-b border-gray-50 dark:border-slate-700 last:border-b-0">
                   <input type="checkbox" checked={internalParticipants.has(u.id)} onChange={() => toggleParticipant(u.id)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                  <span className="font-medium">{u.name}</span>
+                  <span className="font-medium dark:text-gray-100">{u.name}</span>
                 </label>
               ))}
             </div>
             {internalParticipants.size > 0 && (
-              <p className="text-xs text-gray-500 mt-1">{internalParticipants.size} participant{internalParticipants.size > 1 ? 's' : ''} selected</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{internalParticipants.size} participant{internalParticipants.size > 1 ? 's' : ''} selected</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Date</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
 
           {isAdmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Logged By</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Logged By</label>
               <select
                 value={ownerId}
                 onChange={(e) => setOwnerId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 {allUsers.map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>

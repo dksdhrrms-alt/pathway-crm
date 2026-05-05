@@ -78,57 +78,57 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900">Edit Opportunity</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Opportunity</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Opportunity Name *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Opportunity Name *</label>
             <input type="text" value={name} onChange={(e) => { setName(e.target.value); setError(''); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Account</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Account</label>
             <AccountSearchSelect value={accountName} onChange={(_, id) => setAccountId(id)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stage</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Stage</label>
               <select value={stage} onChange={(e) => handleStageChange(e.target.value as Stage)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                 {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
                 {!STAGES.includes(stage) && <option value={stage}>{stage} (legacy)</option>}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Probability (%)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Probability (%)</label>
               <input type="number" min={0} max={100} value={probability} onChange={(e) => setProbability(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($ / month)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Amount ($ / month)</label>
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Close Date *</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Close Date *</label>
               <input type="date" value={closeDate} onChange={(e) => { setCloseDate(e.target.value); setError(''); }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expected Start Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Expected Start Date</label>
               <input type="date" value={expectedStartDate} onChange={(e) => setExpectedStartDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <p className="text-[11px] text-gray-400 mt-1">When monthly revenue begins</p>
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">When monthly revenue begins</p>
             </div>
             {(() => {
               const monthly = parseInt(String(amount).replace(/,/g, '')) || 0;
@@ -137,34 +137,34 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
               const nextYr = annualizedRevenue(monthly, expectedStartDate, yr + 1);
               const fmt = (n: number) => '$' + n.toLocaleString('en-US');
               return (
-                <div className="bg-green-50 border border-green-100 rounded-lg p-3">
-                  <p className="text-[11px] font-semibold text-green-800 uppercase tracking-wide mb-1.5">Annualized Revenue</p>
+                <div className="bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-[11px] font-semibold text-green-800 dark:text-green-300 uppercase tracking-wide mb-1.5">Annualized Revenue</p>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">{yr}:</span>
-                    <span className="font-semibold text-gray-900">{fmt(thisYr)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">{yr}:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fmt(thisYr)}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-0.5">
-                    <span className="text-gray-600">{yr + 1}:</span>
-                    <span className="font-semibold text-gray-900">{fmt(nextYr)}</span>
+                    <span className="text-gray-600 dark:text-gray-400">{yr + 1}:</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{fmt(nextYr)}</span>
                   </div>
                 </div>
               );
             })()}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Next Step</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Next Step</label>
             <input type="text" value={nextStep} onChange={(e) => setNextStep(e.target.value)} placeholder="e.g. Send sample kit"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Competitor</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Competitor</label>
             <input type="text" value={competitor} onChange={(e) => setCompetitor(e.target.value)} placeholder="e.g. Alltech, Zinpro, Novus"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Owner</label>
             <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">— Select owner —</option>
               {activeUsers.sort((a, b) => a.name.localeCompare(b.name)).map((u) => (
                 <option key={u.id} value={u.id}>{u.name} — {getRoleLabel(u.role)}</option>

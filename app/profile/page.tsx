@@ -93,15 +93,15 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-2xl mx-auto mt-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Profile</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Profile</h1>
 
           {/* Section A: Profile Photo */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Profile Photo</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 mb-5">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Profile Photo</h2>
             <div className="flex items-center gap-5">
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden border-2 border-gray-200"
@@ -143,8 +143,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Section B: Personal Information */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 mb-5">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Personal Information</h2>
             <form onSubmit={handleSaveInfo} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -223,7 +223,7 @@ export default function ProfilePage() {
 
           {/* Section C: Change Password */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Change Password</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Change Password</h2>
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>

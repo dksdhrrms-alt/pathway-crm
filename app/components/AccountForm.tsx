@@ -139,15 +139,15 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Account Name *</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Account Name *</label>
           <input type="text" value={name} onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
-            placeholder="e.g. Tyson Foods" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.name ? 'border-red-400' : 'border-gray-300'}`} />
+            placeholder="e.g. Tyson Foods" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 ${errors.name ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'}`} />
           {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Species / Industry</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Species / Industry</label>
           <select value={industry} onChange={(e) => setIndustry(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
             <option value="">Select species...</option>
             {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
           </select>
@@ -156,9 +156,9 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Sales Owner</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Sales Owner</label>
           <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
             <option value="">Select owner...</option>
             {activeUsers.sort((a, b) => a.name.localeCompare(b.name)).map((u) => (
               <option key={u.id} value={u.id}>{u.name} — {getRoleLabel(u.role)}</option>
@@ -166,52 +166,52 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Country</label>
           <CountrySelect value={country} onChange={setCountry} />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 text-xs">(US only)</span>}</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 dark:text-gray-500 text-xs">(US only)</span>}</label>
           {country === 'USA' || !country ? (
             <select value={stateVal} onChange={(e) => setStateVal(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               <option value="">Select state...</option>
               {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
             </select>
           ) : (
             <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Telephone</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Telephone</label>
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Employee Count</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Employee Count</label>
         <input type="number" value={employee} onChange={(e) => setEmployee(e.target.value)} placeholder="e.g. 100" min={0}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Website</label>
         <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Address</label>
         <textarea value={location} onChange={(e) => setLocation(e.target.value)} rows={2} placeholder="Full address..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
       </div>
 
       {/* Integration Account toggle */}
-      <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isIntegration ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+      <label className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${isIntegration ? 'border-blue-300 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/40' : 'border-gray-200 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800/60'}`}>
         <input
           type="checkbox"
           checked={isIntegration}
@@ -222,29 +222,29 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-800">Integration Account</p>
-          <p className="text-xs text-gray-500">{isIntegration ? 'Linked under a parent account (HQ, holding, integrator, etc.)' : 'Mark as part of a parent-child / integration hierarchy'}</p>
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">Integration Account</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{isIntegration ? 'Linked under a parent account (HQ, holding, integrator, etc.)' : 'Mark as part of a parent-child / integration hierarchy'}</p>
         </div>
-        <span className={`text-xs font-medium ${isIntegration ? 'text-blue-700' : 'text-gray-400'}`}>{isIntegration ? 'Integration' : 'Standalone'}</span>
+        <span className={`text-xs font-medium ${isIntegration ? 'text-blue-700 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500'}`}>{isIntegration ? 'Integration' : 'Standalone'}</span>
       </label>
 
       {isIntegration && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Parent Account <span className="text-gray-400 text-xs">(required when Integration is ON)</span></label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Parent Account <span className="text-gray-400 dark:text-gray-500 text-xs">(required when Integration is ON)</span></label>
           <AccountParentSelector
             value={parentAccountId}
             onChange={setParentAccountId}
             excludeAccountId={initialData?.id}
             placeholder="Search to link as a child of another account..."
           />
-          <p className="text-[11px] text-gray-400 mt-1">Use for headquarters → branch / parent company → subsidiary relationships</p>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Use for headquarters → branch / parent company → subsidiary relationships</p>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notes / Summary</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Notes / Summary</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Background, key relationships, recent updates, strategic context..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

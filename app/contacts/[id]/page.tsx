@@ -68,9 +68,9 @@ export default function ContactDetailPage() {
 
   if (!contact) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 text-lg">Contact not found.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">Contact not found.</p>
           <Link href="/contacts" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
             Back to Contacts
           </Link>
@@ -85,7 +85,7 @@ export default function ContactDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
@@ -96,7 +96,7 @@ export default function ContactDetailPage() {
           </div>
 
           {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6 mt-3">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 mb-6 mt-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div
@@ -106,7 +106,7 @@ export default function ContactDetailPage() {
                   {contact.firstName[0]}{contact.lastName[0]}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     {contact.firstName} {contact.lastName}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -130,8 +130,8 @@ export default function ContactDetailPage() {
                         {account.name}
                       </Link>
                     )}
-                    <span className="text-sm text-gray-500">{contact.phone}</span>
-                    <span className="text-sm text-gray-500">{contact.email}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{contact.phone}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{contact.email}</span>
                     {contact.linkedIn && (
                       <a
                         href={contact.linkedIn}
@@ -151,20 +151,20 @@ export default function ContactDetailPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1"
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   Edit
                 </button>
                 <button
                   onClick={() => setShowTaskModal(true)}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
                 >
                   + New Task
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-3 py-2 text-sm font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-3 py-2 text-sm font-medium border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                 >
                   Delete
                 </button>
@@ -175,17 +175,17 @@ export default function ContactDetailPage() {
           {/* Middle Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Open Tasks */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Open Tasks</h2>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Open Tasks</h2>
               {openTasks.length === 0 ? (
-                <p className="text-sm text-gray-400">No open tasks.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No open tasks.</p>
               ) : (
                 <ul className="space-y-2">
                   {openTasks.map((task) => {
                     const isOverdue = task.dueDate < TODAY;
                     return (
-                      <li key={task.id} className="pb-2 border-b border-gray-50 last:border-0">
-                        <p className="text-sm font-medium text-gray-800">{task.subject}</p>
+                      <li key={task.id} className="pb-2 border-b border-gray-50 dark:border-slate-800 last:border-0">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.subject}</p>
                         <span className={`text-xs ${isOverdue ? 'text-red-600' : 'text-gray-400'}`}>
                           {isOverdue ? 'Overdue · ' : ''}
                           Due {formatDate(task.dueDate)}
@@ -198,14 +198,14 @@ export default function ContactDetailPage() {
             </div>
 
             {/* Related Opportunities */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Related Opportunities</h2>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Related Opportunities</h2>
               {relatedOpps.length === 0 ? (
-                <p className="text-sm text-gray-400">No open opportunities.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No open opportunities.</p>
               ) : (
                 <ul className="space-y-3">
                   {relatedOpps.map((opp) => (
-                    <li key={opp.id} className="pb-3 border-b border-gray-50 last:border-0">
+                    <li key={opp.id} className="pb-3 border-b border-gray-50 dark:border-slate-800 last:border-0">
                       <div className="flex items-start justify-between gap-2">
                         <Link
                           href={`/opportunities/${opp.id}`}
@@ -214,13 +214,13 @@ export default function ContactDetailPage() {
                         >
                           {opp.name}
                         </Link>
-                        <span className="text-sm font-semibold text-gray-700 flex-shrink-0">
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex-shrink-0">
                           {formatCurrency(opp.amount)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <StageBadge stage={opp.stage} />
-                        <span className="text-xs text-gray-400">Close: {formatDate(opp.closeDate)}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Close: {formatDate(opp.closeDate)}</span>
                       </div>
                     </li>
                   ))}
@@ -230,9 +230,9 @@ export default function ContactDetailPage() {
           </div>
 
           {/* Activity Timeline */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-gray-900">Activity Timeline</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Activity Timeline</h2>
               <button
                 onClick={() => { setLogModalType('Call'); setShowLogModal(true); }}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
@@ -276,15 +276,15 @@ export default function ContactDetailPage() {
       {/* Confirm delete modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Contact</h2>
-            <p className="text-sm text-gray-600 mb-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Contact</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
               Are you sure you want to delete <strong>{contact.firstName} {contact.lastName}</strong>?
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>

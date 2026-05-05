@@ -224,12 +224,12 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Import {type === 'accounts' ? 'Accounts' : 'Contacts'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
@@ -242,13 +242,13 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
               onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-gray-400'}`}
+              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/40' : 'border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-600'}`}
             >
-              <svg className="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-10 h-10 text-gray-400 dark:text-gray-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              <p className="text-sm font-medium text-gray-700">Drag & drop your file here, or click to browse</p>
-              <p className="text-xs text-gray-400 mt-1">Accepts .xlsx, .xls, .csv</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Drag & drop your file here, or click to browse</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Accepts .xlsx, .xls, .csv</p>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
             <button onClick={downloadTemplate} className="mt-3 text-sm font-medium hover:underline" style={{ color: '#1a4731' }}>
@@ -260,16 +260,16 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
         {/* Step 2: Mapping */}
         {step === 'mapping' && (
           <div>
-            <p className="text-sm text-gray-500 mb-4">Map your file columns to CRM fields. {rows.length} rows found.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Map your file columns to CRM fields. {rows.length} rows found.</p>
             <div className="space-y-2 mb-4">
               {headers.filter((h) => h).map((h) => (
                 <div key={h} className="flex items-center gap-3">
-                  <span className="text-sm text-gray-700 w-40 truncate">{h}</span>
-                  <span className="text-gray-400">→</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-200 w-40 truncate">{h}</span>
+                  <span className="text-gray-400 dark:text-gray-500">→</span>
                   <select
                     value={mapping[h] || ''}
                     onChange={(e) => setMapping((p) => ({ ...p, [h]: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">— Skip —</option>
                     {fields.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -278,7 +278,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               ))}
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setStep('upload')} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Back</button>
+              <button onClick={() => setStep('upload')} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Back</button>
               <button onClick={() => setStep('preview')} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
                 Next: Preview
               </button>
@@ -289,7 +289,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
         {/* Step 3: Preview */}
         {step === 'preview' && (
           <div>
-            <p className="text-sm text-gray-500 mb-3">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
               {isMondayMode
                 ? `${type === 'accounts' ? mondayAccounts.length : mondayContacts.length} records ready to import (Monday.com format detected).`
                 : `${rows.length} records ready to import.`}
@@ -299,8 +299,8 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                 <table className="w-full text-xs">
                   <thead><tr className="border-b bg-gray-50">
                     {type === 'accounts'
-                      ? ['Name','Industry','Owner →','Country','Phone','Website'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)
-                      : ['Name','Species','Company','Country','Owner →','Email'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500">{h}</th>)}
+                      ? ['Name','Industry','Owner →','Country','Phone','Website'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{h}</th>)
+                      : ['Name','Species','Company','Country','Owner →','Email'].map((h) => <th key={h} className="text-left px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {(type === 'accounts' ? mondayAccounts : mondayContacts).slice(0, 10).map((r, i) => {
@@ -309,22 +309,22 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                       const matched = resolveOwner(ownerName, ownerFromDate);
                       const ownerCell = (
                         <span title={`Sales: "${ownerName || '—'}" · Date col: "${ownerFromDate || '—'}"`}>
-                          {matched ? <span className="text-green-700 font-medium">✓ {matched.name}</span> : <span className="text-amber-600 italic">{ownerName || ownerFromDate || '—'}</span>}
+                          {matched ? <span className="text-green-700 dark:text-green-400 font-medium">✓ {matched.name}</span> : <span className="text-amber-600 dark:text-amber-400 italic">{ownerName || ownerFromDate || '—'}</span>}
                         </span>
                       );
                       return (
-                        <tr key={i} className="border-b border-gray-50">
+                        <tr key={i} className="border-b border-gray-50 dark:border-slate-700">
                           {type === 'accounts' ? (
                             <>
-                              {[(r as ParsedAccount).name, (r as ParsedAccount).industry].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                              {[(r as ParsedAccount).name, (r as ParsedAccount).industry].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[100px]">{v || '—'}</td>)}
                               <td className="px-2 py-1.5 truncate max-w-[140px]">{ownerCell}</td>
-                              {[(r as ParsedAccount).country, (r as ParsedAccount).phone, (r as ParsedAccount).website].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                              {[(r as ParsedAccount).country, (r as ParsedAccount).phone, (r as ParsedAccount).website].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[100px]">{v || '—'}</td>)}
                             </>
                           ) : (
                             <>
-                              {[`${(r as ParsedContact).firstName} ${(r as ParsedContact).lastName}`, (r as ParsedContact).species, (r as ParsedContact).accountName, (r as ParsedContact).country].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]">{v || '—'}</td>)}
+                              {[`${(r as ParsedContact).firstName} ${(r as ParsedContact).lastName}`, (r as ParsedContact).species, (r as ParsedContact).accountName, (r as ParsedContact).country].map((v, j) => <td key={j} className="px-2 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[100px]">{v || '—'}</td>)}
                               <td className="px-2 py-1.5 truncate max-w-[140px]">{ownerCell}</td>
-                              <td className="px-2 py-1.5 text-gray-700 truncate max-w-[120px]">{(r as ParsedContact).email || '—'}</td>
+                              <td className="px-2 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{(r as ParsedContact).email || '—'}</td>
                             </>
                           )}
                         </tr>
@@ -334,30 +334,30 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                 </table>
               ) : (
                 <table className="w-full text-xs">
-                  <thead><tr className="border-b bg-gray-50">
+                  <thead><tr className="border-b bg-gray-50 dark:bg-slate-800">
                     {fields.filter((f) => Object.values(mapping).includes(f)).map((f) => (
-                      <th key={f} className="text-left px-2 py-1.5 font-medium text-gray-500">{f}</th>
+                      <th key={f} className="text-left px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{f}</th>
                     ))}
                   </tr></thead>
                   <tbody>
                     {rows.slice(0, 10).map((row, i) => (
-                      <tr key={i} className="border-b border-gray-50">
+                      <tr key={i} className="border-b border-gray-50 dark:border-slate-700">
                         {fields.filter((f) => Object.values(mapping).includes(f)).map((f) => (
-                          <td key={f} className="px-2 py-1.5 text-gray-700 truncate max-w-[120px]">{getMapped(row, f) || '—'}</td>
+                          <td key={f} className="px-2 py-1.5 text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{getMapped(row, f) || '—'}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               )}
-              {!isMondayMode && rows.length > 10 && <p className="text-xs text-gray-400 text-center py-1">...and {rows.length - 10} more</p>}
-              {isMondayMode && (type === 'accounts' ? mondayAccounts : mondayContacts).length > 10 && <p className="text-xs text-gray-400 text-center py-1">...and {(type === 'accounts' ? mondayAccounts : mondayContacts).length - 10} more</p>}
+              {!isMondayMode && rows.length > 10 && <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-1">...and {rows.length - 10} more</p>}
+              {isMondayMode && (type === 'accounts' ? mondayAccounts : mondayContacts).length > 10 && <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-1">...and {(type === 'accounts' ? mondayAccounts : mondayContacts).length - 10} more</p>}
             </div>
             <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">Duplicate handling:</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Duplicate handling:</p>
               <div className="flex gap-4">
                 {(['skip', 'update', 'new'] as DuplicateMode[]).map((m) => (
-                  <label key={m} className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <label key={m} className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                     <input type="radio" name="dup" checked={dupMode === m} onChange={() => setDupMode(m)} className="text-green-600" />
                     {m === 'skip' ? 'Skip duplicates' : m === 'update' ? 'Update existing' : 'Import as new'}
                   </label>
@@ -365,7 +365,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               </div>
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setStep(isMondayMode ? 'upload' : 'mapping')} disabled={submitting} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed">Back</button>
+              <button onClick={() => setStep(isMondayMode ? 'upload' : 'mapping')} disabled={submitting} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed">Back</button>
               <SubmitButton onClick={doImport} pending={submitting} pendingText="Importing...">
                 Import {isMondayMode ? (type === 'accounts' ? mondayAccounts.length : mondayContacts.length) : rows.length} Records
               </SubmitButton>
@@ -376,14 +376,14 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
         {/* Step 4: Done */}
         {step === 'done' && (
           <div className="text-center py-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 dark:bg-green-950/40 mb-4">
               <svg className="w-7 h-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Import Complete!</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Import Complete!</h3>
             <div className="flex justify-center gap-6 mb-4">
-              <div><p className="text-2xl font-bold text-green-600">{result.imported}</p><p className="text-xs text-gray-500">Imported</p></div>
-              <div><p className="text-2xl font-bold text-amber-500">{result.skipped}</p><p className="text-xs text-gray-500">Skipped</p></div>
-              {result.errors > 0 && <div><p className="text-2xl font-bold text-red-500">{result.errors}</p><p className="text-xs text-gray-500">Errors</p></div>}
+              <div><p className="text-2xl font-bold text-green-600 dark:text-green-400">{result.imported}</p><p className="text-xs text-gray-500 dark:text-gray-400">Imported</p></div>
+              <div><p className="text-2xl font-bold text-amber-500 dark:text-amber-400">{result.skipped}</p><p className="text-xs text-gray-500 dark:text-gray-400">Skipped</p></div>
+              {result.errors > 0 && <div><p className="text-2xl font-bold text-red-500 dark:text-red-400">{result.errors}</p><p className="text-xs text-gray-500 dark:text-gray-400">Errors</p></div>}
             </div>
             <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>Close</button>
           </div>
