@@ -13,9 +13,19 @@ const TYPE_COLOR: Record<string, string> = {
   Activity: 'bg-orange-100 text-orange-700',
 };
 
+// Wait this long after the last keystroke before re-running the cross-entity
+// scan. Long enough to skip "type a word" intermediate states (avoids 4-5
+// full scans while you type "Tyson"), short enough that the result feels
+// instant. 120ms hits the sweet spot for keyboard-driven users.
+const SEARCH_DEBOUNCE_MS = 120;
+// Avoid running a full scan for a single character — almost everything
+// matches and the result list is meaningless. 2+ chars only.
+const MIN_QUERY_LENGTH = 2;
+
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -31,12 +41,26 @@ export default function GlobalSearch() {
   }, []);
 
   useEffect(() => {
-    if (open) { setTimeout(() => inputRef.current?.focus(), 50); setQuery(''); setSelectedIdx(0); }
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+      setQuery('');
+      setDebouncedQuery('');
+      setSelectedIdx(0);
+    }
   }, [open]);
 
+  // Debounce: `query` updates instantly (so the input stays responsive),
+  // but `debouncedQuery` only catches up after the user pauses typing.
+  // The expensive `useMemo` below depends on `debouncedQuery`, not `query`.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query]);
+
   const results: Result[] = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < MIN_QUERY_LENGTH) return [];
+    const q = trimmed.toLowerCase();
     const items: Result[] = [];
     accounts.filter(a => a.name.toLowerCase().includes(q)).slice(0, 4)
       .forEach(a => items.push({ type: 'Account', id: a.id, name: a.name, sub: String(a.industry || a.category || ''), href: `/accounts/${a.id}` }));
@@ -47,7 +71,7 @@ export default function GlobalSearch() {
     activities.filter(a => (a.subject || '').toLowerCase().includes(q)).slice(0, 3)
       .forEach(a => items.push({ type: 'Activity', id: a.id, name: a.subject, sub: `${a.type} · ${a.date}`, href: `/accounts/${a.accountId}` }));
     return items.slice(0, 10);
-  }, [query, accounts, contacts, opportunities, activities]);
+  }, [debouncedQuery, accounts, contacts, opportunities, activities]);
 
   useEffect(() => { setSelectedIdx(0); }, [results]);
 
@@ -98,11 +122,11 @@ export default function GlobalSearch() {
               </li>
             ))}
           </ul>
-        ) : query.trim() ? (
+        ) : query.trim().length >= MIN_QUERY_LENGTH && debouncedQuery === query ? (
           <div className="px-4 py-8 text-center text-sm text-gray-400">No results for &quot;{query}&quot;</div>
         ) : (
           <div className="px-4 py-6 text-center text-sm text-gray-400">
-            <p>Type to search across all records</p>
+            <p>{query.trim().length === 1 ? 'Keep typing...' : 'Type to search across all records'}</p>
             <p className="text-xs mt-1 text-gray-300">Accounts · Contacts · Deals · Activities</p>
           </div>
         )}

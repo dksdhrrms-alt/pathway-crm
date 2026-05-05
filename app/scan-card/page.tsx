@@ -135,7 +135,7 @@ export default function ScanCardPage() {
           {image && (
             <div style={{ marginBottom: '16px' }}>
               <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-                <img src={image} alt="Business card" style={{ width: '100%', display: 'block' }} />
+                <img src={image} alt="Business card" loading="lazy" decoding="async" style={{ width: '100%', display: 'block' }} />
                 <button
                   onClick={() => { setImage(null); setResult(null); setSaved(false); }}
                   style={{

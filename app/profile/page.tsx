@@ -108,7 +108,7 @@ export default function ProfilePage() {
                 style={{ backgroundColor: photoPreview ? 'transparent' : primaryColor }}
               >
                 {photoPreview ? (
-                  <img src={photoPreview} alt="Profile" className="w-24 h-24 object-cover" />
+                  <img src={photoPreview} alt="Profile" width={96} height={96} loading="lazy" decoding="async" className="w-24 h-24 object-cover" />
                 ) : (
                   initials
                 )}

@@ -511,7 +511,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                             style={{ backgroundColor: user.profilePhoto ? 'transparent' : '#1a4731' }}
                           >
                             {user.profilePhoto ? (
-                              <img src={user.profilePhoto} alt={user.name} className="w-8 h-8 object-cover" />
+                              <img src={user.profilePhoto} alt={user.name} width={32} height={32} loading="lazy" decoding="async" className="w-8 h-8 object-cover" />
                             ) : (
                               user.initials
                             )}

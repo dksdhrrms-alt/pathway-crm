@@ -107,7 +107,7 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
           aria-label="User menu"
         >
           {profilePhoto ? (
-            <img src={profilePhoto} alt={userName} className="w-9 h-9 rounded-full object-cover" />
+            <img src={profilePhoto} alt={userName} width={36} height={36} loading="lazy" decoding="async" className="w-9 h-9 rounded-full object-cover" />
           ) : (
             initials
           )}
@@ -122,7 +122,7 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
                 style={{ backgroundColor: profilePhoto ? 'transparent' : avatarColor }}
               >
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt={userName} className="w-10 h-10 rounded-full object-cover" />
+                  <img src={profilePhoto} alt={userName} width={40} height={40} loading="lazy" decoding="async" className="w-10 h-10 rounded-full object-cover" />
                 ) : (
                   initials
                 )}

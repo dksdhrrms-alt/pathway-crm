@@ -145,7 +145,7 @@ export default function SignUpPage() {
                 style={{ backgroundColor: profilePhoto ? 'transparent' : '#1a4731' }}
               >
                 {profilePhoto ? (
-                  <img src={profilePhoto} alt="Preview" className="w-20 h-20 object-cover" />
+                  <img src={profilePhoto} alt="Preview" width={80} height={80} loading="lazy" decoding="async" className="w-20 h-20 object-cover" />
                 ) : (
                   previewInitials
                 )}
