@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -31,6 +31,18 @@ export default function InsightsPage() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Recharts <PieChart> renders an empty SVG when its container measures 0×0
+  // during initial render — `cx="50%"` / `cy="50%"` get baked at zero and the
+  // sectors never re-emit even after the layout settles. We delay the chart
+  // mount by one paint frame so the grid has already laid out the card.
+  // Only the Pie needs this; LineChart / BarChart re-render correctly via
+  // their axis layout pass.
+  const [chartsReady, setChartsReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setChartsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const curMonth = new Date().getMonth() + 1;
 
@@ -262,14 +274,16 @@ export default function InsightsPage() {
                 </div>
               ) : (
                 <div style={{ width: '100%', height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-                    <PieChart>
-                      <Pie data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
-                        {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip formatter={(v) => fmt(Number(v))} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {chartsReady && (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+                      <PieChart>
+                        <Pie isAnimationActive={false} data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
+                          {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip formatter={(v) => fmt(Number(v))} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               )}
               <div className="mt-2 space-y-1">
