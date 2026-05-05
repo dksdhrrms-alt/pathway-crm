@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase, supabaseEnabled } from '@/lib/supabase';
 import { addStoreUser } from '@/lib/userStore';
 import { hashPassword } from '@/lib/auth-utils';
+import { parseBody, RegisterBodySchema } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,39 +26,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Too many signup attempts. Try again later.' }, { status: 429 });
   }
 
-  const body = await request.json();
-  const { name, email, password, phone, role, profilePhoto, initials } = body;
+  const { data, error: vErr } = await parseBody(request, RegisterBodySchema);
+  if (vErr) return vErr;
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-  }
-
-  const cleanEmail = email.toLowerCase().trim();
+  // IMPORTANT: never trust `role` or `status` from a public signup body — that
+  // was the role-escalation hole. The schema does not even include those
+  // fields; we hard-set the safe defaults below.
+  const { name, email, password, phone } = data;
   const userId = `user-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  const userInitials = initials || name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  const userInitials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   const hashedPw = await hashPassword(password);
 
   if (supabaseEnabled) {
     const { error } = await supabase.from('users').insert({
-      id: userId, name, email: cleanEmail,
+      id: userId,
+      name,
+      email,
       password: hashedPw,
-      phone: phone || '', role: role || 'sales',
-      initials: userInitials, status: 'active',
-      profile_photo: profilePhoto || null,
+      phone: phone || '',
+      role: 'sales',
+      initials: userInitials,
+      status: 'active',
+      profile_photo: null,
     });
 
     if (error) {
       if (error.code === '23505') return NextResponse.json({ error: 'Email already exists' }, { status: 409 });
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[Register] Supabase insert failed:', error);
+      return NextResponse.json({ error: 'Could not create account' }, { status: 500 });
     }
   }
 
   // File store uses hashed password too
   addStoreUser({
-    id: userId, name, email: cleanEmail, password: hashedPw,
-    phone: phone || '', role: role || 'sales',
-    initials: userInitials, status: 'active',
-    profilePhoto: profilePhoto || null,
+    id: userId,
+    name,
+    email,
+    password: hashedPw,
+    phone: phone || '',
+    role: 'sales',
+    initials: userInitials,
+    status: 'active',
+    profilePhoto: null,
   });
 
   return NextResponse.json({ success: true, userId });

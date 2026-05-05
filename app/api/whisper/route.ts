@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api-auth';
 
 // Server-side proxy to OpenAI Whisper. The browser sends an audio blob via
 // FormData; we forward it to api.openai.com and return the transcript.
@@ -7,6 +8,11 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  // Authenticated users only — without this guard, anyone on the public
+  // internet could hammer the endpoint and burn through OpenAI credits.
+  const { error: authErr } = await requireAuth();
+  if (authErr) return authErr;
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: 'OPENAI_API_KEY not configured on the server' }, { status: 500 });
