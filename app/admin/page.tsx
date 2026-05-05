@@ -54,7 +54,17 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health'>('overview');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toast, setToast] = useState<string | null>(null);
+
+  // Two-step confirm + completion-hide for destructive maintenance actions.
+  // The cards are visible by default; clicking the primary button flips into
+  // a confirm-state with a red "Yes, do it" button. After a successful API
+  // response we hide the card so it can't be re-fired by accident.
   const [seeding, setSeeding] = useState(false);
+  const [seedConfirm, setSeedConfirm] = useState(false);
+  const [seedDone, setSeedDone] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateConfirm, setMigrateConfirm] = useState(false);
+  const [migrateDone, setMigrateDone] = useState(false);
 
   const totalOpenDeals = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length;
   const totalPipeline = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + o.amount, 0);
@@ -164,52 +174,116 @@ export default function AdminPage() {
             </p>
           </div>
 
-          {/* Seed Database */}
-          <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Seed Database</p>
-              <p className="text-xs text-gray-500">Populate Supabase with demo data (only works if tables are empty)</p>
+          {/* Seed Database (destructive: two-step confirm + hide on success) */}
+          {!seedDone && (
+            <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Seed Database</p>
+                  <p className="text-xs text-gray-500">Populate Supabase with demo data (only works if tables are empty)</p>
+                </div>
+                {!seedConfirm ? (
+                  <button
+                    onClick={() => setSeedConfirm(true)}
+                    className="shrink-0 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#1a4731' }}
+                  >
+                    Seed Database
+                  </button>
+                ) : (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setSeedConfirm(false)}
+                      disabled={seeding}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setSeeding(true);
+                        try {
+                          const res = await fetch('/api/seed', { method: 'POST' });
+                          const data = await res.json();
+                          setToast(data.message || 'Seed complete.');
+                          if (res.ok) setSeedDone(true);
+                        } catch {
+                          setToast('Failed to seed database.');
+                        } finally {
+                          setSeeding(false);
+                          setSeedConfirm(false);
+                        }
+                      }}
+                      disabled={seeding}
+                      className="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {seeding ? 'Seeding...' : 'Yes, seed now'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              {seedConfirm && !seeding && (
+                <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  ⚠️ This inserts demo records into Supabase. Safe only on empty tables — there is no automatic rollback.
+                </p>
+              )}
             </div>
-            <button
-              onClick={async () => {
-                setSeeding(true);
-                try {
-                  const res = await fetch('/api/seed', { method: 'POST' });
-                  const data = await res.json();
-                  setToast(data.message);
-                } catch {
-                  setToast('Failed to seed database.');
-                } finally {
-                  setSeeding(false);
-                }
-              }}
-              disabled={seeding}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#1a4731' }}
-            >
-              {seeding ? 'Seeding...' : 'Seed Database'}
-            </button>
-          </div>
+          )}
 
-          {/* Migrate Passwords */}
-          <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Secure Passwords</p>
-              <p className="text-xs text-gray-500">Hash all plain-text passwords with bcrypt (one-time migration)</p>
+          {/* Migrate Passwords (one-time: two-step confirm + hide on success) */}
+          {!migrateDone && (
+            <div className="mb-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Secure Passwords</p>
+                  <p className="text-xs text-gray-500">Hash all plain-text passwords with bcrypt (one-time migration)</p>
+                </div>
+                {!migrateConfirm ? (
+                  <button
+                    onClick={() => setMigrateConfirm(true)}
+                    className="shrink-0 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
+                    Migrate Passwords
+                  </button>
+                ) : (
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setMigrateConfirm(false)}
+                      disabled={migrating}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        setMigrating(true);
+                        try {
+                          const res = await fetch('/api/admin/migrate-passwords', { method: 'POST' });
+                          const data = await res.json();
+                          setToast(data.message || data.error || 'Migration finished.');
+                          if (res.ok) setMigrateDone(true);
+                        } catch {
+                          setToast('Migration failed.');
+                        } finally {
+                          setMigrating(false);
+                          setMigrateConfirm(false);
+                        }
+                      }}
+                      disabled={migrating}
+                      className="px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {migrating ? 'Migrating...' : 'Yes, migrate now'}
+                    </button>
+                  </div>
+                )}
+              </div>
+              {migrateConfirm && !migrating && (
+                <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  ⚠️ This re-hashes any plain-text passwords still in the users table. It&rsquo;s a one-time job — running it twice is harmless but pointless.
+                </p>
+              )}
             </div>
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/admin/migrate-passwords', { method: 'POST' });
-                  const data = await res.json();
-                  setToast(data.message || data.error);
-                } catch { setToast('Migration failed.'); }
-              }}
-              className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-            >
-              Migrate Passwords
-            </button>
-          </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">

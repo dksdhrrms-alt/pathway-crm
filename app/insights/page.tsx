@@ -228,13 +228,17 @@ export default function InsightsPage() {
           )}
 
           {/* Charts Row 1: Revenue Trend + Category Breakdown */}
+          {/* `min-w-0` on each grid cell prevents the default `min-width: auto`
+              behaviour from blocking ResponsiveContainer's width measurement
+              and is what was causing the recharts width(-1) warnings + the
+              empty PieChart on first render. */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Revenue Trend */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="lg:col-span-2 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Revenue Trend - {selectedYear} vs {selectedYear - 1}</h2>
               <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
                 <div style={{ minWidth: '500px', height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                     <LineChart data={revenueTrend} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -250,18 +254,24 @@ export default function InsightsPage() {
             </div>
 
             {/* Category Pie */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Revenue by Category</h2>
-              <div style={{ height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
-                      {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => fmt(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              {categoryBreakdown.length === 0 ? (
+                <div className="flex items-center justify-center text-xs text-gray-400" style={{ height: 220 }}>
+                  No revenue data yet
+                </div>
+              ) : (
+                <div style={{ width: '100%', height: 220 }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+                    <PieChart>
+                      <Pie data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
+                        {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => fmt(Number(v))} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
               <div className="mt-2 space-y-1">
                 {categoryBreakdown.slice(0, 4).map((c, i) => (
                   <div key={c.name} className="flex justify-between text-xs">
@@ -276,11 +286,11 @@ export default function InsightsPage() {
           {/* Charts Row 2: Top Accounts + Activity Trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Top Accounts */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Top 10 Accounts by Revenue</h2>
               <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
                 <div style={{ minWidth: '400px', height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                     <BarChart data={topAccounts} layout="vertical" margin={{ left: 10, right: 30 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                       <XAxis type="number" tickFormatter={(v) => fmt(v)} tick={{ fontSize: 10 }} />
@@ -294,10 +304,10 @@ export default function InsightsPage() {
             </div>
 
             {/* Activity Trend */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h2 className="text-base font-semibold text-gray-900 mb-4">Activity Trend (Last 6 Months)</h2>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div style={{ width: '100%', height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} />
