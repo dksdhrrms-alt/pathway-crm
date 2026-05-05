@@ -238,7 +238,7 @@ export default function DashboardPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar placeholder="Search CRM..." />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
@@ -248,36 +248,36 @@ export default function DashboardPage() {
           {/* ============ NEW HEADER ============ */}
           <div className="mt-6 mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; })()},{' '}
                 <span style={{ color: '#1a4731' }}>{userName.split(' ')[0] || 'there'}</span>
                 <span className="text-gray-400">.</span>
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {activeTab === 'company' ? '🏢 Company-wide view' : activeTab === 'team' ? `👥 ${teamLabel} team view` : '👤 Your personal view'}
-                <span className="text-gray-300 ml-2">·</span> <span className="text-gray-400">Last updated just now</span>
+                <span className="text-gray-300 dark:text-gray-600 ml-2">·</span> <span className="text-gray-400 dark:text-gray-500">Last updated just now</span>
               </p>
             </div>
             {/* View tabs */}
             {(canViewCompany || canViewTeam) && (
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
                 {canViewCompany && (
                   <button onClick={() => setActiveTab('company')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'company' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     style={activeTab === 'company' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
                     Company-wide
                   </button>
                 )}
                 {canViewTeam && (
                   <button onClick={() => setActiveTab('team')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'team' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                     style={activeTab === 'team' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
                     {teamLabel || 'Team'}
                   </button>
                 )}
                 <button onClick={() => setActiveTab('personal')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-all ${activeTab === 'personal' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
                   style={activeTab === 'personal' ? { backgroundColor: '#1a4731', color: 'white' } : {}}>
                   Personal
                 </button>
@@ -299,8 +299,8 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0" style={{ backgroundColor: '#f0f7ee' }}>{a.emoji}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">+ {a.label}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{a.sub}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">+ {a.label}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{a.sub}</p>
                     </div>
                   </div>
                 </div>
@@ -311,9 +311,9 @@ export default function DashboardPage() {
           {/* Team members chips */}
           {activeTab === 'team' && teamMembers.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4 items-center">
-              <span className="text-xs text-gray-400">Team members:</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">Team members:</span>
               {teamMembers.map((m) => (
-                <span key={m.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-700">
+                <span key={m.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full text-xs text-gray-700 dark:text-gray-200">
                   <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-semibold" style={{ backgroundColor: '#1a4731' }}>
                     {m.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                   </span>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === 'team' && !currentTeam && (
-            <div className="mb-4 px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: '#FAEEDA', color: '#854F0B' }}>
+            <div className="mb-4 px-4 py-3 rounded-lg text-sm dark:bg-amber-950/40 dark:text-amber-300" style={{ backgroundColor: '#FAEEDA', color: '#854F0B' }}>
               You are not assigned to a team yet. Contact your admin to be added to a team.
             </div>
           )}
@@ -334,14 +334,14 @@ export default function DashboardPage() {
           {/* ============ MY FOCUS + MY DEALS ============ */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             {/* MY FOCUS — left column */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-900">🎯 My Focus</h2>
-                  <p className="text-[11px] text-gray-400 mt-0.5">What needs your attention today</p>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">🎯 My Focus</h2>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">What needs your attention today</p>
                 </div>
               </div>
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-50 dark:divide-slate-800">
                 {(() => {
                   const todayMs = new Date().getTime();
                   const items: Array<{ icon: string; label: string; sub: string; count: number; link: string; color: string }> = [];
@@ -396,14 +396,14 @@ export default function DashboardPage() {
                     );
                   }
                   return items.map((item, i) => (
-                    <Link key={i} href={item.link} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                    <Link key={i} href={item.link} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                       <span className="text-xl flex-shrink-0">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                        <p className="text-[11px] text-gray-400">{item.sub}</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{item.label}</p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500">{item.sub}</p>
                       </div>
                       <span className="text-base font-bold flex-shrink-0" style={{ color: item.color }}>{item.count}</span>
-                      <span className="text-gray-300">→</span>
+                      <span className="text-gray-300 dark:text-gray-600">→</span>
                     </Link>
                   ));
                 })()}
@@ -411,40 +411,40 @@ export default function DashboardPage() {
             </div>
 
             {/* MY DEALS — right column (spans 2) */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-semibold text-gray-900">💼 My Deals</h2>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Pipeline snapshot</p>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">💼 My Deals</h2>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pipeline snapshot</p>
                 </div>
                 <Link href="/opportunities" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50">
+              <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50 dark:divide-slate-800">
                 <div className="p-5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Open Deals</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{openOpps.length}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Active pipeline</p>
+                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Open Deals</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{openOpps.length}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Active pipeline</p>
                 </div>
                 <div className="p-5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Pipeline Value</p>
+                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pipeline Value</p>
                   <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCompact(pipelineValue)}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Sum of open</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Sum of open</p>
                 </div>
                 <div className="p-5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Weighted</p>
-                  <p className="text-2xl font-bold text-blue-700 mt-1">{formatCompact(openOpps.reduce((s, o) => s + (Number(o.amount) || 0) * ((Number(o.probability) || 0) / 100), 0))}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">× probability</p>
+                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Weighted</p>
+                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 mt-1">{formatCompact(openOpps.reduce((s, o) => s + (Number(o.amount) || 0) * ((Number(o.probability) || 0) / 100), 0))}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">× probability</p>
                 </div>
                 <div className="p-5">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Won This Month</p>
-                  <p className="text-2xl font-bold text-green-600 mt-1">{wonThisMonth.length}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{formatCompact(wonAmount)}</p>
+                  <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Won This Month</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{wonThisMonth.length}</p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{formatCompact(wonAmount)}</p>
                 </div>
               </div>
               {/* Mini stage strip */}
-              <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
-                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Stage Distribution</p>
-                <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-gray-200">
+              <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-800">
+                <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Stage Distribution</p>
+                <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-gray-200 dark:bg-slate-700">
                   {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
                     <div
                       key={s.stage}
@@ -457,8 +457,8 @@ export default function DashboardPage() {
                   {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
                     <div key={s.stage} className="flex items-center gap-1 text-[11px]">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill }} />
-                      <span className="text-gray-600">{s.stage}</span>
-                      <span className="text-gray-400">· {formatCompact(s.amount)}</span>
+                      <span className="text-gray-600 dark:text-gray-300">{s.stage}</span>
+                      <span className="text-gray-400 dark:text-gray-500">· {formatCompact(s.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -468,24 +468,24 @@ export default function DashboardPage() {
 
           {/* Activity Leaderboard — DISABLED per redesign. Set to `true` to re-enable. */}
           {false && leaderboard.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Activity Leaderboard</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Call=3 Meeting=5 Email=2 Note=1 Task Done=2 New Opp=2</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden mb-6">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Activity Leaderboard</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Call=3 Meeting=5 Email=2 Note=1 Task Done=2 New Opp=2</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="w-10 text-center px-3 py-2.5 text-xs text-gray-500">#</th>
-                    <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-medium">Team Member</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Calls</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Meetings</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Emails</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Notes</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Tasks</th>
-                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 font-medium">Opps</th>
-                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-medium">Points</th>
-                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 font-medium">vs LM</th>
+                  <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800">
+                    <th className="w-10 text-center px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400">#</th>
+                    <th className="text-left px-4 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Team Member</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Calls</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Meetings</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Emails</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Notes</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Tasks</th>
+                    <th className="text-center px-2 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Opps</th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">Points</th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400 font-medium">vs LM</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -493,29 +493,29 @@ export default function DashboardPage() {
                     const trend = entry.prevPoints > 0 ? Math.round(((entry.points - entry.prevPoints) / entry.prevPoints) * 100) : null;
                     const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
                     return (
-                      <tr key={entry.user.id} className="border-b border-gray-50 hover:bg-gray-50/60">
-                        <td className="text-center px-3 py-3 text-xs text-gray-400">{medal || i + 1}</td>
+                      <tr key={entry.user.id} className="border-b border-gray-50 dark:border-slate-800 hover:bg-gray-50/60 dark:hover:bg-slate-800/40">
+                        <td className="text-center px-3 py-3 text-xs text-gray-400 dark:text-gray-500">{medal || i + 1}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>
                               {entry.user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
-                            <span className="font-medium text-gray-800">{entry.user.name}</span>
+                            <span className="font-medium text-gray-800 dark:text-gray-200">{entry.user.name}</span>
                           </div>
                         </td>
-                        <td className="text-center px-2 py-3 text-blue-600 font-medium">{entry.calls || '-'}</td>
-                        <td className="text-center px-2 py-3 text-purple-600 font-medium">{entry.meetings || '-'}</td>
-                        <td className="text-center px-2 py-3 text-green-600 font-medium">{entry.emails || '-'}</td>
-                        <td className="text-center px-2 py-3 text-gray-500">{entry.notes || '-'}</td>
-                        <td className="text-center px-2 py-3 text-amber-600 font-medium">{entry.tasksCompleted || '-'}</td>
-                        <td className="text-center px-2 py-3 text-teal-600 font-medium">{entry.oppsWon || '-'}</td>
+                        <td className="text-center px-2 py-3 text-blue-600 dark:text-blue-400 font-medium">{entry.calls || '-'}</td>
+                        <td className="text-center px-2 py-3 text-purple-600 dark:text-purple-400 font-medium">{entry.meetings || '-'}</td>
+                        <td className="text-center px-2 py-3 text-green-600 dark:text-green-400 font-medium">{entry.emails || '-'}</td>
+                        <td className="text-center px-2 py-3 text-gray-500 dark:text-gray-400">{entry.notes || '-'}</td>
+                        <td className="text-center px-2 py-3 text-amber-600 dark:text-amber-400 font-medium">{entry.tasksCompleted || '-'}</td>
+                        <td className="text-center px-2 py-3 text-teal-600 dark:text-teal-400 font-medium">{entry.oppsWon || '-'}</td>
                         <td className="text-right px-3 py-3 font-bold" style={{ color: '#1a4731' }}>{entry.points}</td>
                         <td className="text-right px-3 py-3">
                           {trend !== null ? (
-                            <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>{trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%</span>
+                            <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%</span>
                           ) : entry.points > 0 ? (
-                            <span className="text-xs text-green-600 font-medium">NEW</span>
-                          ) : <span className="text-xs text-gray-400">-</span>}
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">NEW</span>
+                          ) : <span className="text-xs text-gray-400 dark:text-gray-500">-</span>}
                         </td>
                       </tr>
                     );
@@ -528,10 +528,10 @@ export default function DashboardPage() {
           {/* ============ Recent Activity + My Tasks 2-column ============ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Recent Activity — each row links directly to its account */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
-                <span className="text-xs text-gray-400">Click to open account</span>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h2>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Click to open account</span>
               </div>
               {recentActivities.length === 0 ? (
                 <EmptyState
@@ -546,24 +546,24 @@ export default function DashboardPage() {
                     const contactName = getContactName(act.contactId);
                     const accountName = getAccountName(act.accountId);
                     const row = (
-                      <div className="flex gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
                         <span className="text-lg flex-shrink-0 mt-0.5">{typeIcon[act.type]}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-medium text-gray-800 leading-tight line-clamp-1">{act.subject}</p>
-                            <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{formatDate(act.date)}</span>
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-tight line-clamp-1">{act.subject}</p>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap flex-shrink-0">{formatDate(act.date)}</span>
                           </div>
-                          <p className="text-xs text-gray-500 mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             {contactName && <span>{contactName}</span>}
-                            {contactName && accountName && <span className="text-gray-300"> · </span>}
+                            {contactName && accountName && <span className="text-gray-300 dark:text-gray-600"> · </span>}
                             {accountName && <span style={{ color: '#1a4731' }} className="font-medium">{accountName}</span>}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{act.description}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{act.description}</p>
                         </div>
                       </div>
                     );
                     return (
-                      <li key={act.id} className="border-b border-gray-50 last:border-0">
+                      <li key={act.id} className="border-b border-gray-50 dark:border-slate-800 last:border-0">
                         {act.accountId ? (
                           <Link href={`/accounts/${act.accountId}`} className="block">{row}</Link>
                         ) : row}
@@ -575,9 +575,9 @@ export default function DashboardPage() {
             </div>
 
             {/* My Tasks — open tasks, sorted by due date with overdue / due-today badges */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-gray-900">My Tasks</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">My Tasks</h2>
                 <Link href="/tasks" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
               </div>
               {taskList.length === 0 ? (
@@ -593,21 +593,21 @@ export default function DashboardPage() {
                     const isOverdue = task.dueDate < TODAY;
                     const isDueToday = task.dueDate === TODAY;
                     const accountName = getAccountName(task.relatedAccountId);
-                    const priorityColor = task.priority === 'High' ? 'bg-red-50 text-red-600' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-500';
+                    const priorityColor = task.priority === 'High' ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300' : task.priority === 'Medium' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-300' : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400';
                     return (
-                      <li key={task.id} className={`flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isOverdue ? 'bg-red-50/30' : ''}`}>
+                      <li key={task.id} className={`flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-b border-gray-50 dark:border-slate-800 last:border-0 ${isOverdue ? 'bg-red-50/30 dark:bg-red-950/20' : ''}`}>
                         <button
                           onClick={(e) => { e.preventDefault(); toggleTask(task.id); setToast('Task completed'); }}
-                          className="mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 hover:border-green-500 hover:bg-green-50 transition-colors"
+                          className="mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 border-gray-300 dark:border-gray-600 hover:border-green-500 hover:bg-green-50 dark:hover:border-green-500 dark:hover:bg-green-950/40 transition-colors"
                           aria-label="Mark complete"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{task.subject}</p>
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{task.subject}</p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className={`text-xs ${isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
+                            <span className={`text-xs ${isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : isDueToday ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>
                               {isDueToday ? 'Due today' : isOverdue ? `Overdue · ${formatDate(task.dueDate)}` : `Due ${formatDate(task.dueDate)}`}
                             </span>
-                            {accountName && <span className="text-xs text-gray-400 truncate">· {accountName}</span>}
+                            {accountName && <span className="text-xs text-gray-400 dark:text-gray-500 truncate">· {accountName}</span>}
                           </div>
                         </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${priorityColor}`}>
@@ -618,7 +618,7 @@ export default function DashboardPage() {
                   })}
                   {taskList.length > 12 && (
                     <li className="text-center pt-2">
-                      <Link href="/tasks" className="text-xs text-gray-500 hover:text-gray-700 underline">+{taskList.length - 12} more</Link>
+                      <Link href="/tasks" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline">+{taskList.length - 12} more</Link>
                     </li>
                   )}
                 </ul>

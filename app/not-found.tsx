@@ -7,8 +7,8 @@ export default function NotFound() {
   const router = useRouter();
 
   return (
-    <main className="flex-1 flex items-center justify-center px-6 py-16 bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-10 text-center">
+    <main className="flex-1 flex items-center justify-center px-6 py-16 bg-gray-50 dark:bg-slate-950">
+      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-8 sm:p-10 text-center">
         {/* Icon */}
         <div
           aria-hidden="true"
@@ -31,13 +31,13 @@ export default function NotFound() {
           </svg>
         </div>
 
-        <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase mb-1">
+        <p className="text-xs font-semibold tracking-widest text-gray-400 dark:text-gray-500 uppercase mb-1">
           404
         </p>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Page not found
         </h1>
-        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
           The page you&rsquo;re looking for doesn&rsquo;t exist or may have moved.
           Check the URL, or head back to your dashboard to continue.
         </p>
@@ -46,7 +46,7 @@ export default function NotFound() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
           >
             Go back
           </button>

@@ -57,9 +57,9 @@ export default function EmptyState({
           {icon}
         </div>
       )}
-      <p className="text-sm font-medium text-gray-700">{title}</p>
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{title}</p>
       {description && (
-        <p className={`text-xs text-gray-400 ${variant === 'compact' ? 'mt-0.5' : 'mt-1'}`}>
+        <p className={`text-xs text-gray-400 dark:text-gray-500 ${variant === 'compact' ? 'mt-0.5' : 'mt-1'}`}>
           {description}
         </p>
       )}

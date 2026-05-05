@@ -106,12 +106,12 @@ export default function ConfirmDialog({
         if (e.target === e.currentTarget && !pending) onCancel();
       }}
     >
-      <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6">
-        <h2 id="confirm-title" className="text-base font-semibold text-gray-900 mb-1">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6">
+        <h2 id="confirm-title" className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
           {title}
         </h2>
         {description && (
-          <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{description}</p>
         )}
         <div className="flex justify-end gap-2 mt-6">
           <SubmitButton

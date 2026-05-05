@@ -15,7 +15,7 @@ interface SkeletonProps {
   className?: string;
 }
 
-const BASE = 'animate-pulse bg-gray-200';
+const BASE = 'animate-pulse bg-gray-200 dark:bg-slate-700';
 
 /**
  * Single skeleton block. Compose multiple to build list rows, cards, etc.
@@ -73,7 +73,7 @@ export function SkeletonTable({ rows = 6, cols = 4 }: { rows?: number; cols?: nu
   return (
     <div aria-busy="true" aria-label="Loading…" className="w-full">
       {/* Header */}
-      <div className="flex gap-4 border-b border-gray-100 pb-3 mb-3">
+      <div className="flex gap-4 border-b border-gray-100 dark:border-slate-800 pb-3 mb-3">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} width={i === 0 ? '20%' : '15%'} height={10} />
         ))}
@@ -101,7 +101,7 @@ export function SkeletonCard({ className = '' }: { className?: string }) {
     <div
       aria-busy="true"
       aria-label="Loading…"
-      className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 ${className}`}
+      className={`bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 ${className}`}
     >
       <Skeleton width="40%" height={10} className="mb-4" />
       <Skeleton width="65%" height={24} className="mb-2" />

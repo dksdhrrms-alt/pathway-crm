@@ -21,7 +21,7 @@ const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
     'text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed',
   secondary:
-    'text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed',
+    'text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed',
   danger:
     'text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed',
 };

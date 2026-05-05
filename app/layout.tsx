@@ -20,7 +20,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
+    // suppressHydrationWarning is required for next-themes: the provider
+    // adds class="dark" / "light" to <html> on the client before React
+    // reconciles, which would otherwise trip a hydration mismatch warning.
+    <html lang="en" suppressHydrationWarning className={`${geist.variable} h-full antialiased`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="manifest" href="/manifest.json" />
@@ -31,7 +34,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}` }} />
       </head>
-      <body className="h-full bg-gray-50">
+      <body className="h-full bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors">
         <Providers>
           <ScrollRestorer />
           {children}
