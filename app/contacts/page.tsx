@@ -16,6 +16,7 @@ import ImportModal from '@/app/components/ImportModal';
 import EditContactModal from '@/app/components/EditContactModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 import ColumnFilter from '@/app/components/ColumnFilter';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { SPECIES_LIST, CONTACT_TYPES } from '@/app/components/ContactForm';
 import { getRoleLabel } from '@/lib/users';
 
@@ -500,10 +501,10 @@ function ContactsPageInner() {
                         })}
                         <td className={`px-3 py-3.5 sticky right-0 z-[1] ${isSelected ? 'bg-green-50 dark:bg-green-950/20' : 'bg-white dark:bg-slate-900'} group-hover:bg-gray-50 dark:group-hover:bg-slate-800`} style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}>
                           <div className="flex gap-1">
-                            <button onClick={() => setEditContactId(contact.id)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40" aria-label="Edit">
+                            <button onClick={() => setEditContactId(contact.id)} className="p-2 rounded text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40" aria-label="Edit">
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
-                            <button onClick={() => setConfirmDeleteId(contact.id)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" aria-label="Delete contact">
+                            <button onClick={() => setConfirmDeleteId(contact.id)} className="p-2 rounded text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" aria-label="Delete contact">
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           </div>
@@ -548,20 +549,21 @@ function ContactsPageInner() {
 
       {showNewModal && <NewContactModal onClose={() => setShowNewModal(false)} onSave={handleContactSaved} />}
 
-      {confirmDeleteId && contactToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Contact</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
-              Are you sure you want to delete <strong>{contactToDelete.firstName} {contactToDelete.lastName}</strong>?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors">Cancel</button>
-              <button onClick={handleDeleteConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!(confirmDeleteId && contactToDelete)}
+        title="Delete this contact?"
+        description={
+          contactToDelete ? (
+            <>
+              <strong>{contactToDelete.firstName} {contactToDelete.lastName}</strong> will be removed. This cannot be undone.
+            </>
+          ) : null
+        }
+        tone="danger"
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {selectedIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-5 py-3 rounded-xl shadow-lg flex items-center gap-3 flex-wrap max-w-[95vw]">
@@ -620,19 +622,20 @@ function ContactsPageInner() {
 
       {showImportModal && <ImportModal type="contacts" onClose={() => setShowImportModal(false)} onDone={(n) => { setShowImportModal(false); setToast(`${n} contacts imported`); }} />}
 
-      {showBulkDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete {selectedIds.size} contacts?</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">This will permanently remove {selectedIds.size} contacts and their linked activities.</p>
-            <p className="text-xs text-red-600 dark:text-red-400 mb-4">This cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowBulkDelete(false)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
-              <button onClick={() => { deleteContactsBulk(Array.from(selectedIds)); setToast(`${selectedIds.size} contacts deleted`); setSelectedIds(new Set()); setShowBulkDelete(false); }} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete {selectedIds.size} Contacts</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={showBulkDelete}
+        title={`Delete ${selectedIds.size} contacts?`}
+        description={`This permanently removes ${selectedIds.size} contacts and their linked activities. This cannot be undone.`}
+        tone="danger"
+        confirmLabel={`Delete ${selectedIds.size} contacts`}
+        onCancel={() => setShowBulkDelete(false)}
+        onConfirm={() => {
+          deleteContactsBulk(Array.from(selectedIds));
+          setToast(`${selectedIds.size} contacts deleted`);
+          setSelectedIds(new Set());
+          setShowBulkDelete(false);
+        }}
+      />
 
       {editContactId && (() => { const c = allContacts.find((x) => x.id === editContactId); return c ? <EditContactModal contact={c} onClose={() => setEditContactId(null)} onSaved={() => setToast('Contact updated successfully')} /> : null; })()}
 

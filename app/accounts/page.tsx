@@ -14,6 +14,7 @@ import ImportModal from '@/app/components/ImportModal';
 import EditAccountModal from '@/app/components/EditAccountModal';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 import ColumnFilter from '@/app/components/ColumnFilter';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 
 const FLAGS: Record<string, string> = {
   USA: '🇺🇸', Mexico: '🇲🇽', Colombia: '🇨🇴', Peru: '🇵🇪', Panama: '🇵🇦',
@@ -596,10 +597,10 @@ export default function AccountsPage() {
                       })}
                       <td className={`px-3 py-3 sticky right-0 z-[1] ${isSelected ? 'bg-green-50 dark:bg-green-950/20' : 'bg-white dark:bg-slate-900'} group-hover:bg-gray-50 dark:group-hover:bg-slate-800`} style={{ boxShadow: '-4px 0 6px -4px rgba(0,0,0,0.08)' }}>
                         <div className="flex gap-1">
-                          <button onClick={() => setEditAccountId(acct.id)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40" aria-label="Edit">
+                          <button onClick={() => setEditAccountId(acct.id)} className="p-2 rounded text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40" aria-label="Edit">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                           </button>
-                          <button onClick={() => setConfirmDeleteId(acct.id)} className="p-1 rounded text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" aria-label="Delete">
+                          <button onClick={() => setConfirmDeleteId(acct.id)} className="p-2 rounded text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" aria-label="Delete">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
@@ -672,46 +673,46 @@ export default function AccountsPage() {
       )}
 
       {/* Bulk delete confirmation */}
-      {showBulkDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete {selectedIds.size} accounts?</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">This will permanently remove:</p>
-            <ul className="text-sm text-gray-600 dark:text-gray-300 mb-3 list-disc pl-5">
-              <li>{selectedIds.size} accounts</li>
-              <li>All linked contacts ({contacts.filter((c) => selectedIds.has(c.accountId)).length} total)</li>
-              <li>All linked opportunities & activities</li>
-            </ul>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+      <ConfirmDialog
+        open={showBulkDelete}
+        title={`Delete ${selectedIds.size} accounts?`}
+        description={
+          <>
+            This permanently removes {selectedIds.size} accounts and{' '}
+            {contacts.filter((c) => selectedIds.has(c.accountId)).length} linked contacts,
+            plus all opportunities and activities under them. This cannot be undone.
+            <br />
+            <span className="block mt-2 text-xs text-gray-400 dark:text-gray-500">
               {Array.from(selectedIds).slice(0, 5).map((id) => accounts.find((a) => a.id === id)?.name).filter(Boolean).join(', ')}
-              {selectedIds.size > 5 && ` ...and ${selectedIds.size - 5} more`}
-            </div>
-            <p className="text-xs text-red-600 mb-4">This cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowBulkDelete(false)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
-              <button onClick={handleBulkDelete} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete {selectedIds.size} Accounts</button>
-            </div>
-          </div>
-        </div>
-      )}
+              {selectedIds.size > 5 && ` …and ${selectedIds.size - 5} more`}
+            </span>
+          </>
+        }
+        tone="danger"
+        confirmLabel={`Delete ${selectedIds.size} accounts`}
+        onCancel={() => setShowBulkDelete(false)}
+        onConfirm={handleBulkDelete}
+      />
 
       {showNewModal && <NewAccountModal onClose={() => setShowNewModal(false)} onSave={() => setToast('Account created successfully')} />}
 
       {editAccountId && (() => { const a = allAccounts.find((x) => x.id === editAccountId); return a ? <EditAccountModal account={a} onClose={() => setEditAccountId(null)} onSaved={() => setToast('Account updated successfully')} /> : null; })()}
 
-      {confirmDeleteId && accountToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Account</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">Are you sure you want to delete <strong>{accountToDelete.name}</strong>?</p>
-            <p className="text-xs text-red-600 dark:text-red-400 mb-5">This will also delete all linked contacts, opportunities, activities, and tasks.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmDeleteId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
-              <button onClick={handleDeleteConfirm} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!(confirmDeleteId && accountToDelete)}
+        title="Delete this account?"
+        description={
+          accountToDelete ? (
+            <>
+              <strong>{accountToDelete.name}</strong> will be removed, along with all linked contacts, opportunities, activities, and tasks. This cannot be undone.
+            </>
+          ) : null
+        }
+        tone="danger"
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {showImportModal && <ImportModal type="accounts" onClose={() => setShowImportModal(false)} onDone={(n) => { setShowImportModal(false); setToast(`${n} accounts imported`); }} />}
 

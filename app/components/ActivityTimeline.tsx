@@ -122,7 +122,7 @@ export default function ActivityTimeline({
                       {onDelete && (
                         <button
                           onClick={() => onDelete(activity.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
                           aria-label="Delete activity"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

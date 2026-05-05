@@ -18,6 +18,7 @@ import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EditOpportunityModal from '@/app/components/EditOpportunityModal';
 import ViewTabs from '@/app/components/ViewTabs';
+import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useViewFilter } from '@/hooks/useViewFilter';
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -474,12 +475,12 @@ export default function OpportunitiesPage() {
                         <td className="px-5 py-3.5 text-gray-500">{getOwnerName(opp.ownerId)}</td>
                         <td className="px-5 py-3.5">
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditOppId(opp.id)} className="p-1 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
+                          <button onClick={() => setEditOppId(opp.id)} className="p-2 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(opp.id)}
-                            className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+                            className="p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
                             aria-label="Delete"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -513,31 +514,21 @@ export default function OpportunitiesPage() {
         />
       )}
 
-      {/* Confirm delete modal */}
-      {confirmDeleteId && oppToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete Opportunity</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-5">
-              Are you sure you want to delete <strong>{oppToDelete.name}</strong>?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!(confirmDeleteId && oppToDelete)}
+        title="Delete this opportunity?"
+        description={
+          oppToDelete ? (
+            <>
+              <strong>{oppToDelete.name}</strong> will be removed. This cannot be undone.
+            </>
+          ) : null
+        }
+        tone="danger"
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {editOppId && (() => { const o = allOpps.find((x) => x.id === editOppId); return o ? <EditOpportunityModal opportunity={o} onClose={() => setEditOppId(null)} onSaved={() => { setToast('Opportunity updated'); setEditOppId(null); }} /> : null; })()}
 
