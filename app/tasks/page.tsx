@@ -28,9 +28,9 @@ function formatDate(dateStr: string): string {
 }
 
 const priorityStyles: Record<string, string> = {
-  High: 'bg-red-100 text-red-700',
-  Medium: 'bg-amber-100 text-amber-700',
-  Low: 'bg-gray-100 text-gray-600',
+  High: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  Medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  Low: 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-300',
 };
 
 export default function TasksPage() {
@@ -223,11 +223,11 @@ export default function TasksPage() {
                           </button>
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className={`font-medium text-gray-800 ${task.status === 'Completed' ? 'line-through text-gray-400' : ''}`}>
+                          <span className={`font-medium text-gray-800 dark:text-gray-100 ${task.status === 'Completed' ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
                             {task.subject}
                           </span>
                           {task.description && (
-                            <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{task.description}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{task.description}</p>
                           )}
                         </td>
                         <td className="px-4 py-3.5">
@@ -244,13 +244,13 @@ export default function TasksPage() {
                             {contactName && (
                               <Link
                                 href={`/contacts/${task.relatedContactId}`}
-                                className="text-xs text-gray-400 hover:underline"
+                                className="text-xs text-gray-400 dark:text-gray-500 hover:underline"
                               >
                                 {contactName}
                               </Link>
                             )}
                             {!accountName && !contactName && (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
                             )}
                           </div>
                         </td>
@@ -258,10 +258,10 @@ export default function TasksPage() {
                           <span
                             className={`text-sm ${
                               isOverdue
-                                ? 'text-red-600 font-medium'
+                                ? 'text-red-600 dark:text-red-400 font-medium'
                                 : isDueToday
-                                ? 'text-amber-600 font-medium'
-                                : 'text-gray-500'
+                                ? 'text-amber-600 dark:text-amber-400 font-medium'
+                                : 'text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {isDueToday ? 'Today' : formatDate(task.dueDate)}
@@ -277,15 +277,15 @@ export default function TasksPage() {
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                               task.status === 'Completed'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-blue-50 text-blue-600'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
                             }`}
                           >
                             {task.status}
                           </span>
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="text-sm text-gray-700">{getOwnerName(task.ownerId)}</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-200">{getOwnerName(task.ownerId)}</span>
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
