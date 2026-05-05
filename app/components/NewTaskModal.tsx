@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Task, Priority, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
+import SubmitButton from './SubmitButton';
 
 interface NewTaskModalProps {
   defaultAccountId?: string;
@@ -39,6 +40,9 @@ export default function NewTaskModal({
   const [description, setDescription] = useState('');
   const [ownerId, setOwnerId] = useState(userId);
   const [error, setError] = useState('');
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSave).
+  const [submitting, setSubmitting] = useState(false);
 
   const filteredContacts = relatedAccountId
     ? allContacts.filter((c) => c.accountId === relatedAccountId)
@@ -46,25 +50,34 @@ export default function NewTaskModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     if (!subject.trim()) {
       setError('Subject is required.');
       return;
     }
-    const newTask: Task = {
-      id: generateId(),
-      subject: subject.trim(),
-      dueDate,
-      priority,
-      status: 'Open',
-      ownerId,
-      relatedAccountId: relatedAccountId || undefined,
-      relatedContactId: relatedContactId || undefined,
-      relatedOpportunityId: defaultOpportunityId || undefined,
-      description: description.trim() || undefined,
-    };
-    addTask(newTask);
-    onSave(newTask);
-    onClose();
+
+    setSubmitting(true);
+    try {
+      const newTask: Task = {
+        id: generateId(),
+        subject: subject.trim(),
+        dueDate,
+        priority,
+        status: 'Open',
+        ownerId,
+        relatedAccountId: relatedAccountId || undefined,
+        relatedContactId: relatedContactId || undefined,
+        relatedOpportunityId: defaultOpportunityId || undefined,
+        description: description.trim() || undefined,
+      };
+      addTask(newTask);
+      onSave(newTask);
+      onClose();
+    } catch (err) {
+      console.error('NewTaskModal submit failed:', err);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -185,20 +198,12 @@ export default function NewTaskModal({
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#1a4731' }}
-            >
+            </SubmitButton>
+            <SubmitButton type="submit" pending={submitting} pendingText="Creating...">
               Create Task
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

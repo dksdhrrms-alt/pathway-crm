@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Task, Priority } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import AccountSearchSelect from './AccountSearchSelect';
+import SubmitButton from './SubmitButton';
 
 const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
 
@@ -25,23 +26,34 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
   const [relatedContactId, setRelatedContactId] = useState(task.relatedContactId || '');
   const [description, setDescription] = useState(task.description || '');
   const [error, setError] = useState('');
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSaved).
+  const [submitting, setSubmitting] = useState(false);
 
   const accountName = accounts.find((a) => a.id === relatedAccountId)?.name || '';
   const filteredContacts = relatedAccountId ? contacts.filter((c) => c.accountId === relatedAccountId) : contacts;
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     if (!subject.trim()) { setError('Subject is required.'); return; }
 
-    const updates: Partial<Task> = {
-      subject: subject.trim(), dueDate, priority, status, description: description.trim(),
-      relatedAccountId: relatedAccountId || undefined,
-      relatedContactId: relatedContactId || undefined,
-    };
+    setSubmitting(true);
+    try {
+      const updates: Partial<Task> = {
+        subject: subject.trim(), dueDate, priority, status, description: description.trim(),
+        relatedAccountId: relatedAccountId || undefined,
+        relatedContactId: relatedContactId || undefined,
+      };
 
-    updateTask(task.id, updates);
-    onSaved();
-    onClose();
+      updateTask(task.id, updates);
+      onSaved();
+      onClose();
+    } catch (err) {
+      console.error('EditTaskModal save failed:', err);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -100,8 +112,8 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>Save Changes</button>
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</SubmitButton>
+            <SubmitButton type="submit" pending={submitting} pendingText="Saving...">Save Changes</SubmitButton>
           </div>
         </form>
       </div>

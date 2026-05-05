@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { Opportunity, Stage, generateId, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
+import SubmitButton from './SubmitButton';
 
 interface NewOpportunityModalProps {
   defaultAccountId?: string;
@@ -49,6 +50,9 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
   const [nextStep, setNextStep] = useState('');
   const [competitor, setCompetitor] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSave).
+  const [submitting, setSubmitting] = useState(false);
 
   function handleStageChange(newStage: Stage) {
     setStage(newStage);
@@ -66,28 +70,36 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     if (!validate()) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    const newOpp: Opportunity = {
-      id: generateId(),
-      name: name.trim(),
-      accountId,
-      stage,
-      amount: amount ? parseInt(amount.replace(/,/g, ''), 10) : 0,
-      expectedStartDate: expectedStartDate || undefined,
-      closeDate,
-      probability,
-      ownerId,
-      nextStep: nextStep.trim() || undefined,
-      competitor: competitor.trim() || undefined,
-      createdDate: today,
-      contactIds: [],
-    };
+    setSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const newOpp: Opportunity = {
+        id: generateId(),
+        name: name.trim(),
+        accountId,
+        stage,
+        amount: amount ? parseInt(amount.replace(/,/g, ''), 10) : 0,
+        expectedStartDate: expectedStartDate || undefined,
+        closeDate,
+        probability,
+        ownerId,
+        nextStep: nextStep.trim() || undefined,
+        competitor: competitor.trim() || undefined,
+        createdDate: today,
+        contactIds: [],
+      };
 
-    addOpportunity(newOpp);
-    onSave(newOpp);
-    onClose();
+      addOpportunity(newOpp);
+      onSave(newOpp);
+      onClose();
+    } catch (err) {
+      console.error('NewOpportunityModal submit failed:', err);
+      setSubmitting(false);
+    }
   }
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -261,20 +273,12 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#1a4731' }}
-            >
+            </SubmitButton>
+            <SubmitButton type="submit" pending={submitting} pendingText="Creating...">
               Create Opportunity
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

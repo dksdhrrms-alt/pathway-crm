@@ -7,6 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 import VoiceInputButton from './VoiceInputButton';
+import SubmitButton from './SubmitButton';
 
 const TYPES: { id: ActivityType; emoji: string }[] = [
   { id: 'Call', emoji: '📞' },
@@ -57,6 +58,8 @@ export default function QuickLogFAB() {
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Guards against double-submit (button still visible during brief window).
+  const [submitting, setSubmitting] = useState(false);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -103,7 +106,8 @@ export default function QuickLogFAB() {
   }
 
   function handleSave() {
-    if (!subject.trim() || saving) return;
+    if (!subject.trim() || saving || submitting) return;
+    setSubmitting(true);
     setSaving(true);
     try {
       addActivity({
@@ -121,9 +125,10 @@ export default function QuickLogFAB() {
       setSaved(true);
       setTimeout(resetAll, 1200);
     } catch (err) {
-      console.error('[QuickLogFAB] save failed:', err);
+      console.error('QuickLogFAB save failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Failed to save activity:\n\n${msg}`);
+      setSubmitting(false);
     } finally {
       setSaving(false);
     }
@@ -450,29 +455,24 @@ export default function QuickLogFAB() {
 
             {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  padding: '8px 16px', borderRadius: '8px',
-                  border: '1px solid #e5e7eb', background: 'white',
-                  cursor: 'pointer', fontSize: '13px',
-                }}
-              >
+              <SubmitButton type="button" variant="secondary" onClick={() => setIsOpen(false)} disabled={submitting} style={{ padding: '8px 16px', fontSize: '13px' }}>
                 Cancel
-              </button>
-              <button
+              </SubmitButton>
+              <SubmitButton
+                type="button"
                 onClick={handleSave}
-                disabled={!subject.trim() || saving || saved}
+                disabled={!subject.trim() || submitting}
+                pending={saving}
+                pendingText="Saving..."
                 style={{
-                  padding: '8px 20px', borderRadius: '8px', border: 'none',
+                  padding: '8px 20px',
+                  fontSize: '13px',
                   background: saved ? '#1D9E75' : subject.trim() ? '#1a4731' : '#e5e7eb',
                   color: subject.trim() || saved ? 'white' : '#aaa',
-                  cursor: subject.trim() ? 'pointer' : 'not-allowed',
-                  fontSize: '13px', fontWeight: 500,
                 }}
               >
-                {saved ? '✓ Logged!' : saving ? 'Saving...' : 'Log Activity'}
-              </button>
+                {saved ? '✓ Logged!' : 'Log Activity'}
+              </SubmitButton>
             </div>
           </div>
         </div>

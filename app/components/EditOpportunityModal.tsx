@@ -6,6 +6,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import AccountSearchSelect from './AccountSearchSelect';
+import SubmitButton from './SubmitButton';
 
 const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
@@ -28,6 +29,9 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
   const [competitor, setCompetitor] = useState(opportunity.competitor || '');
   const [ownerId, setOwnerId] = useState(opportunity.ownerId || '');
   const [error, setError] = useState('');
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSaved).
+  const [submitting, setSubmitting] = useState(false);
 
   const accountName = accounts.find((a) => a.id === accountId)?.name || '';
 
@@ -35,33 +39,41 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     if (!name.trim()) { setError('Name is required.'); return; }
     if (!closeDate) { setError('Close date is required.'); return; }
 
-    const selectedUser = activeUsers.find((u) => u.id === ownerId);
-    const updates: Partial<Opportunity> = {
-      name: name.trim(), accountId, stage,
-      amount: parseInt(String(amount).replace(/,/g, '')) || 0,
-      expectedStartDate: expectedStartDate || undefined,
-      closeDate, probability, nextStep: nextStep.trim(), competitor: competitor.trim(),
-      ownerId, ownerName: selectedUser?.name,
-    };
+    setSubmitting(true);
+    try {
+      const selectedUser = activeUsers.find((u) => u.id === ownerId);
+      const updates: Partial<Opportunity> = {
+        name: name.trim(), accountId, stage,
+        amount: parseInt(String(amount).replace(/,/g, '')) || 0,
+        expectedStartDate: expectedStartDate || undefined,
+        closeDate, probability, nextStep: nextStep.trim(), competitor: competitor.trim(),
+        ownerId, ownerName: selectedUser?.name,
+      };
 
-    // Use updateOpportunityStage for stage changes, and direct db update for everything else
-    if (stage !== opportunity.stage) updateOpportunityStage(opportunity.id, stage);
+      // Use updateOpportunityStage for stage changes, and direct db update for everything else
+      if (stage !== opportunity.stage) updateOpportunityStage(opportunity.id, stage);
 
-    // Update all fields via db
-    import('@/lib/db').then(({ dbUpdateOpportunity }) => {
-      dbUpdateOpportunity(opportunity.id, updates).catch(console.error);
-    });
+      // Update all fields via db
+      import('@/lib/db').then(({ dbUpdateOpportunity }) => {
+        dbUpdateOpportunity(opportunity.id, updates).catch(console.error);
+      });
 
-    // Update local context
-    const { useCRM: _ } = require('@/lib/CRMContext');
-    void _;
-    // The parent will handle context update via onSaved callback
+      // Update local context
+      const { useCRM: _ } = require('@/lib/CRMContext');
+      void _;
+      // The parent will handle context update via onSaved callback
 
-    onSaved();
-    onClose();
+      onSaved();
+      onClose();
+    } catch (err) {
+      console.error('EditOpportunityModal save failed:', err);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -160,8 +172,8 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>Save Changes</button>
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</SubmitButton>
+            <SubmitButton type="submit" pending={submitting} pendingText="Saving...">Save Changes</SubmitButton>
           </div>
         </form>
       </div>

@@ -6,6 +6,7 @@ import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId } from '@/lib/dat
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import VoiceInputButton from './VoiceInputButton';
+import SubmitButton from './SubmitButton';
 
 interface LogActivityModalProps {
   accountId?: string;
@@ -45,6 +46,9 @@ export default function LogActivityModal({
   const [contactSearch, setContactSearch] = useState('');
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSave).
+  const [submitting, setSubmitting] = useState(false);
 
   const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
   function toggleParticipant(id: string) {
@@ -76,10 +80,14 @@ export default function LogActivityModal({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     if (!subject.trim()) {
       setError('Subject is required.');
       return;
     }
+
+    setSubmitting(true);
     try {
       const ids = Array.from(selectedContactIds);
       // If no contacts selected, create one activity with no contact
@@ -104,9 +112,10 @@ export default function LogActivityModal({
       if (last) onSave(last);
       onClose();
     } catch (err) {
-      console.error('[LogActivity] save failed:', err);
+      console.error('LogActivityModal submit failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
       setError(`Failed to save: ${msg}`);
+      setSubmitting(false);
     }
   }
 
@@ -313,20 +322,12 @@ export default function LogActivityModal({
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: '#1a4731' }}
-            >
+            </SubmitButton>
+            <SubmitButton type="submit" pending={submitting} pendingText="Logging...">
               Save Activity
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </div>

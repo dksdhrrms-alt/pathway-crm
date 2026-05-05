@@ -7,6 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import CountrySelect from './CountrySelect';
 import AccountSearchSelect from './AccountSearchSelect';
+import SubmitButton from './SubmitButton';
 
 export const SPECIES_LIST = [
   'Primary Breeder', 'Broilers', 'Turkeys', 'Layers', 'Ruminant',
@@ -56,58 +57,69 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [stateVal, setStateVal] = useState(initialData?.state || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Guards against double-submit (button still visible during the brief
+  // window between click and the parent closing the modal via onSave).
+  const [submitting, setSubmitting] = useState(false);
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+
     const errs: Record<string, string> = {};
     if (!firstName.trim()) errs.firstName = 'First name is required.';
     if (!lastName.trim()) errs.lastName = 'Last name is required.';
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    const selectedUser = activeUsers.find((u) => u.id === ownerId);
+    setSubmitting(true);
+    try {
+      const selectedUser = activeUsers.find((u) => u.id === ownerId);
 
-    const data: Partial<Contact> = {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      species,
-      accountId,
-      accountName: selectedAccount?.name || '',
-      country: country.trim(),
-      ownerId: ownerId || '',
-      ownerName: selectedUser?.name || '',
-      position: position.trim(),
-      isKeyMan,
-      phone: phone.trim(),
-      tel: tel.trim(),
-      email: email.trim(),
-      birthday: birthday || undefined,
-      anniversary: anniversary || undefined,
-      state: stateVal.trim(),
-      notes: notes.trim(),
-      title: position.trim() || species,
-    };
+      const data: Partial<Contact> = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        species,
+        accountId,
+        accountName: selectedAccount?.name || '',
+        country: country.trim(),
+        ownerId: ownerId || '',
+        ownerName: selectedUser?.name || '',
+        position: position.trim(),
+        isKeyMan,
+        phone: phone.trim(),
+        tel: tel.trim(),
+        email: email.trim(),
+        birthday: birthday || undefined,
+        anniversary: anniversary || undefined,
+        state: stateVal.trim(),
+        notes: notes.trim(),
+        title: position.trim() || species,
+      };
 
-    if (mode === 'new') {
-      addContact({
-        id: generateId(),
-        createdAt: new Date().toISOString().split('T')[0],
-        ...data,
-      } as Contact);
-    } else if (initialData?.id) {
-      updateContact(initialData.id, data);
-      addActivity({
-        id: generateId(), type: 'Note',
-        subject: 'Contact information updated',
-        description: `Updated: ${firstName} ${lastName}`,
-        date: new Date().toISOString().split('T')[0],
-        ownerId: '', accountId: accountId,
-        contactId: initialData.id,
-      });
+      if (mode === 'new') {
+        addContact({
+          id: generateId(),
+          createdAt: new Date().toISOString().split('T')[0],
+          ...data,
+        } as Contact);
+      } else if (initialData?.id) {
+        updateContact(initialData.id, data);
+        addActivity({
+          id: generateId(), type: 'Note',
+          subject: 'Contact information updated',
+          description: `Updated: ${firstName} ${lastName}`,
+          date: new Date().toISOString().split('T')[0],
+          ownerId: '', accountId: accountId,
+          contactId: initialData.id,
+        });
+      }
+      onSave();
+    } catch (err) {
+      console.error('ContactForm submit failed:', err);
+      setSubmitting(false);
     }
-    onSave();
   }
 
   return (
@@ -236,10 +248,12 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-        <button type="submit" className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+        <SubmitButton type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
+          Cancel
+        </SubmitButton>
+        <SubmitButton type="submit" pending={submitting} pendingText={mode === 'new' ? 'Creating...' : 'Saving...'}>
           {mode === 'new' ? 'Create Contact' : 'Save Changes'}
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );

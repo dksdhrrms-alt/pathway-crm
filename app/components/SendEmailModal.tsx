@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SubmitButton from './SubmitButton';
 
 interface Recipient {
   email: string;
@@ -27,6 +28,8 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    if (sending) return;
+
     if (!subject.trim()) { setError('Subject is required.'); return; }
     if (!body.trim()) { setError('Email body is required.'); return; }
 
@@ -111,21 +114,12 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={sending}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={sending}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              style={{ backgroundColor: '#1a4731' }}
-            >
-              {sending ? 'Sending...' : 'Send Email'}
-            </button>
+            </SubmitButton>
+            <SubmitButton type="submit" pending={sending} pendingText="Sending...">
+              Send Email
+            </SubmitButton>
           </div>
         </form>
       </div>
