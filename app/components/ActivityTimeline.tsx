@@ -20,10 +20,10 @@ const typeIcon: Record<ActivityType, string> = {
 };
 
 const typeColor: Record<ActivityType, string> = {
-  Call: 'bg-blue-100 text-blue-700',
-  Meeting: 'bg-green-100 text-green-700',
-  Email: 'bg-amber-100 text-amber-700',
-  Note: 'bg-gray-100 text-gray-700',
+  Call: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  Meeting: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  Email: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  Note: 'bg-gray-100 text-gray-700 dark:bg-gray-900/40 dark:text-gray-300',
 };
 
 const typeLabel: Record<ActivityType, string> = {
@@ -57,7 +57,7 @@ export default function ActivityTimeline({
 
   if (activities.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400 text-sm">No activities recorded yet.</div>
+      <div className="text-center py-8 text-gray-400 text-sm dark:text-gray-500">No activities recorded yet.</div>
     );
   }
 
@@ -69,14 +69,14 @@ export default function ActivityTimeline({
             <div className="relative pb-8">
               {idx < activities.length - 1 && (
                 <span
-                  className="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200"
+                  className="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200 dark:bg-slate-700"
                   aria-hidden="true"
                 />
               )}
               <div className="relative flex items-start space-x-3 group">
                 <div className="relative">
                   <div
-                    className={`h-10 w-10 rounded-full flex items-center justify-center ring-8 ring-white ${typeColor[activity.type]}`}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center ring-8 ring-white dark:ring-slate-900 ${typeColor[activity.type]}`}
                   >
                     <span className="text-lg">{typeIcon[activity.type]}</span>
                   </div>
@@ -84,14 +84,14 @@ export default function ActivityTimeline({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <span className="text-sm font-medium text-gray-900">{activity.subject}</span>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{activity.subject}</span>
                       <span
                         className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${typeColor[activity.type]}`}
                       >
                         {typeLabel[activity.type]}
                       </span>
                       {activity.purpose && (
-                        <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                        <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800">
                           {activity.purpose}
                         </span>
                       )}
@@ -107,22 +107,22 @@ export default function ActivityTimeline({
                             );
                           })}
                           {activity.internalParticipants.length > 3 && (
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-semibold text-blue-700 bg-blue-100 border-2 border-white" style={{ marginLeft: '-8px' }}>
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-semibold text-blue-700 bg-blue-100 border-2 border-white dark:text-blue-300 dark:bg-blue-900/40 dark:border-slate-900" style={{ marginLeft: '-8px' }}>
                               +{activity.internalParticipants.length - 3}
                             </span>
                           )}
-                          <span className="ml-1 text-[10px] text-blue-700 font-medium">joint</span>
+                          <span className="ml-1 text-[10px] text-blue-700 font-medium dark:text-blue-400">joint</span>
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <time className="text-xs text-gray-500 whitespace-nowrap">
+                      <time className="text-xs text-gray-500 whitespace-nowrap dark:text-gray-400">
                         {formatDate(activity.date)}
                       </time>
                       {onDelete && (
                         <button
                           onClick={() => onDelete(activity.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 dark:text-gray-600 dark:hover:text-red-400 dark:hover:bg-red-900/30"
                           aria-label="Delete activity"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -134,38 +134,38 @@ export default function ActivityTimeline({
                   </div>
                   {(activity.contactId && contactNameMap[activity.contactId]) ||
                   (activity.accountId && accountNameMap[activity.accountId]) ? (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5 dark:text-gray-400">
                       {activity.contactId && contactNameMap[activity.contactId] && (
                         <span>{contactNameMap[activity.contactId]}</span>
                       )}
                       {activity.accountId && accountNameMap[activity.accountId] && (
-                        <span className="text-gray-400">
+                        <span className="text-gray-400 dark:text-gray-500">
                           {activity.contactId && contactNameMap[activity.contactId] ? ' · ' : ''}
                           {accountNameMap[activity.accountId]}
                         </span>
                       )}
                     </p>
                   ) : null}
-                  <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+                  <p className="mt-1 text-sm text-gray-600 leading-relaxed dark:text-gray-300">
                     {activity.description}
                   </p>
                   <div className="mt-1 flex items-center gap-3 flex-wrap">
-                    <p className="text-xs text-gray-400">
-                      Logged by <span className="font-medium text-gray-600">{getOwnerName(activity.ownerId)}</span>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Logged by <span className="font-medium text-gray-600 dark:text-gray-300">{getOwnerName(activity.ownerId)}</span>
                       {activity.internalParticipants && activity.internalParticipants.length > 0 && (
                         <>
                           <span className="mx-1">with</span>
-                          <span className="font-medium text-blue-700">{activity.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
+                          <span className="font-medium text-blue-700 dark:text-blue-400">{activity.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
                         </>
                       )}
                     </p>
                     <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
-                      className="text-xs text-gray-400 hover:text-gray-600" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       {showComments === activity.id ? 'Hide replies' : 'Reply'}
                     </button>
                   </div>
                   {showComments === activity.id && (
-                    <div className="mt-2 ml-1 pl-3" style={{ borderLeft: '2px solid #e5e7eb' }}>
+                    <div className="mt-2 ml-1 pl-3 dark:border-slate-700" style={{ borderLeft: '2px solid #e5e7eb' }}>
                       <CommentThread parentType="activity" parentId={activity.id} />
                     </div>
                   )}

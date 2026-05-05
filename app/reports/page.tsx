@@ -365,25 +365,25 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{reportTitle}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">{reportSubtitle}</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{reportTitle}</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{reportSubtitle}</p>
             </div>
             <div className="flex items-center gap-3">
               {/* View toggle — Sales Director sees individual breakdown only */}
               {canViewAll && !isSalesDirector && (
-                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
                   <button onClick={() => setViewMode('individual')}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${viewMode === 'individual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${viewMode === 'individual' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
                     By Individual
                   </button>
                   <button onClick={() => setViewMode('team')}
-                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${viewMode === 'team' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+                    className={`px-3 py-1 text-xs font-medium rounded transition-all ${viewMode === 'team' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}>
                     By Team
                   </button>
                 </div>
@@ -401,15 +401,15 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           </div>
 
           {/* Filter bar */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6 flex flex-wrap items-center gap-3">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 mb-6 flex flex-wrap items-center gap-3">
             {/* Date range */}
-            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-lg">
               {(['7d', '30d', '90d', 'custom'] as DateRange[]).map((r) => (
                 <button
                   key={r}
                   onClick={() => setDateRange(r)}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                    dateRange === r ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    dateRange === r ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                 >
                   {r === '7d' ? 'Last 7 days' : r === '30d' ? 'Last 30 days' : r === '90d' ? 'Last 90 days' : 'Custom'}
@@ -423,14 +423,14 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   type="date"
                   value={customFrom}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                <span className="text-xs text-gray-400">to</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">to</span>
                 <input
                   type="date"
                   value={customTo}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
             )}
@@ -440,7 +440,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="all">All Users</option>
                 {activeUsers.map((u) => (
@@ -453,7 +453,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
             <select
               value={activityTypeFilter}
               onChange={(e) => setActivityTypeFilter(e.target.value as ActivityFilter)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="all">All Types</option>
               <option value="Call">Calls</option>
@@ -466,13 +466,13 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             {[
-              { label: 'Total Activities', value: totalActivities, color: 'text-gray-900' },
-              { label: 'Calls Logged', value: callCount, color: 'text-blue-700' },
-              { label: 'Meetings Held', value: meetingCount, color: 'text-purple-700' },
-              { label: 'Emails Sent', value: emailCount, color: 'text-green-700' },
+              { label: 'Total Activities', value: totalActivities, color: 'text-gray-900 dark:text-gray-100' },
+              { label: 'Calls Logged', value: callCount, color: 'text-blue-700 dark:text-blue-400' },
+              { label: 'Meetings Held', value: meetingCount, color: 'text-purple-700 dark:text-purple-400' },
+              { label: 'Emails Sent', value: emailCount, color: 'text-green-700 dark:text-green-400' },
             ].map(({ label, value, color }) => (
-              <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+              <div key={label} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</p>
                 <p className={`text-3xl font-bold mt-1 ${color}`}>{value}</p>
               </div>
             ))}
@@ -480,21 +480,21 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
 
           {viewMode === 'individual' ? (<>
           {/* Section A: Activity by User */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">Activity by User</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Click a row to see recent activities</p>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Activity by User</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Click a row to see recent activities</p>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">User</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Calls</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Meetings</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Emails</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Notes</th>
-                  <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Total</th>
-                  <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Last Active</th>
+                <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800">
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">User</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Calls</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Meetings</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Emails</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Notes</th>
+                  <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Total</th>
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Active</th>
                 </tr>
               </thead>
               <tbody>
@@ -502,7 +502,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   <React.Fragment key={user.id}>
                     <tr
                       onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-                      className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors cursor-pointer"
+                      className="border-b border-gray-50 dark:border-slate-700 hover:bg-gray-50/60 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                     >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -517,29 +517,29 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                             )}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{user.name}</p>
-                            <p className="text-xs text-gray-400">{getRoleLabel(user.role)}</p>
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500">{getRoleLabel(user.role)}</p>
                           </div>
                           <svg
-                            className={`w-4 h-4 text-gray-400 ml-1 transition-transform ${expandedUser === user.id ? 'rotate-180' : ''}`}
+                            className={`w-4 h-4 text-gray-400 dark:text-gray-600 ml-1 transition-transform ${expandedUser === user.id ? 'rotate-180' : ''}`}
                             fill="none" viewBox="0 0 24 24" stroke="currentColor"
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-right font-medium text-blue-700">{calls}</td>
-                      <td className="px-5 py-4 text-right font-medium text-purple-700">{meetings}</td>
-                      <td className="px-5 py-4 text-right font-medium text-green-700">{emails}</td>
-                      <td className="px-5 py-4 text-right text-gray-500">{notes}</td>
-                      <td className="px-5 py-4 text-right font-semibold text-gray-900">{total}</td>
-                      <td className="px-5 py-4 text-gray-500">{lastActive ? formatDate(lastActive) : '—'}</td>
+                      <td className="px-5 py-4 text-right font-medium text-blue-700 dark:text-blue-400">{calls}</td>
+                      <td className="px-5 py-4 text-right font-medium text-purple-700 dark:text-purple-400">{meetings}</td>
+                      <td className="px-5 py-4 text-right font-medium text-green-700 dark:text-green-400">{emails}</td>
+                      <td className="px-5 py-4 text-right text-gray-500 dark:text-gray-400">{notes}</td>
+                      <td className="px-5 py-4 text-right font-semibold text-gray-900 dark:text-gray-100">{total}</td>
+                      <td className="px-5 py-4 text-gray-500 dark:text-gray-400">{lastActive ? formatDate(lastActive) : '—'}</td>
                     </tr>
                     {expandedUser === user.id && (
-                      <tr key={`${user.id}-expand`} className="border-b border-gray-100 bg-gray-50/50">
+                      <tr key={`${user.id}-expand`} className="border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800/30">
                         <td colSpan={7} className="px-8 py-3">
                           {recentActs.length === 0 ? (
-                            <p className="text-xs text-gray-400 py-1">No activities in this period.</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 py-1">No activities in this period.</p>
                           ) : (
                             <div className="space-y-2">
                               {recentActs.map((a) => (
@@ -547,9 +547,9 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-medium ${typeBg[a.type]}`}>
                                     {typeIcon[a.type]} {a.type}
                                   </span>
-                                  <span className="text-gray-400 w-20 flex-shrink-0">{formatDate(a.date)}</span>
-                                  <span className="font-medium text-gray-700">{a.subject}</span>
-                                  <span className="text-gray-400">{getAccountName(a.accountId)}</span>
+                                  <span className="text-gray-400 dark:text-gray-500 w-20 flex-shrink-0">{formatDate(a.date)}</span>
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">{a.subject}</span>
+                                  <span className="text-gray-400 dark:text-gray-500">{getAccountName(a.accountId)}</span>
                                 </div>
                               ))}
                             </div>
@@ -561,7 +561,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 ))}
                 {userActivityStats.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-5 py-8 text-center text-sm text-gray-400">
+                    <td colSpan={7} className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                       No activity data for this period.
                     </td>
                   </tr>
@@ -571,12 +571,12 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           </div>
 
           {/* Section B: Activity Details */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">Activity Details</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{filteredActivities.length} activities — click a row to expand</p>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Activity Details</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{filteredActivities.length} activities — click a row to expand</p>
                 </div>
               </div>
               {/* Per-user filter chips (admin tier only) */}
@@ -599,23 +599,23 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 return (
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     <button onClick={() => setSelectedUserId('all')}
-                      className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                      className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
                       style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
-                      All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400'}`}>({totalCount})</span>
+                      All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>({totalCount})</span>
                     </button>
                     {usersWithCounts.map(({ u, count }) => {
                       const active = selectedUserId === u.id;
                       const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
                       return (
                         <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
-                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
                           style={active ? { backgroundColor: '#1a4731' } : {}}>
                           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
                             style={!active ? { backgroundColor: '#1a4731' } : {}}>
                             {initials}
                           </span>
                           {u.name}
-                          <span className={active ? 'opacity-80' : 'text-gray-400'}>({count})</span>
+                          <span className={active ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}>({count})</span>
                         </button>
                       );
                     })}
@@ -624,9 +624,9 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
               })()}
             </div>
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-700">
               {filteredActivities.length === 0 && (
-                <div className="px-6 py-8 text-center text-sm text-gray-400">
+                <div className="px-6 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                   No activities match your filters.
                 </div>
               )}
@@ -634,7 +634,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 <div key={activity.id}>
                   <button
                     onClick={() => setExpandedRow(expandedRow === activity.id ? null : activity.id)}
-                    className="w-full text-left px-6 py-4 hover:bg-gray-50/60 transition-colors"
+                    className="w-full text-left px-6 py-4 hover:bg-gray-50/60 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     <div className="flex items-start gap-4">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${typeBg[activity.type]}`}>
@@ -642,7 +642,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-medium text-gray-900 text-sm">{activity.subject}</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">{activity.subject}</span>
                           {activity.internalParticipants && activity.internalParticipants.length > 0 && (
                             <span className="inline-flex items-center gap-1" title={`Internal participants: ${activity.internalParticipants.map((id) => getUserName(id)).join(', ')}`}>
                               {activity.internalParticipants.slice(0, 3).map((id, i) => {
@@ -658,38 +658,38 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                                   +{activity.internalParticipants.length - 3}
                                 </span>
                               )}
-                              <span className="text-[10px] text-blue-700 ml-1 font-medium">joint</span>
+                              <span className="text-[10px] text-blue-700 dark:text-blue-400 ml-1 font-medium">joint</span>
                             </span>
                           )}
-                          <span className="text-xs text-gray-400">{formatDate(activity.date)}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(activity.date)}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                           <span>{getUserName(activity.ownerId)}</span>
                           {activity.internalParticipants && activity.internalParticipants.length > 0 && (
                             <>
-                              <span className="text-gray-300">+</span>
-                              <span className="text-blue-700">{activity.internalParticipants.map((id) => getUserName(id)).join(', ')}</span>
+                              <span className="text-gray-300 dark:text-slate-600">+</span>
+                              <span className="text-blue-700 dark:text-blue-400">{activity.internalParticipants.map((id) => getUserName(id)).join(', ')}</span>
                             </>
                           )}
                           {activity.accountId && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-300 dark:text-slate-600">·</span>
                               <span>{getAccountName(activity.accountId)}</span>
                             </>
                           )}
                           {activity.contactId && (
                             <>
-                              <span className="text-gray-300">·</span>
+                              <span className="text-gray-300 dark:text-slate-600">·</span>
                               <span>{getContactName(activity.contactId)}</span>
                             </>
                           )}
                         </div>
                         {activity.description && expandedRow !== activity.id && (
-                          <p className="text-xs text-gray-400 mt-1 truncate max-w-lg">{activity.description}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate max-w-lg">{activity.description}</p>
                         )}
                       </div>
                       <svg
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${expandedRow === activity.id ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 text-gray-400 dark:text-gray-600 flex-shrink-0 transition-transform ${expandedRow === activity.id ? 'rotate-180' : ''}`}
                         fill="none" viewBox="0 0 24 24" stroke="currentColor"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -698,7 +698,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   </button>
                   {expandedRow === activity.id && activity.description && (
                     <div className="px-6 pb-4 pl-16">
-                      <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-4 py-3">{activity.description}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-slate-800 rounded-lg px-4 py-3">{activity.description}</p>
                     </div>
                   )}
                 </div>
@@ -731,14 +731,14 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
             const completedCount = filteredTasks.filter((t) => t.status === 'Completed').length;
 
             return (
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
-                <div className="px-6 py-4 border-b border-gray-100">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                      <h2 className="text-base font-semibold text-gray-900">Task Details</h2>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Task Details</h2>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} · <span className="text-gray-400">Open: {openCount}</span> · <span className="text-gray-400">Completed: {completedCount}</span>
-                        {overdueCount > 0 && <> · <span className="text-red-600 font-medium">⚠ {overdueCount} overdue</span></>}
+                        {overdueCount > 0 && <> · <span className="text-red-600 dark:text-red-400 font-medium">⚠ {overdueCount} overdue</span></>}
                       </p>
                     </div>
                   </div>
@@ -752,25 +752,25 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                     return (
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         <button onClick={() => setSelectedUserId('all')}
-                          className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                          className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
                           style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
-                          All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400'}`}>({baseTasks.length})</span>
+                          All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>({baseTasks.length})</span>
                         </button>
                         {usersWithCounts.map(({ u, count, overdue }) => {
                           const active = selectedUserId === u.id;
                           const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
                           return (
                             <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
-                              className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
                               style={active ? { backgroundColor: '#1a4731' } : {}}>
                               <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
                                 style={!active ? { backgroundColor: '#1a4731' } : {}}>
                                 {initials}
                               </span>
                               {u.name}
-                              <span className={active ? 'opacity-80' : 'text-gray-400'}>({count})</span>
+                              <span className={active ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}>({count})</span>
                               {overdue > 0 && (
-                                <span className={`text-[9px] px-1 rounded font-bold ${active ? 'bg-white/30 text-white' : 'bg-red-100 text-red-700'}`}>!{overdue}</span>
+                                <span className={`text-[9px] px-1 rounded font-bold ${active ? 'bg-white/30 text-white' : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'}`}>!{overdue}</span>
                               )}
                             </button>
                           );
@@ -780,56 +780,56 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   })()}
                 </div>
 
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-50 dark:divide-slate-700">
                   {filteredTasks.length === 0 && (
-                    <div className="px-6 py-8 text-center text-sm text-gray-400">No tasks match your filters.</div>
+                    <div className="px-6 py-8 text-center text-sm text-gray-400 dark:text-gray-500">No tasks match your filters.</div>
                   )}
                   {filteredTasks.slice(0, 200).map((task) => {
                     const isOverdue = task.status === 'Open' && task.dueDate && task.dueDate < TODAY_STR;
                     const isDueToday = task.status === 'Open' && task.dueDate === TODAY_STR;
-                    const priorityColor = task.priority === 'High' ? 'bg-red-50 text-red-700' : task.priority === 'Medium' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-600';
+                    const priorityColor = task.priority === 'High' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-400' : task.priority === 'Medium' ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' : 'bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-gray-300';
                     return (
-                      <div key={task.id} className={`px-6 py-3 hover:bg-gray-50/60 transition-colors ${isOverdue ? 'bg-red-50/20' : ''}`}>
+                      <div key={task.id} className={`px-6 py-3 hover:bg-gray-50/60 dark:hover:bg-slate-800/60 transition-colors ${isOverdue ? 'bg-red-50/20 dark:bg-red-900/20' : ''}`}>
                         <div className="flex items-start gap-3">
                           {/* Status indicator */}
                           <span className={`flex-shrink-0 mt-1 w-2.5 h-2.5 rounded-full ${task.status === 'Completed' ? 'bg-green-500' : isOverdue ? 'bg-red-500' : isDueToday ? 'bg-amber-500' : 'bg-gray-300'}`} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-sm ${task.status === 'Completed' ? 'text-gray-500 line-through' : 'font-medium text-gray-900'}`}>{task.subject}</span>
+                              <span className={`text-sm ${task.status === 'Completed' ? 'text-gray-500 dark:text-gray-500 line-through' : 'font-medium text-gray-900 dark:text-gray-100'}`}>{task.subject}</span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColor}`}>{task.priority}</span>
                               {isOverdue && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-600 text-white">OVERDUE</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-600 dark:bg-red-700 text-white">OVERDUE</span>
                               )}
                               {isDueToday && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-100 text-amber-800">DUE TODAY</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">DUE TODAY</span>
                               )}
                               {task.status === 'Completed' && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-100 text-green-700">✓ DONE</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400">✓ DONE</span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 flex-wrap">
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                               <span>{getUserName(task.ownerId)}</span>
                               {task.dueDate && (
                                 <>
-                                  <span className="text-gray-300">·</span>
-                                  <span className={isOverdue ? 'text-red-600 font-medium' : ''}>Due {formatDate(task.dueDate)}</span>
+                                  <span className="text-gray-300 dark:text-slate-600">·</span>
+                                  <span className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : ''}> Due {formatDate(task.dueDate)}</span>
                                 </>
                               )}
                               {task.relatedAccountId && (
                                 <>
-                                  <span className="text-gray-300">·</span>
+                                  <span className="text-gray-300 dark:text-slate-600">·</span>
                                   <span>{getAccountName(task.relatedAccountId)}</span>
                                 </>
                               )}
                               {task.relatedContactId && (
                                 <>
-                                  <span className="text-gray-300">·</span>
+                                  <span className="text-gray-300 dark:text-slate-600">·</span>
                                   <span>{getContactName(task.relatedContactId)}</span>
                                 </>
                               )}
                             </div>
                             {task.description && (
-                              <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.description}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-1">{task.description}</p>
                             )}
                           </div>
                         </div>

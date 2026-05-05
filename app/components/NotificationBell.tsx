@@ -16,6 +16,7 @@ interface Notification {
 
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
+const PRIORITY_BG_DARK: Record<string, string> = { high: 'rgba(220, 38, 38, 0.15)', medium: 'rgba(245, 158, 11, 0.15)', low: 'rgba(37, 99, 235, 0.15)' };
 const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6' };
 
 export default function NotificationBell() {
@@ -247,6 +248,7 @@ export default function NotificationBell() {
             zIndex: 9999, maxHeight: '480px',
             overflow: 'hidden', display: 'flex', flexDirection: 'column',
           }}
+          className="dark:bg-slate-900 dark:border-slate-600"
         >
           {/* Header */}
           <div
@@ -255,6 +257,7 @@ export default function NotificationBell() {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               flexShrink: 0,
             }}
+            className="dark:border-slate-700"
           >
             <div>
               <span style={{ fontWeight: 500, fontSize: '14px' }}>Notifications</span>
@@ -285,7 +288,7 @@ export default function NotificationBell() {
           {/* List */}
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {notifications.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: '#888' }}>
+              <div style={{ padding: '40px 20px', textAlign: 'center', color: '#888' }} className="dark:text-gray-400">
                 <div style={{ fontSize: '32px', marginBottom: '8px' }}>&#127881;</div>
                 <div style={{ fontSize: '13px', fontWeight: 500 }}>All caught up!</div>
                 <div style={{ fontSize: '12px', marginTop: '4px' }}>No pending notifications</div>
@@ -298,14 +301,15 @@ export default function NotificationBell() {
                     display: 'flex', gap: '10px', padding: '12px 16px',
                     borderBottom: '0.5px solid #f3f4f6', cursor: 'pointer',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fafafa'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                  className="dark:border-slate-700 dark:hover:bg-slate-800"
+                  onMouseEnter={(e) => { if (!document.documentElement.classList.contains('dark')) e.currentTarget.style.background = '#fafafa'; }}
+                  onMouseLeave={(e) => { if (!document.documentElement.classList.contains('dark')) e.currentTarget.style.background = 'white'; }}
                   onClick={() => { setIsOpen(false); router.push(n.link); }}
                 >
                   <div
                     style={{
                       width: '32px', height: '32px', borderRadius: '8px',
-                      background: PRIORITY_BG[n.priority],
+                      background: document.documentElement.classList.contains('dark') ? PRIORITY_BG_DARK[n.priority] : PRIORITY_BG[n.priority],
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '16px', flexShrink: 0,
                     }}
@@ -321,6 +325,7 @@ export default function NotificationBell() {
                         fontSize: '12px', color: '#444', lineHeight: 1.5,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}
+                      className="dark:text-gray-300"
                     >
                       {n.body}
                     </div>
@@ -343,8 +348,8 @@ export default function NotificationBell() {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div style={{ padding: '10px 16px', borderTop: '0.5px solid #e5e7eb', flexShrink: 0 }}>
-              <div style={{ fontSize: '11px', color: '#888', textAlign: 'center' }}>
+            <div style={{ padding: '10px 16px', borderTop: '0.5px solid #e5e7eb', flexShrink: 0 }} className="dark:border-slate-700">
+              <div style={{ fontSize: '11px', color: '#888', textAlign: 'center' }} className="dark:text-gray-400">
                 Overdue &middot; Closing deals &middot; No contact &middot; Follow-ups
               </div>
             </div>

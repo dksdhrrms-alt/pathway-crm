@@ -124,7 +124,7 @@ export default function ExportButton<T>({ filename, columns, rows, title }: Expo
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-800"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -135,21 +135,21 @@ export default function ExportButton<T>({ filename, columns, rows, title }: Expo
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1">
-          <button onClick={exportExcel} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
+        <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 dark:bg-slate-900 dark:border-slate-600">
+          <button onClick={exportExcel} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 dark:text-gray-200 dark:hover:bg-slate-800">
             <span className="inline-block w-5 h-5 rounded text-[10px] font-bold text-white flex items-center justify-center" style={{ backgroundColor: '#1a7d3a' }}>X</span>
             Excel (.xlsx)
           </button>
-          <button onClick={exportCSV} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
+          <button onClick={exportCSV} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 dark:text-gray-200 dark:hover:bg-slate-800">
             <span className="inline-block w-5 h-5 rounded text-[10px] font-bold text-white flex items-center justify-center" style={{ backgroundColor: '#6b7280' }}>C</span>
             CSV (.csv)
           </button>
-          <button onClick={exportPDF} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
+          <button onClick={exportPDF} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 dark:text-gray-200 dark:hover:bg-slate-800">
             <span className="inline-block w-5 h-5 rounded text-[10px] font-bold text-white flex items-center justify-center" style={{ backgroundColor: '#dc2626' }}>P</span>
             PDF (print)
           </button>
-          <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1">
-            <p className="text-[10px] text-gray-400">{rows.length} record{rows.length !== 1 ? 's' : ''} · {columns.length} column{columns.length !== 1 ? 's' : ''}</p>
+          <div className="border-t border-gray-100 mt-1 pt-1 px-3 pb-1 dark:border-slate-700">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">{rows.length} record{rows.length !== 1 ? 's' : ''} · {columns.length} column{columns.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
       )}

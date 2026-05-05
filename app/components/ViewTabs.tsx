@@ -22,7 +22,7 @@ export default function ViewTabs({ activeView, onChange, teamLabel = 'Team', sho
   if (visibleTabs.length <= 1) return null;
 
   return (
-    <div style={{ display: 'flex', gap: '4px', background: '#f3f4f6', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+    <div style={{ display: 'flex', gap: '4px', background: '#f3f4f6', padding: '4px', borderRadius: '10px', width: 'fit-content' }} className="dark:bg-slate-800">
       {visibleTabs.map((tab) => (
         <button
           key={tab.id}
@@ -39,6 +39,7 @@ export default function ViewTabs({ activeView, onChange, teamLabel = 'Team', sho
             transition: 'all 0.15s',
             whiteSpace: 'nowrap',
           }}
+          className={activeView === tab.id ? '' : 'dark:text-gray-300'}
         >
           {tab.label}
         </button>

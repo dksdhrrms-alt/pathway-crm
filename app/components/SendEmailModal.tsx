@@ -65,10 +65,10 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Send Email</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Close">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Send Email</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400" aria-label="Close">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -77,40 +77,40 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
 
         <form onSubmit={handleSend} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
             <input
               type="text"
               value={toLabel}
               readOnly
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+              className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject *</label>
             <input
               type="text"
               value={subject}
               onChange={(e) => { setSubject(e.target.value); setError(''); }}
               placeholder="Email subject"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Body *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Body *</label>
             <textarea
               value={body}
               onChange={(e) => { setBody(e.target.value); setError(''); }}
               placeholder="Write your email..."
               rows={5}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600 resize-none"
               style={{ minHeight: '120px' }}
             />
           </div>
 
           {error && (
-            <p className="text-xs text-red-600">{error}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
           )}
 
           <div className="flex justify-end gap-3 pt-2">

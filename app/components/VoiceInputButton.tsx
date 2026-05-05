@@ -148,13 +148,14 @@ export default function VoiceInputButton({ onTranscript, size = 'md', title = 'V
     return '🎤';
   })();
   // Switch to amber when ≤10s remaining as a visual warning
+  const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
   const bg = state === 'recording'
     ? (nearingLimit ? '#f59e0b' : '#dc2626')
     : state === 'processing' ? '#f59e0b'
-    : state === 'error' ? '#fee2e2'
-    : 'white';
-  const color = state === 'recording' || state === 'processing' ? 'white' : state === 'error' ? '#991b1b' : '#1a4731';
-  const border = state === 'idle' ? '1px solid #e5e7eb' : state === 'error' ? '1px solid #fecaca' : 'none';
+    : state === 'error' ? (isDark ? '#7f1d1d' : '#fee2e2')
+    : (isDark ? '#1e293b' : 'white');
+  const color = state === 'recording' || state === 'processing' ? 'white' : state === 'error' ? (isDark ? '#fca5a5' : '#991b1b') : '#1a4731';
+  const border = state === 'idle' ? (isDark ? '1px solid #475569' : '1px solid #e5e7eb') : state === 'error' ? (isDark ? '1px solid #7f1d1d' : '1px solid #fecaca') : 'none';
 
   return (
     <button

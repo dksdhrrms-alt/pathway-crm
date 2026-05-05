@@ -35,43 +35,43 @@ export default function PermissionsPage() {
 
   if (!canEdit) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Access denied. Admin or Admin Manager role required.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Access denied. Admin or Admin Manager role required.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-5xl mx-auto">
           <div className="mt-6 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Menu Access Permissions</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Control which menu items each role can access</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Menu Access Permissions</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Control which menu items each role can access</p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left px-5 py-3 font-medium text-gray-500 text-xs uppercase sticky left-0 bg-gray-50">Role</th>
+                <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800">
+                  <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase sticky left-0 bg-gray-50 dark:bg-slate-800">Role</th>
                   {MENU_ITEMS.map((menu) => (
-                    <th key={menu} className="text-center px-3 py-3 font-medium text-gray-500 text-xs uppercase whitespace-nowrap">{menu}</th>
+                    <th key={menu} className="text-center px-3 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase whitespace-nowrap">{menu}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {EDITABLE_ROLES.map((r) => (
-                  <tr key={r} className="border-b border-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-900 sticky left-0 bg-white">{getRoleLabel(r)}</td>
+                  <tr key={r} className="border-b border-gray-50 dark:border-slate-700">
+                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-gray-100 sticky left-0 bg-white dark:bg-slate-900">{getRoleLabel(r)}</td>
                     {MENU_ITEMS.map((menu) => (
                       <td key={menu} className="text-center px-3 py-3">
                         <input
                           type="checkbox"
                           checked={perms[r]?.[menu] ?? false}
                           onChange={() => toggle(r, menu)}
-                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-green-600 focus:ring-green-500"
                         />
                       </td>
                     ))}
@@ -91,8 +91,8 @@ export default function PermissionsPage() {
             </button>
           </div>
 
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <p className="text-xs text-gray-500">
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               <strong>Note:</strong> Admin Manager, Admin, and CEO roles always have full access to all menus (not editable).
             </p>
           </div>

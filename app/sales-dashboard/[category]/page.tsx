@@ -329,31 +329,31 @@ export default function SalesDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Sales Dashboard — {CATEGORY_LABELS[category]}</h1>
-              <p className="text-sm text-gray-500 mt-0.5">Budget vs Actual performance tracking</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Sales Dashboard — {CATEGORY_LABELS[category]}</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Budget vs Actual performance tracking</p>
             </div>
             <div className="flex items-center gap-3">
               {/* Year pills */}
-              <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              <div className="flex gap-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg p-1">
                 {[2024, 2025, 2026].map((y) => (
                   <button key={y} onClick={() => setYear(y)}
-                    className={`px-3 py-1 text-sm font-medium rounded transition-all ${year === y ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                    className={`px-3 py-1 text-sm font-medium rounded transition-all ${year === y ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
                     style={year === y ? { backgroundColor: '#1a4731' } : {}}
                   >{y}</button>
                 ))}
               </div>
               {/* Quarter filter */}
-              <div className="flex gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              <div className="flex gap-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg p-1">
                 {([['all', 'All'], ['q1', 'Q1'], ['q2', 'Q2'], ['q3', 'Q3'], ['q4', 'Q4'], ['ytd', 'YTD']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => setQuarterFilter(v)}
-                    className={`px-2.5 py-1 text-xs font-medium rounded transition-all ${quarterFilter === v ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                    className={`px-2.5 py-1 text-xs font-medium rounded transition-all ${quarterFilter === v ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
                     style={quarterFilter === v ? { backgroundColor: '#1a4731' } : {}}
                   >{l}</button>
                 ))}
@@ -361,7 +361,7 @@ export default function SalesDashboardPage() {
               {isAdmin && category !== 'all' && (
                 <>
                   <button onClick={() => setShowBudgetModal(true)}
-                    className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                    className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60">
                     Set Annual Budget
                   </button>
                   <button onClick={() => setShowAcctBudgetModal(true)}
@@ -373,10 +373,10 @@ export default function SalesDashboardPage() {
               )}
               {/* Export dropdown */}
               <div className="relative group">
-                <button className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Export</button>
-                <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden group-hover:block z-10">
-                  <button onClick={() => handleExport('csv')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Export CSV</button>
-                  <button onClick={() => handleExport('xlsx')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-50">Export Excel</button>
+                <button className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60">Export</button>
+                <div className="absolute right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-lg shadow-lg hidden group-hover:block z-10">
+                  <button onClick={() => handleExport('csv')} className="block w-full text-left px-4 py-2 text-sm dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800">Export CSV</button>
+                  <button onClick={() => handleExport('xlsx')} className="block w-full text-left px-4 py-2 text-sm dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800">Export Excel</button>
                 </div>
               </div>
             </div>
@@ -384,36 +384,36 @@ export default function SalesDashboardPage() {
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase">Annual Budget {year}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{fmt(totalBudget)}</p>
-              <p className="text-xs text-gray-400 mt-1">Set monthly targets below</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Annual Budget {year}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{fmt(totalBudget)}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Set monthly targets below</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase">Annual Actual {year}</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Annual Actual {year}</p>
               <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{fmt(totalActual)}</p>
-              <p className="text-xs text-gray-400 mt-1">{salesData.length} records loaded</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{salesData.length} records loaded</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase">Annual Achievement</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Annual Achievement</p>
               <p className="text-2xl font-bold mt-1" style={{ color: pctColor(totalPct) }}>{totalPct}%</p>
-              <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
+              <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2 mt-2">
                 <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(totalPct, 100)}%`, backgroundColor: pctColor(totalPct) }} />
               </div>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-medium text-gray-500 uppercase">Current Month ({MONTHS[CURRENT_MONTH - 1]})</p>
-              <p className="text-lg font-bold text-gray-900 mt-1">{fmt(curMonthActual)} / {fmt(curMonthBudget)}</p>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Current Month ({MONTHS[CURRENT_MONTH - 1]})</p>
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">{fmt(curMonthActual)} / {fmt(curMonthBudget)}</p>
               <p className="text-sm font-semibold mt-0.5" style={{ color: pctColor(curMonthPct) }}>{curMonthPct}%</p>
-              <div className="w-full bg-gray-100 rounded-full h-2 mt-1">
+              <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2 mt-1">
                 <div className="h-2 rounded-full transition-all" style={{ width: `${Math.min(curMonthPct, 100)}%`, backgroundColor: pctColor(curMonthPct) }} />
               </div>
             </div>
           </div>
 
           {/* Chart */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">{CATEGORY_LABELS[category]} Budget vs Actual — {year}</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-6">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{CATEGORY_LABELS[category]} Budget vs Actual — {year}</h2>
             <div className="chart-scroll-wrapper" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <div style={{ minWidth: '500px', width: '100%', height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -434,22 +434,22 @@ export default function SalesDashboardPage() {
           </div>
 
           {/* Monthly Detail Table */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">Monthly Detail</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Monthly Detail</h2>
             </div>
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="w-full text-sm" style={{ minWidth: '820px' }}>
               <thead>
-                <tr className="border-b-2 border-gray-200 bg-gray-50">
-                  <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase">Month</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Budget</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Actual</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Ach%</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">vs LY</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase" style={{ borderLeft: '2px solid #e5e7eb' }}>YTD Budget</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YTD Actual</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YTD%</th>
+                <tr className="border-b-2 border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
+                  <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Month</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Budget</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Actual</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Ach%</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">vs LY</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase" style={{ borderLeft: '2px solid #e5e7eb' }}>YTD Budget</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">YTD Actual</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">YTD%</th>
                 </tr>
               </thead>
               <tbody>
@@ -473,11 +473,11 @@ export default function SalesDashboardPage() {
                   return (
                     <React.Fragment key={mo}>
                     <tr onClick={() => setExpandedMonth(expandedMonth === mo ? null : mo)}
-                      className={`border-b border-gray-50 cursor-pointer transition-colors ${expandedMonth === mo ? 'bg-green-50/40' : isCurrent ? 'bg-green-50/20' : 'hover:bg-gray-50/60'}`}>
-                      <td className="px-4 py-3 font-medium text-gray-900">
+                      className={`border-b border-gray-50 dark:border-slate-700 cursor-pointer transition-colors ${expandedMonth === mo ? 'bg-green-50/40 dark:bg-green-900/20' : isCurrent ? 'bg-green-50/20 dark:bg-green-900/10' : 'hover:bg-gray-50/60 dark:hover:bg-slate-800/60'}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
                         <span className="inline-flex items-center gap-2">
-                          <span className={`text-xs text-gray-400 transition-transform ${expandedMonth === mo ? 'rotate-90' : ''}`} style={{ display: 'inline-block' }}>▶</span>
-                          {m}{isCurrent && <span className="ml-1 text-xs text-green-600">(current)</span>}
+                          <span className={`text-xs text-gray-400 dark:text-gray-600 transition-transform ${expandedMonth === mo ? 'rotate-90' : ''}`} style={{ display: 'inline-block' }}>▶</span>
+                          {m}{isCurrent && <span className="ml-1 text-xs text-green-600 dark:text-green-400">(current)</span>}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -490,14 +490,14 @@ export default function SalesDashboardPage() {
                           />
                         ) : (
                           <span
-                            className={`font-medium text-gray-700 ${category !== 'all' && isAdmin ? 'cursor-pointer hover:text-green-700' : ''}`}
+                            className={`font-medium text-gray-700 dark:text-gray-300 ${category !== 'all' && isAdmin ? 'cursor-pointer hover:text-green-700 dark:hover:text-green-400' : ''}`}
                             onClick={() => { if (category !== 'all' && isAdmin) { setEditingMonth(mo); setEditValue(String(bgt)); } }}
                           >
                             {fmt(bgt)}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium" style={{ color: isFuture ? '#ccc' : '#1a4731' }}>{hasData && !isFuture ? fmt(act) : '—'}</td>
+                      <td className="px-4 py-3 text-right font-medium dark:text-gray-300" style={{ color: isFuture ? '#999' : '#1a4731' }}>{hasData && !isFuture ? fmt(act) : '—'}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-semibold" style={{ color: hasData && !isFuture ? pctColor(pct) : '#9ca3af' }}>{hasData && !isFuture ? `${pct}%` : '—'}</span>
                       </td>

@@ -44,7 +44,7 @@ export default function CountrySelect({ value, onChange }: Props) {
           if (e.target.value === 'Other') { setIsOther(true); onChange(customVal || 'Other'); }
           else { setIsOther(false); setCustomVal(''); onChange(e.target.value); }
         }}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
       >
         <option value="">Select country...</option>
         {COUNTRIES.map((c) => (
@@ -53,7 +53,7 @@ export default function CountrySelect({ value, onChange }: Props) {
       </select>
       {isOther && (
         <input type="text" value={customVal} onChange={(e) => { setCustomVal(e.target.value); onChange(e.target.value); }}
-          placeholder="Enter country name" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+          placeholder="Enter country name" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mt-2 focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500" />
       )}
     </div>
   );

@@ -56,7 +56,7 @@ export default function ColumnFilter({ values, selected, onChange, label }: Colu
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className={`inline-flex items-center justify-center w-4 h-4 rounded transition-colors ${isFiltering ? 'text-green-700 bg-green-100' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200'}`}
+        className={`inline-flex items-center justify-center w-4 h-4 rounded transition-colors ${isFiltering ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/40' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-200 dark:hover:text-gray-200 dark:hover:bg-slate-800'}`}
         title={isFiltering ? `Filtered (${selected.size})` : 'Filter'}
         aria-label="Filter column"
       >
@@ -66,42 +66,42 @@ export default function ColumnFilter({ values, selected, onChange, label }: Colu
       </button>
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-30 normal-case"
+          className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-30 normal-case dark:bg-slate-900 dark:border-slate-600"
           onClick={(e) => e.stopPropagation()}
         >
-          {label && <div className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">{label}</div>}
-          <div className="p-2 border-b border-gray-100">
+          {label && <div className="px-3 pt-2 pb-1 text-[10px] font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100 dark:text-gray-400 dark:border-slate-800">{label}</div>}
+          <div className="p-2 border-b border-gray-100 dark:border-slate-800">
             <input
               type="text"
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search..."
-              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-200 dark:placeholder-gray-500"
             />
           </div>
-          <div className="flex justify-between px-3 py-1.5 text-[11px] border-b border-gray-100 bg-gray-50">
-            <button type="button" onClick={selectAll} className="text-blue-600 hover:underline">Select all</button>
-            <button type="button" onClick={clearAll} className="text-gray-500 hover:underline">Clear</button>
+          <div className="flex justify-between px-3 py-1.5 text-[11px] border-b border-gray-100 bg-gray-50 dark:border-slate-800 dark:bg-slate-800">
+            <button type="button" onClick={selectAll} className="text-blue-600 hover:underline dark:text-blue-400">Select all</button>
+            <button type="button" onClick={clearAll} className="text-gray-500 hover:underline dark:text-gray-400">Clear</button>
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-gray-400">No matches</li>
+              <li className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">No matches</li>
             ) : filtered.map((v) => (
-              <li key={v} className="group flex items-center justify-between gap-1 px-2 py-1 hover:bg-gray-50">
-                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer flex-1 min-w-0">
+              <li key={v} className="group flex items-center justify-between gap-1 px-2 py-1 hover:bg-gray-50 dark:hover:bg-slate-800">
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer flex-1 min-w-0 dark:text-gray-200">
                   <input
                     type="checkbox"
                     checked={isChecked(v)}
                     onChange={() => toggle(v)}
-                    className="rounded border-gray-300 text-green-600 focus:ring-green-500 flex-shrink-0"
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500 flex-shrink-0 dark:border-slate-600 dark:bg-slate-700"
                   />
-                  <span className="truncate">{v || <span className="text-gray-400 italic">{EMPTY_LABEL}</span>}</span>
+                  <span className="truncate dark:text-gray-300">{v || <span className="text-gray-400 italic dark:text-gray-500">{EMPTY_LABEL}</span>}</span>
                 </label>
                 <button
                   type="button"
                   onClick={() => selectOnly(v)}
-                  className="text-[10px] text-blue-600 hover:underline opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  className="text-[10px] text-blue-600 hover:underline opacity-0 group-hover:opacity-100 flex-shrink-0 dark:text-blue-400"
                   title="Show only this"
                 >
                   only
@@ -110,7 +110,7 @@ export default function ColumnFilter({ values, selected, onChange, label }: Colu
             ))}
           </ul>
           {isFiltering && (
-            <div className="px-3 py-1.5 text-[10px] text-green-700 bg-green-50 border-t border-green-100">
+            <div className="px-3 py-1.5 text-[10px] text-green-700 bg-green-50 border-t border-green-100 dark:text-green-400 dark:bg-green-900/40 dark:border-green-800">
               {selected.size} of {values.length} selected
             </div>
           )}

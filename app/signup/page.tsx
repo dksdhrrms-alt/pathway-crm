@@ -120,7 +120,7 @@ export default function SignUpPage() {
   const previewInitials = name.trim() ? getInitials(name.trim()) : '?';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-10">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 py-10">
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="text-center mb-8">
@@ -132,11 +132,11 @@ export default function SignUpPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
-          <p className="text-sm text-gray-500 mt-1">Pathway Intermediates USA · CRM</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create your account</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Pathway Intermediates USA · CRM</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Profile Photo */}
             <div className="flex flex-col items-center gap-3 pb-2">
@@ -154,7 +154,7 @@ export default function SignUpPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors"
                 >
                   {profilePhoto ? 'Change Photo' : 'Upload Photo'}
                 </button>
@@ -162,7 +162,7 @@ export default function SignUpPage() {
                   <button
                     type="button"
                     onClick={removePhoto}
-                    className="text-sm text-gray-400 hover:text-gray-600"
+                    className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                   >
                     Remove
                   </button>
@@ -175,12 +175,12 @@ export default function SignUpPage() {
                 className="hidden"
                 onChange={handlePhotoChange}
               />
-              <p className="text-xs text-gray-400">Optional — initials used if no photo</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Optional — initials used if no photo</p>
             </div>
 
             {/* Full Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                 Full Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -188,14 +188,14 @@ export default function SignUpPage() {
                 value={name}
                 onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
                 placeholder="e.g. Jane Smith"
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
-              {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+              {errors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.name}</p>}
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                 Email <span className="text-red-500">*</span>
               </label>
               <input
@@ -203,14 +203,14 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })); }}
                 placeholder="you@company.com"
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
-              {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+              {errors.email && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.email}</p>}
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                 Phone Number <span className="text-red-500">*</span>
               </label>
               <input
@@ -218,18 +218,18 @@ export default function SignUpPage() {
                 value={phone}
                 onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: '' })); }}
                 placeholder="+1 (555) 000-0000"
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
-              {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+              {errors.phone && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.phone}</p>}
             </div>
 
             {/* Role */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">Role</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               >
                 {SIGNUP_ROLES.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -240,7 +240,7 @@ export default function SignUpPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                 Password <span className="text-red-500">*</span>
               </label>
               <input
@@ -248,14 +248,14 @@ export default function SignUpPage() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: '' })); }}
                 placeholder="Min. 8 characters"
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
-              {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
+              {errors.password && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.password}</p>}
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
                 Confirm Password <span className="text-red-500">*</span>
               </label>
               <input
@@ -263,9 +263,9 @@ export default function SignUpPage() {
                 value={confirmPassword}
                 onChange={(e) => { setConfirmPassword(e.target.value); setErrors((p) => ({ ...p, confirmPassword: '' })); }}
                 placeholder="Re-enter your password"
-                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
-              {errors.confirmPassword && <p className="text-xs text-red-600 mt-1">{errors.confirmPassword}</p>}
+              {errors.confirmPassword && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.confirmPassword}</p>}
             </div>
 
             <button
@@ -278,7 +278,7 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-gray-500 mt-5 pt-5 border-t border-gray-100">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5 pt-5 border-t border-gray-100 dark:border-slate-800">
             Already have an account?{' '}
             <a href="/login" className="font-medium" style={{ color: '#1a4731' }}>
               Sign in
