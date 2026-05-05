@@ -81,6 +81,14 @@ function ContactsPageInner() {
   const [search, setSearch] = useState('');
   const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
 
+  // ── Pagination ─────────────────────────────────────────────────────────
+  // Render in 50-row slices to keep DOM under control. With 375 contacts +
+  // inline dropdowns the table was producing ~25k DOM nodes (Lighthouse
+  // limit: 1,500). Slicing trims that to ~3k while preserving full sort /
+  // filter behavior — pagination resets when filters change.
+  const PAGE_SIZE = 50;
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+
   function setColFilter(colId: string, sel: Set<string>) {
     setColFilters((prev) => {
       const next = { ...prev };
@@ -231,6 +239,16 @@ function ContactsPageInner() {
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contacts, allAccounts, users, search, sortKey, sortDir, colFilters]);
+
+  // Snap pagination back when the row set changes shape so we don't end up
+  // showing an old "Showing 200 of …" window after a search narrows results.
+  useEffect(() => {
+    setDisplayLimit(PAGE_SIZE);
+  }, [search, colFilters, sortKey, sortDir]);
+
+  const visibleContacts = filtered.slice(0, displayLimit);
+  const hasMore = filtered.length > visibleContacts.length;
+  const remaining = filtered.length - visibleContacts.length;
 
   function handleContactSaved() {
     setToast('Contact created successfully');
@@ -385,7 +403,7 @@ function ContactsPageInner() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((contact) => {
+                  visibleContacts.map((contact) => {
                     const account = allAccounts.find((a) => a.id === contact.accountId);
                     const isSelected = selectedIds.has(contact.id);
                     return (
@@ -493,6 +511,34 @@ function ContactsPageInner() {
                       </tr>
                     );
                   })
+                )}
+                {hasMore && (
+                  <tr>
+                    <td colSpan={visibleCols.length + 2} className="px-4 py-4 text-center bg-gray-50/40">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+                        <span>
+                          Showing <span className="font-medium text-gray-700">{visibleContacts.length}</span> of <span className="font-medium text-gray-700">{filtered.length}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDisplayLimit((n) => n + PAGE_SIZE)}
+                          className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90"
+                          style={{ backgroundColor: '#1a4731' }}
+                        >
+                          Show {Math.min(PAGE_SIZE, remaining)} more
+                        </button>
+                        {remaining > PAGE_SIZE && (
+                          <button
+                            type="button"
+                            onClick={() => setDisplayLimit(filtered.length)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                          >
+                            Show all ({remaining})
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

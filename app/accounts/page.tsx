@@ -90,6 +90,14 @@ export default function AccountsPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [colFilters, setColFilters] = useState<Record<string, Set<string>>>({});
 
+  // ── Pagination ─────────────────────────────────────────────────────────
+  // The table previously rendered all 411 accounts at once, which produced
+  // ~37k DOM nodes (Lighthouse warns above 1,500). We render in slices and
+  // expose a "Show more" footer instead. PAGE_SIZE is roomy enough that
+  // keyboard-PageDown / scroll-jumping users rarely have to click.
+  const PAGE_SIZE = 50;
+  const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+
   function setColFilter(colId: string, sel: Set<string>) {
     setColFilters((prev) => {
       const next = { ...prev };
@@ -280,6 +288,17 @@ export default function AccountsPage() {
     return rows;
   }, [filtered, expandedParents, childrenByParent, hasActiveFilters]);
 
+  // Snap the display window back to PAGE_SIZE whenever the underlying row set
+  // changes shape (search, filter, sort, owner). Without this, "Showing 200 of
+  // 411" sticks even after a filter narrows the result to 5 rows.
+  useEffect(() => {
+    setDisplayLimit(PAGE_SIZE);
+  }, [search, ownerFilter, colFilters, sortKey, sortDir, hasActiveFilters]);
+
+  const visibleRows = renderedRows.slice(0, displayLimit);
+  const hasMore = renderedRows.length > visibleRows.length;
+  const remaining = renderedRows.length - visibleRows.length;
+
   function expandAll() {
     const ids = new Set<string>();
     Object.keys(childrenByParent).forEach((id) => ids.add(id));
@@ -464,7 +483,7 @@ export default function AccountsPage() {
               <tbody>
                 {renderedRows.length === 0 ? (
                   <tr><td colSpan={visibleCols.length + 2} className="text-center text-gray-400" style={{ height: 400 }}>No accounts match your search.</td></tr>
-                ) : renderedRows.map(({ account: acct, depth }) => {
+                ) : visibleRows.map(({ account: acct, depth }) => {
                   const badge = SPECIES_BADGE[acct.industry] || SPECIES_BADGE.Other;
                   const isSelected = selectedIds.has(acct.id);
                   return (
@@ -588,6 +607,34 @@ export default function AccountsPage() {
                     </tr>
                   );
                 })}
+                {hasMore && (
+                  <tr>
+                    <td colSpan={visibleCols.length + 2} className="px-4 py-4 text-center bg-gray-50/40">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+                        <span>
+                          Showing <span className="font-medium text-gray-700">{visibleRows.length}</span> of <span className="font-medium text-gray-700">{renderedRows.length}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDisplayLimit((n) => n + PAGE_SIZE)}
+                          className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90"
+                          style={{ backgroundColor: '#1a4731' }}
+                        >
+                          Show {Math.min(PAGE_SIZE, remaining)} more
+                        </button>
+                        {remaining > PAGE_SIZE && (
+                          <button
+                            type="button"
+                            onClick={() => setDisplayLimit(renderedRows.length)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                          >
+                            Show all ({remaining})
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

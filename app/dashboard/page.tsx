@@ -10,6 +10,7 @@ import MetricCard from '@/app/components/MetricCard';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Toast from '@/app/components/Toast';
+import EmptyState from '@/app/components/EmptyState';
 import QuickLogModal from '@/app/components/QuickLogModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
 import NewOpportunityModal from '@/app/components/NewOpportunityModal';
@@ -148,18 +149,38 @@ export default function DashboardPage() {
       months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
       labels.push(d.toLocaleString('en-US', { month: 'short' }));
     }
-    return months.map((m, i) => ({
-      month: labels[i],
-      Calls: scopedActivities.filter((a) => a.date?.startsWith(m) && a.type === 'Call').length,
-      Meetings: scopedActivities.filter((a) => a.date?.startsWith(m) && a.type === 'Meeting').length,
-    }));
+    // Single-pass bucketization: O(activities + months) instead of the previous
+    // O(months × activities × 2) (one .filter() per month per type).
+    const buckets: Record<string, { Calls: number; Meetings: number }> = {};
+    for (const m of months) buckets[m] = { Calls: 0, Meetings: 0 };
+    for (const a of scopedActivities) {
+      if (!a.date) continue;
+      const prefix = a.date.slice(0, 7); // "YYYY-MM"
+      const bucket = buckets[prefix];
+      if (!bucket) continue;
+      if (a.type === 'Call') bucket.Calls++;
+      else if (a.type === 'Meeting') bucket.Meetings++;
+    }
+    return months.map((m, i) => ({ month: labels[i], Calls: buckets[m].Calls, Meetings: buckets[m].Meetings }));
   }, [scopedActivities]);
 
   // ── Activity Leaderboard ────────────────────────────────────────────────
+  // The leaderboard UI is currently disabled in render (gated behind a literal
+  // `false &&` near line ~450). Computing this on every dashboard render was
+  // the heaviest hot loop on the page — O(activeUsers × allActivities) plus
+  // tasks + opps scans, ~12 × ~99 + ... per render. Short-circuit to an empty
+  // array; flip the gate below AND remove this early-return to re-enable.
   const ACT_POINTS: Record<string, number> = { Call: 3, Meeting: 5, Email: 2, Note: 1 };
   const TASK_COMPLETE_PTS = 2;
   const OPP_WON_PTS = 2;
-  const leaderboard = useMemo(() => {
+  const SHOW_LEADERBOARD = false;
+  type LeaderEntry = {
+    user: typeof users[number]; points: number; prevPoints: number; total: number;
+    calls: number; meetings: number; emails: number; notes: number;
+    tasksCompleted: number; oppsWon: number;
+  };
+  const leaderboard = useMemo<LeaderEntry[]>(() => {
+    if (!SHOW_LEADERBOARD) return [];
     const curPrefix = CURRENT_MONTH;
     const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 1);
     const prevPrefix = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
@@ -367,11 +388,11 @@ export default function DashboardPage() {
 
                   if (items.length === 0) {
                     return (
-                      <div className="p-8 text-center">
-                        <div className="text-4xl mb-2">🌟</div>
-                        <p className="text-sm font-medium text-gray-700">All clear!</p>
-                        <p className="text-xs text-gray-400 mt-1">Nothing urgent today. Great work.</p>
-                      </div>
+                      <EmptyState
+                        icon="🌟"
+                        title="All clear!"
+                        description="Nothing urgent today. Great work."
+                      />
                     );
                   }
                   return items.map((item, i) => (
@@ -513,7 +534,12 @@ export default function DashboardPage() {
                 <span className="text-xs text-gray-400">Click to open account</span>
               </div>
               {recentActivities.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">No recent activity yet.</p>
+                <EmptyState
+                  icon="📭"
+                  title="No recent activity yet"
+                  description="Logged calls, meetings, and notes will appear here."
+                  variant="compact"
+                />
               ) : (
                 <ul className="space-y-1">
                   {recentActivities.map((act) => {
@@ -555,11 +581,12 @@ export default function DashboardPage() {
                 <Link href="/tasks" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
               </div>
               {taskList.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-3xl mb-1">✅</div>
-                  <p className="text-sm font-medium text-gray-700">All caught up!</p>
-                  <p className="text-xs text-gray-400 mt-0.5">No open tasks right now.</p>
-                </div>
+                <EmptyState
+                  icon="✅"
+                  title="All caught up!"
+                  description="No open tasks right now."
+                  variant="compact"
+                />
               ) : (
                 <ul className="space-y-1">
                   {taskList.slice(0, 12).map((task) => {
