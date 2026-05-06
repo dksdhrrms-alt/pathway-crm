@@ -120,9 +120,12 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
       console.error('QuickLogModal save failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Failed to save activity:\n\n${msg}`);
-      setSubmitting(false);
     } finally {
+      // Always reset both flags. On success the modal auto-closes after
+      // 1.2s anyway; until then the disabled state is driven by `saved`
+      // (so the user sees "✓ Logged!" instead of a stuck disabled cursor).
       setSaving(false);
+      setSubmitting(false);
     }
   }
 
@@ -459,13 +462,13 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-          <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting} style={{ padding: '8px 16px', fontSize: '13px' }}>
+          <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={saving} style={{ padding: '8px 16px', fontSize: '13px' }}>
             Cancel
           </SubmitButton>
           <SubmitButton
             type="button"
             onClick={handleSave}
-            disabled={!subject.trim() || submitting}
+            disabled={!subject.trim() || saved}
             pending={saving}
             pendingText="Saving..."
             style={{

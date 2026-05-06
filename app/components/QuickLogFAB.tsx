@@ -128,9 +128,12 @@ export default function QuickLogFAB() {
       console.error('QuickLogFAB save failed:', err);
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Failed to save activity:\n\n${msg}`);
-      setSubmitting(false);
     } finally {
+      // Always reset both flags. The 1.2s post-success window keeps the
+      // button visually disabled via the `saved` state, not `submitting`,
+      // so the cursor doesn't stay stuck on "not-allowed".
       setSaving(false);
+      setSubmitting(false);
     }
   }
 
@@ -468,13 +471,13 @@ export default function QuickLogFAB() {
 
             {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <SubmitButton type="button" variant="secondary" onClick={() => setIsOpen(false)} disabled={submitting} style={{ padding: '8px 16px', fontSize: '13px' }}>
+              <SubmitButton type="button" variant="secondary" onClick={() => setIsOpen(false)} disabled={saving} style={{ padding: '8px 16px', fontSize: '13px' }}>
                 Cancel
               </SubmitButton>
               <SubmitButton
                 type="button"
                 onClick={handleSave}
-                disabled={!subject.trim() || submitting}
+                disabled={!subject.trim() || saved}
                 pending={saving}
                 pendingText="Saving..."
                 style={{
