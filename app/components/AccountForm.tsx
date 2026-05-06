@@ -129,8 +129,9 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       onSave();
     } catch (err) {
       console.error('AccountForm submit failed:', err);
-      // Re-enable the button so the user can retry instead of being stuck
-      // on a forever-disabled "Saving..." state.
+    } finally {
+      // Always release the spinner. If the parent unmounts the modal in
+      // onSave this is a no-op; if it doesn't, the user isn't stuck.
       setSubmitting(false);
     }
   }

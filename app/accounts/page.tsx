@@ -694,7 +694,7 @@ export default function AccountsPage() {
         onConfirm={handleBulkDelete}
       />
 
-      {showNewModal && <NewAccountModal onClose={() => setShowNewModal(false)} onSave={() => setToast('Account created successfully')} />}
+      {showNewModal && <NewAccountModal onClose={() => setShowNewModal(false)} onSave={() => { setShowNewModal(false); setToast('Account created successfully'); }} />}
 
       {editAccountId && (() => { const a = allAccounts.find((x) => x.id === editAccountId); return a ? <EditAccountModal account={a} onClose={() => setEditAccountId(null)} onSaved={() => setToast('Account updated successfully')} /> : null; })()}
 

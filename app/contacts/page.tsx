@@ -252,6 +252,10 @@ function ContactsPageInner() {
   const remaining = filtered.length - visibleContacts.length;
 
   function handleContactSaved() {
+    // Close the modal so ContactForm unmounts and the "Saving..." spinner
+    // is released. Without this, the form stays mounted and the SubmitButton
+    // never resets — looks like the save is hanging forever.
+    setShowNewModal(false);
     setToast('Contact created successfully');
   }
 

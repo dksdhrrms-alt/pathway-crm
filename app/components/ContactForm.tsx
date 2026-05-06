@@ -118,6 +118,11 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       onSave();
     } catch (err) {
       console.error('ContactForm submit failed:', err);
+    } finally {
+      // Always release the spinner. If the parent's onSave unmounts the
+      // modal this is a no-op on an unmounted component (React 19 ignores
+      // it). If the parent forgets to unmount, the user can still re-submit
+      // or close manually instead of being stuck on "Saving...".
       setSubmitting(false);
     }
   }
