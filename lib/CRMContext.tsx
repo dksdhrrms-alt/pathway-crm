@@ -9,7 +9,9 @@ import {
   dbGetTasks, dbCreateTask, dbUpdateTask, dbDeleteTask,
   dbGetActivities, dbCreateActivity, dbDeleteActivity,
   dbGetSaleRecords, dbGetUploadHistory, dbGetAccountBudgets,
+  toCamel,
 } from './db';
+import { supabase, supabaseEnabled } from './supabase';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 
 interface CRMContextType {
@@ -104,6 +106,74 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // ── Supabase Realtime: cross-user live sync ─────────────────────────────
+  // Without this, every browser only sees the rows it loaded at session start
+  // plus its own optimistic updates. New contacts/accounts/etc. created by
+  // someone else stay invisible until the page is refreshed.
+  //
+  // We subscribe to postgres_changes on the five mutable tables, then merge
+  // each event into local state. The merge is idempotent: if the row is
+  // already present (because *we* inserted it optimistically a moment ago),
+  // we skip or replace instead of duplicating.
+  useEffect(() => {
+    if (!supabaseEnabled) return;
+
+    type RealtimePayload<T> = { new: Record<string, unknown> | null; old: Record<string, unknown> | null; eventType: 'INSERT' | 'UPDATE' | 'DELETE' };
+
+    function makeHandler<T extends { id: string }>(
+      setter: React.Dispatch<React.SetStateAction<T[]>>
+    ) {
+      return (payload: RealtimePayload<T>) => {
+        if (payload.eventType === 'DELETE') {
+          const id = (payload.old?.id as string) || '';
+          if (!id) return;
+          setter((prev) => prev.filter((row) => row.id !== id));
+          return;
+        }
+        if (!payload.new) return;
+        const row = toCamel(payload.new) as unknown as T;
+        if (!row.id) return;
+        if (payload.eventType === 'INSERT') {
+          setter((prev) => {
+            // Optimistic update may already have inserted this id — dedupe.
+            if (prev.some((r) => r.id === row.id)) {
+              return prev.map((r) => (r.id === row.id ? { ...r, ...row } : r));
+            }
+            return [row, ...prev];
+          });
+        } else {
+          // UPDATE
+          setter((prev) => prev.map((r) => (r.id === row.id ? { ...r, ...row } : r)));
+        }
+      };
+    }
+
+    const channel = supabase
+      .channel('crm-shared-state')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'accounts' }, makeHandler<Account>(setAccounts))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'contacts' }, makeHandler<Contact>(setContacts))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'opportunities' }, makeHandler<Opportunity>(setOpportunities))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks' }, makeHandler<Task>(setTasks))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'activities' }, makeHandler<Activity>(setActivities))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // eslint-disable-next-line no-console
+          console.log('[CRM] Realtime subscribed');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[CRM] Realtime status:', status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // ── CRUD with optimistic updates ────────────────────────────────────────
 

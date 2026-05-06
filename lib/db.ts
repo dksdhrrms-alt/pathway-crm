@@ -39,7 +39,7 @@ function toSnake(obj: any): Record<string, unknown> {
   return r;
 }
 
-function toCamel(obj: Record<string, unknown>): Record<string, unknown> {
+export function toCamel(obj: Record<string, unknown>): Record<string, unknown> {
   const r: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (CAMEL_OVERRIDES[k]) { r[CAMEL_OVERRIDES[k]] = v; continue; }
