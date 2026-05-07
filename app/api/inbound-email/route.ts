@@ -245,11 +245,27 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     ...(d.to || []).map(extractEmail),
     ...(d.cc || []).map(extractEmail),
   ].filter(Boolean) as string[]);
-  // Combine and dedupe. Header-derived addresses come first so they
-  // win the contact lookup if both are present.
-  const allCandidates = uniqueLower([...headerCandidates, ...envelopeCandidates]);
+
+  // Outlook-forward-rule pattern: when the user has set up their
+  // Outlook to auto-forward every sent message to our inbound mailbox,
+  // the original `To:` line lands inside the body of the forwarded
+  // message (after a "----- Forwarded message -----" or
+  // "-----Original Message-----" marker). Parse those out — this is
+  // what makes contact matching robust without sender-side plugins.
+  const bodyForParse = (d.text || htmlToPlain(d.html || '') || '').trim();
+  const forwardedCandidates = extractForwardedRecipients(bodyForParse);
+
+  // Combine and dedupe. Forwarded-body addresses come first because
+  // they're the highest-fidelity source we have for the BCC pattern;
+  // then header, then envelope.
+  const allCandidates = uniqueLower([
+    ...forwardedCandidates,
+    ...headerCandidates,
+    ...envelopeCandidates,
+  ]);
 
   console.warn('[inbound-email] step: recipient sources', {
+    forwarded_count: forwardedCandidates.length,
     header_count: headerCandidates.length,
     envelope_count: envelopeCandidates.length,
     combined: allCandidates,
@@ -286,13 +302,15 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // Step (c) fallback: sender's most recent contact activity (last 24h).
-  // Real-world usage pattern: a sales rep BCCs the inbound mailbox while
-  // emailing a customer they've been working with. Their previous
-  // manually-logged activity on that contact gives us a strong signal
-  // about who the customer is, even when SMTP scrubbed the envelope.
+  // Step (c) fallback: sender's most recent contact activity (last 7
+  // days, contact_id required). Real-world pattern — a sales rep BCCs
+  // the inbound mailbox right after composing an email to a customer
+  // they were just looking at in the CRM. Their last contact-attached
+  // activity is a strong signal about who the customer is.
+  // 7 days because some reps work weekly batches; tighter than that
+  // misses common usage patterns.
   if (!matchedContactId) {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const { data: recentActs, error: raErr } = await supabase
       .from('activities')
       .select('contact_id, account_id, date')
@@ -306,22 +324,22 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     if (recent && recent.contact_id) {
       matchedContactId = recent.contact_id as string;
       matchedAccountId = (recent.account_id as string) || null;
-      console.warn('[inbound-email] step: fallback to recent contact', {
+      console.warn('[inbound-email] step: fallback to recent contact (7d window)', {
         contact_id: matchedContactId,
         account_id: matchedAccountId,
         from_activity_date: recent.date,
       });
     } else {
-      console.warn('[inbound-email] step: no recent-contact fallback available');
+      console.warn('[inbound-email] step: no recent-contact fallback available (7d window empty)');
     }
   }
 
   // ── 4. Get body — straight from webhook payload ────────────────────
-  // Resend includes `text` and `html` directly in the email.received
-  // payload, so there's no separate fetch. Prefer plain text; fall
-  // back to a stripped-HTML approximation if only html is present.
+  // Reuse `bodyForParse` from above (already computed for forwarded-
+  // recipient extraction). No separate fetch needed because Resend
+  // includes `text` / `html` inline in email.received payloads.
   const emailId = d.email_id || '';
-  const bodyText = (d.text || htmlToPlain(d.html || '') || '').trim();
+  const bodyText = bodyForParse;
   console.warn('[inbound-email] step: body length=', bodyText.length);
 
   // Cap to keep activities table sensible. Full text isn't free.
@@ -439,6 +457,67 @@ function extractHeaderRecipients(headers: any): string[] {
     // activity fallback below still has a shot at finding a contact.
   }
 
+  return uniqueLower(collected);
+}
+
+/**
+ * Pull recipient emails out of the body of a forwarded email.
+ *
+ * When a user has Outlook (or Gmail) auto-forwarding sent items to our
+ * inbound mailbox, the original message gets quoted inside the forward
+ * with a recognizable header block, e.g.:
+ *
+ *   ---------- Forwarded message ---------
+ *   From: Jeff Harding <jeff@example.com>
+ *   Date: Wed, May 7, 2026 at 2:30 PM
+ *   Subject: Quote follow-up
+ *   To: Ron Marriott <rmarriott@pdscows.com>
+ *   Cc: someone@example.com
+ *
+ *   [original body]
+ *
+ * We scan for that header block and extract every email address from
+ * the To: and Cc: lines. This is the *highest-fidelity* recipient
+ * source we have — the addresses come straight from the user's own
+ * mail client, so they survive whatever SMTP did to the envelope.
+ *
+ * Outlook ("-----Original Message-----"), Gmail ("---------- Forwarded
+ * message ----------"), and Apple Mail ("Begin forwarded message:") all
+ * use slightly different markers — the regex tolerates each variant.
+ */
+function extractForwardedRecipients(body: string): string[] {
+  if (!body) return [];
+
+  const collected: string[] = [];
+  // Find every place the body looks like a forwarded-message header
+  // block. Multiple forwards can be nested (forward of a forward), so
+  // we accept all matches and union their recipients.
+  const markerRegex = /(?:-+\s*(?:Original Message|Forwarded message|Original)\s*-+|^Begin forwarded message:)/gim;
+  const markers: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = markerRegex.exec(body)) !== null) {
+    markers.push(m.index);
+  }
+  if (markers.length === 0) return [];
+
+  for (const start of markers) {
+    // Look at the next ~2000 chars after the marker — the header block
+    // is right there. Limit so we don't accidentally match a quoted
+    // To: in body prose far below.
+    const window = body.slice(start, start + 2000);
+    // Multiline match `^To:` and `^Cc:` lines.
+    const toMatch = window.match(/^\s*To:\s*(.+)$/im);
+    const ccMatch = window.match(/^\s*Cc:\s*(.+)$/im);
+    for (const line of [toMatch?.[1], ccMatch?.[1]]) {
+      if (!line) continue;
+      // A To/Cc line can list multiple recipients separated by commas
+      // or semicolons, each as bare email or "Name <email>".
+      for (const part of line.split(/[,;]/)) {
+        const e = extractEmail(part);
+        if (e) collected.push(e);
+      }
+    }
+  }
   return uniqueLower(collected);
 }
 
