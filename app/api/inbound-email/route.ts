@@ -152,13 +152,29 @@ interface ProcessResult {
 }
 
 async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
+  // Diagnostic: every silent-return path used to leave Vercel logs blank
+  // after the initial "received" warning, making it impossible to tell
+  // whether parsing/whitelist/lookup was at fault. Each step now tags
+  // its own checkpoint so the bail point is obvious in production logs.
+  console.warn('[inbound-email] processing start');
   let event: InboundEmailEvent | null = null;
-  try { event = JSON.parse(rawBody) as InboundEmailEvent; } catch { return { processed: false, note: 'bad-json' }; }
-  if (event?.type !== 'email.received') return { processed: false, note: 'wrong-type' };
+  try { event = JSON.parse(rawBody) as InboundEmailEvent; }
+  catch {
+    console.warn('[inbound-email] bail: bad-json');
+    return { processed: false, note: 'bad-json' };
+  }
+  if (event?.type !== 'email.received') {
+    console.warn('[inbound-email] bail: wrong-type, got=', event?.type);
+    return { processed: false, note: 'wrong-type' };
+  }
   const d = event.data || {};
 
   const fromEmail = extractEmail(d.from || '');
-  if (!fromEmail) return { processed: false, note: 'no-from' };
+  if (!fromEmail) {
+    console.warn('[inbound-email] bail: no-from, raw d.from=', JSON.stringify(d.from));
+    return { processed: false, note: 'no-from' };
+  }
+  console.warn('[inbound-email] step: extracted fromEmail=', fromEmail);
 
   // ── 1. Whitelist check ─────────────────────────────────────────────
   const whitelistRaw = process.env.RESEND_FROM_WHITELIST_DOMAINS || 'pathway-intermediates.com';
@@ -170,8 +186,17 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   }
 
   // ── Service-role Supabase client ───────────────────────────────────
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Try multiple env var names — older Vercel envs in this project store
+  // the URL as SUPABASE_URL (no NEXT_PUBLIC_ prefix), so falling back
+  // covers either configuration.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  console.warn('[inbound-email] step: env check', {
+    has_url: !!supabaseUrl,
+    has_service_key: !!serviceKey,
+    url_source: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'NEXT_PUBLIC' : (process.env.SUPABASE_URL ? 'SUPABASE_URL' : 'none'),
+    service_key_prefix: serviceKey ? serviceKey.slice(0, 12) : null,
+  });
   if (!supabaseUrl || !serviceKey) {
     console.error('[inbound-email] missing Supabase admin credentials');
     return { processed: false, note: 'missing-supabase-admin' };
@@ -181,6 +206,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   });
 
   // ── 2. Match sender → CRM user ─────────────────────────────────────
+  console.warn('[inbound-email] step: looking up user by email', fromEmail);
   const { data: userRow, error: userErr } = await supabase
     .from('users')
     .select('id, email')
@@ -192,6 +218,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     return { processed: false, note: 'sender-not-in-crm' };
   }
   const ownerId = userRow.id as string;
+  console.warn('[inbound-email] step: matched user', { ownerId });
 
   // ── 3. Match recipients → contact ──────────────────────────────────
   // Real recipients live in TO and CC. The inbound BCC address (e.g.
