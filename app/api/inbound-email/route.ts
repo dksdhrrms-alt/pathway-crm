@@ -218,19 +218,42 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   // Real recipients live in TO and CC. The inbound BCC address (e.g.
   // crm@log.pathway-intermediates.com) is *us* — never a contact, so we
   // exclude the BCC list to avoid accidentally matching ourselves.
+  //
+  // Resend's webhook payload sometimes ships `to` / `cc` as plain
+  // strings, sometimes as `"Display Name <email@domain>"`. extractEmail
+  // handles both. We also log the raw shape in case the format ever
+  // shifts again — past silent contact-match failures cost us a debug
+  // round-trip.
+  console.warn('[inbound-email] step: raw recipients', {
+    to_raw: JSON.stringify(d.to ?? []),
+    cc_raw: JSON.stringify(d.cc ?? []),
+  });
   const recipientCandidates = uniqueLower([
     ...(d.to || []).map(extractEmail),
     ...(d.cc || []).map(extractEmail),
   ].filter(Boolean) as string[]);
+  console.warn('[inbound-email] step: extracted recipients', recipientCandidates);
 
   let matchedContactId: string | null = null;
   let matchedAccountId: string | null = null;
   if (recipientCandidates.length > 0) {
+    // Case-insensitive lookup via PostgREST `or(ilike...)` — covers any
+    // contact whose email column happens to be stored with a different
+    // casing than what arrived in the webhook (e.g. "Dksdhrrms@..."
+    // saved by hand vs "dksdhrrms@..." from the email envelope).
+    const orFilter = recipientCandidates.map((e) => `email.ilike.${e}`).join(',');
     const { data: contactRows, error: cErr } = await supabase
       .from('contacts')
       .select('id, email, account_id')
-      .in('email', recipientCandidates);
+      .or(orFilter);
     if (cErr) console.error('[inbound-email] contact lookup error:', cErr.message);
+    console.warn('[inbound-email] step: contact lookup result', {
+      candidates: recipientCandidates,
+      row_count: contactRows?.length ?? 0,
+      first_row: contactRows && contactRows[0]
+        ? { id: contactRows[0].id, email: contactRows[0].email, account_id: contactRows[0].account_id }
+        : null,
+    });
     const first = contactRows && contactRows[0];
     if (first) {
       matchedContactId = first.id as string;
