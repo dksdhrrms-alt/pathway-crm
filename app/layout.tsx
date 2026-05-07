@@ -32,7 +32,55 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="PI CRM" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <script dangerouslySetInnerHTML={{ __html: `if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}` }} />
+        {/*
+          Service worker registration with auto-update.
+          Why this matters: when we ship a new version (CACHE_NAME bump in
+          /public/sw.js), installed PWAs on users' phones won't pick it up
+          unless we (a) bypass the HTTP cache when fetching sw.js itself,
+          (b) actively call registration.update() so the browser checks for
+          a new SW on every visit/focus, and (c) reload the page once the
+          new SW takes control. Without this, users keep seeing the stale
+          cached UI for days. updateViaCache: 'none' is the key flag.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
+                    // Force-check for a new SW on load.
+                    reg.update().catch(function () {});
+
+                    // Also check whenever the tab/PWA becomes visible again
+                    // (e.g. user returns from another app on their phone).
+                    document.addEventListener('visibilitychange', function () {
+                      if (document.visibilityState === 'visible') {
+                        reg.update().catch(function () {});
+                      }
+                    });
+
+                    // Periodic safety net for long-lived sessions.
+                    setInterval(function () { reg.update().catch(function () {}); }, 60 * 60 * 1000);
+                  }).catch(function () {});
+
+                  // When the new SW takes control (sw.js calls skipWaiting()
+                  // + clients.claim()), reload exactly once so the page
+                  // re-fetches the new JS chunks. Skip on first-ever install
+                  // (no prior controller) — that case is just the SW taking
+                  // over for the first time; the user already sees fresh UI.
+                  var hadController = !!navigator.serviceWorker.controller;
+                  var refreshing = false;
+                  navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (!hadController) { hadController = true; return; }
+                    if (refreshing) return;
+                    refreshing = true;
+                    window.location.reload();
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="h-full bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 transition-colors">
         <Providers>
