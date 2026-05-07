@@ -45,6 +45,17 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Strip the SW's one-shot cache-buster query param if present,
+              // so the address bar doesn't carry "?_swrefresh=..." after the
+              // post-update reload. Done via history.replaceState so it
+              // doesn't add a history entry.
+              try {
+                var u = new URL(window.location.href);
+                if (u.searchParams.has('_swrefresh')) {
+                  u.searchParams.delete('_swrefresh');
+                  history.replaceState({}, '', u.toString());
+                }
+              } catch (e) {}
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function () {
                   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function (reg) {
