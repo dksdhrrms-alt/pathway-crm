@@ -89,8 +89,16 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
         />
       </div>
 
-      {/* Notifications + Theme toggle + User avatar */}
-      <div className="relative flex items-center gap-3" ref={dropdownRef}>
+      {/* Notifications + Theme toggle + User avatar.
+          ml-auto pins this group to the right edge even when the search
+          input is hidden (mobile + Dashboard, which doesn't show search on
+          phones). Without ml-auto, justify-between pulls the group toward
+          the left when there's only one rendered sibling, which on mobile
+          slid the ThemeToggle behind the sidebar's fixed hamburger button
+          (z-50) — making the toggle invisible specifically on Dashboard
+          while it stayed visible on other pages whose search box was
+          rendered. ml-auto keeps everything right-aligned regardless. */}
+      <div className="relative flex items-center gap-3 ml-auto" ref={dropdownRef}>
         <ThemeToggle />
         <NotificationBell />
         <div className="hidden sm:flex items-center gap-2">
