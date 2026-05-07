@@ -224,51 +224,95 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   // handles both. We also log the raw shape in case the format ever
   // shifts again — past silent contact-match failures cost us a debug
   // round-trip.
-  console.warn('[inbound-email] step: raw recipients', {
-    to_raw: JSON.stringify(d.to ?? []),
-    cc_raw: JSON.stringify(d.cc ?? []),
-  });
-  // One-shot diagnostic: log every key in `data` plus a header preview.
-  // BCC delivery rewrites the visible `to` field to the inbound mailbox,
-  // so the only chance of recovering the original recipient is some
-  // form of preserved header that Resend may surface under `headers`.
-  console.warn('[inbound-email] step: payload shape', {
-    data_keys: Object.keys(d),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    has_headers: !!(d as any).headers,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    headers_preview: (d as any).headers ? JSON.stringify((d as any).headers).slice(0, 800) : null,
-  });
-  const recipientCandidates = uniqueLower([
+  // BCC delivery problem: when a user BCCs our inbound mailbox, the
+  // envelope `to` that Resend hands us is just our own address — the
+  // real recipient (the customer the user actually wrote to) isn't
+  // visible there. We try three strategies in order:
+  //   (a) parse the message's `To:` header from data.headers, which
+  //       most sender mail servers preserve verbatim on BCC delivery
+  //   (b) check data.to / data.cc the normal way (works for the
+  //       Cc-pattern, or non-BCC tests)
+  //   (c) fall back to whichever contact this sender most recently
+  //       interacted with — covers the case where the user truly
+  //       BCC'd a customer Outlook scrubbed from the envelope, but
+  //       was actively logging activities against that contact
+  //
+  // Whichever strategy hits first wins.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dExt = d as any;
+  const headerCandidates = extractHeaderRecipients(dExt.headers);
+  const envelopeCandidates = uniqueLower([
     ...(d.to || []).map(extractEmail),
     ...(d.cc || []).map(extractEmail),
   ].filter(Boolean) as string[]);
-  console.warn('[inbound-email] step: extracted recipients', recipientCandidates);
+  // Combine and dedupe. Header-derived addresses come first so they
+  // win the contact lookup if both are present.
+  const allCandidates = uniqueLower([...headerCandidates, ...envelopeCandidates]);
+
+  console.warn('[inbound-email] step: recipient sources', {
+    header_count: headerCandidates.length,
+    envelope_count: envelopeCandidates.length,
+    combined: allCandidates,
+    has_headers: !!dExt.headers,
+    data_keys: Object.keys(d),
+  });
 
   let matchedContactId: string | null = null;
   let matchedAccountId: string | null = null;
-  if (recipientCandidates.length > 0) {
-    // Case-insensitive lookup via PostgREST `or(ilike...)` — covers any
-    // contact whose email column happens to be stored with a different
-    // casing than what arrived in the webhook (e.g. "Dksdhrrms@..."
-    // saved by hand vs "dksdhrrms@..." from the email envelope).
-    const orFilter = recipientCandidates.map((e) => `email.ilike.${e}`).join(',');
-    const { data: contactRows, error: cErr } = await supabase
-      .from('contacts')
-      .select('id, email, account_id')
-      .or(orFilter);
-    if (cErr) console.error('[inbound-email] contact lookup error:', cErr.message);
-    console.warn('[inbound-email] step: contact lookup result', {
-      candidates: recipientCandidates,
-      row_count: contactRows?.length ?? 0,
-      first_row: contactRows && contactRows[0]
-        ? { id: contactRows[0].id, email: contactRows[0].email, account_id: contactRows[0].account_id }
-        : null,
-    });
-    const first = contactRows && contactRows[0];
-    if (first) {
-      matchedContactId = first.id as string;
-      matchedAccountId = (first.account_id as string) || null;
+
+  // Step (a) + (b): match against contacts.email
+  if (allCandidates.length > 0) {
+    // Drop any candidates that hit the inbound BCC mailbox itself —
+    // we'd never want to match ourselves to a contact.
+    const realCandidates = allCandidates.filter(
+      (e) => !e.endsWith('@log.pathway-intermediates.com') && !e.startsWith('crm@log.'),
+    );
+    if (realCandidates.length > 0) {
+      const orFilter = realCandidates.map((e) => `email.ilike.${e}`).join(',');
+      const { data: contactRows, error: cErr } = await supabase
+        .from('contacts')
+        .select('id, email, account_id')
+        .or(orFilter);
+      if (cErr) console.error('[inbound-email] contact lookup error:', cErr.message);
+      console.warn('[inbound-email] step: contact lookup', {
+        candidates: realCandidates,
+        row_count: contactRows?.length ?? 0,
+      });
+      const first = contactRows && contactRows[0];
+      if (first) {
+        matchedContactId = first.id as string;
+        matchedAccountId = (first.account_id as string) || null;
+      }
+    }
+  }
+
+  // Step (c) fallback: sender's most recent contact activity (last 24h).
+  // Real-world usage pattern: a sales rep BCCs the inbound mailbox while
+  // emailing a customer they've been working with. Their previous
+  // manually-logged activity on that contact gives us a strong signal
+  // about who the customer is, even when SMTP scrubbed the envelope.
+  if (!matchedContactId) {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const { data: recentActs, error: raErr } = await supabase
+      .from('activities')
+      .select('contact_id, account_id, date')
+      .eq('owner_id', ownerId)
+      .gte('date', since)
+      .not('contact_id', 'is', null)
+      .order('date', { ascending: false })
+      .limit(1);
+    if (raErr) console.error('[inbound-email] recent-activity fallback error:', raErr.message);
+    const recent = recentActs && recentActs[0];
+    if (recent && recent.contact_id) {
+      matchedContactId = recent.contact_id as string;
+      matchedAccountId = (recent.account_id as string) || null;
+      console.warn('[inbound-email] step: fallback to recent contact', {
+        contact_id: matchedContactId,
+        account_id: matchedAccountId,
+        from_activity_date: recent.date,
+      });
+    } else {
+      console.warn('[inbound-email] step: no recent-contact fallback available');
     }
   }
 
@@ -339,6 +383,63 @@ function extractEmail(raw: string): string {
   const m = raw.match(/<([^>]+)>/);
   const candidate = (m ? m[1] : raw).trim().toLowerCase();
   return /\S+@\S+\.\S+/.test(candidate) ? candidate : '';
+}
+
+/**
+ * Pull recipient emails out of an RFC822-style `headers` blob.
+ * Resend may surface headers in any of these shapes — handle them all:
+ *   - object map:  { "to": "Foo <foo@x.com>", "cc": "..." }
+ *   - object map with arrays: { "to": ["a@x.com", "b@x.com"] }
+ *   - array of {name, value}: [{ name: "To", value: "foo@x.com" }, ...]
+ *   - raw string: "To: foo@x.com\r\nCc: bar@x.com\r\n..."
+ * Anything else returns []. Lowercased + deduped.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractHeaderRecipients(headers: any): string[] {
+  if (!headers) return [];
+  const collected: string[] = [];
+
+  function pickFrom(value: unknown) {
+    if (!value) return;
+    if (typeof value === 'string') {
+      // Comma-separated address list e.g. "Alice <a@x.com>, b@y.com"
+      for (const part of value.split(',')) {
+        const e = extractEmail(part);
+        if (e) collected.push(e);
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const v of value) pickFrom(v);
+      return;
+    }
+  }
+
+  try {
+    if (typeof headers === 'string') {
+      // Raw RFC822 block — pull the To/Cc lines.
+      const lines = headers.split(/\r?\n/);
+      for (const line of lines) {
+        const m = line.match(/^(to|cc):\s*(.*)$/i);
+        if (m) pickFrom(m[2]);
+      }
+    } else if (Array.isArray(headers)) {
+      for (const h of headers) {
+        if (h && typeof h === 'object' && /^(to|cc)$/i.test(String(h.name || h.key || ''))) {
+          pickFrom(h.value ?? h.values);
+        }
+      }
+    } else if (typeof headers === 'object') {
+      for (const key of Object.keys(headers)) {
+        if (/^(to|cc)$/i.test(key)) pickFrom(headers[key]);
+      }
+    }
+  } catch {
+    // If header shape is wildly off, we just give up — the recent-
+    // activity fallback below still has a shot at finding a contact.
+  }
+
+  return uniqueLower(collected);
 }
 
 function uniqueLower(arr: string[]): string[] {
