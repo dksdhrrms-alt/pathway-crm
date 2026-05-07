@@ -61,20 +61,14 @@ interface InboundEmailEvent {
     cc?: string[];
     subject?: string;
     message_id?: string;
+    // Resend's `email.received` webhook ships the rendered body inline
+    // in the webhook payload itself — no separate Receiving API GET
+    // needed. (We initially assumed otherwise and 404'd against
+    // /emails/{id}, which is the *outbound* email retrieval endpoint.)
+    text?: string;
+    html?: string;
     attachments?: Array<{ id: string; filename: string; content_type: string }>;
   };
-}
-
-interface ResendInboundEmail {
-  id: string;
-  from?: string;
-  to?: string[];
-  cc?: string[];
-  bcc?: string[];
-  subject?: string;
-  text?: string;
-  html?: string;
-  created_at?: string;
 }
 
 export async function GET() {
@@ -244,25 +238,13 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // ── 4. Fetch full body (best effort) ───────────────────────────────
+  // ── 4. Get body — straight from webhook payload ────────────────────
+  // Resend includes `text` and `html` directly in the email.received
+  // payload, so there's no separate fetch. Prefer plain text; fall
+  // back to a stripped-HTML approximation if only html is present.
   const emailId = d.email_id || '';
-  let bodyText = '';
-  if (emailId && process.env.RESEND_API_KEY) {
-    try {
-      const resp = await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}`, {
-        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
-      });
-      if (resp.ok) {
-        const fullEmail = (await resp.json()) as ResendInboundEmail;
-        // Prefer plain text; fall back to a stripped-HTML approximation.
-        bodyText = (fullEmail.text || htmlToPlain(fullEmail.html || '') || '').trim();
-      } else {
-        console.warn('[inbound-email] body fetch non-ok:', resp.status);
-      }
-    } catch (e) {
-      console.error('[inbound-email] body fetch error:', e instanceof Error ? e.message : String(e));
-    }
-  }
+  const bodyText = (d.text || htmlToPlain(d.html || '') || '').trim();
+  console.warn('[inbound-email] step: body length=', bodyText.length);
 
   // Cap to keep activities table sensible. Full text isn't free.
   const MAX_DESC = 8000;
