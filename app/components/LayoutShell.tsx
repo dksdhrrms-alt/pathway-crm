@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import QuickLogFAB from './QuickLogFAB';
 import GlobalSearch from './GlobalSearch';
+import CRMErrorToast from './CRMErrorToast';
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
       </div>
       <QuickLogFAB />
       <GlobalSearch />
+      <CRMErrorToast />
     </>
   );
 }

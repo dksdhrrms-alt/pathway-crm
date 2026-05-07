@@ -15,6 +15,29 @@ import { supabase, supabaseEnabled } from './supabase';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import { cacheGet, cacheSet, CACHE_KEYS } from './cache';
 
+// Surface a CRUD failure to the user via the global CRMErrorToast.
+//
+// Why a CustomEvent and not state plumbing: every add/update/delete in
+// this file runs fire-and-forget for optimistic UX. Threading a toast
+// callback through React state would tightly couple this provider to
+// the toast component and force every consumer to live below it. A
+// window event keeps the side-channel decoupled — CRMErrorToast (mounted
+// once in LayoutShell) listens and renders a Toast.
+//
+// The previous behavior was `console.error(...)` and that was it, which
+// is how Jeff Harding's "I logged an activity yesterday but it's gone
+// today" bug went unnoticed — addActivity didn't roll back and the
+// failure left no user-visible trace.
+function notifyCrmError(message: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('crm-error', { detail: { message } }));
+  } catch {
+    // CustomEvent constructor unavailable in some old environments.
+    // Non-fatal — the console.error caller still gets to log.
+  }
+}
+
 interface CRMContextType {
   accounts: Account[];
   contacts: Contact[];
@@ -235,64 +258,117 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
 
   // ── CRUD with optimistic updates ────────────────────────────────────────
 
+  // All optimistic add* helpers below follow a single failure pattern:
+  //   1. console.error so we still get the underlying message in dev
+  //   2. roll back the optimistic insert so the UI matches DB truth
+  //   3. notifyCrmError so the user actually learns the save failed,
+  //      instead of trusting a vanishing optimistic row (the bug that
+  //      lost Jeff's Ron Marriott activity).
+  // Update* helpers don't optimistically add new rows, but they should
+  // still surface failures — otherwise edits silently revert on next
+  // refresh. We accept the small "screen flickered to old value" UX
+  // because the alternative (silent data loss) is much worse.
+
   const addAccount = (account: Account) => {
     const id = account.id || generateId();
     const full = { ...account, id };
     setAccounts((prev) => [full, ...prev]);
-    dbCreateAccount(full).catch((e) => { console.error('addAccount error:', e); setAccounts((prev) => prev.filter((a) => a.id !== id)); });
+    dbCreateAccount(full).catch((e) => {
+      console.error('addAccount error:', e);
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
+      notifyCrmError('Failed to save account. Please try again.');
+    });
   };
 
   const updateAccount = (id: string, updates: Partial<Account>) => {
     setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
-    dbUpdateAccount(id, updates).catch(console.error);
+    dbUpdateAccount(id, updates).catch((e) => {
+      console.error('updateAccount error:', e);
+      notifyCrmError('Failed to update account. Your edit may not have saved.');
+    });
   };
 
   const addContact = (contact: Contact) => {
     const id = contact.id || generateId();
     const full = { ...contact, id };
     setContacts((prev) => [full, ...prev]);
-    dbCreateContact(full).catch((e) => { console.error('addContact error:', e); setContacts((prev) => prev.filter((c) => c.id !== id)); });
+    dbCreateContact(full).catch((e) => {
+      console.error('addContact error:', e);
+      setContacts((prev) => prev.filter((c) => c.id !== id));
+      notifyCrmError('Failed to save contact. Please try again.');
+    });
   };
 
   const updateContact = (id: string, updates: Partial<Contact>) => {
     setContacts((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
-    dbUpdateContact(id, updates).catch(console.error);
+    dbUpdateContact(id, updates).catch((e) => {
+      console.error('updateContact error:', e);
+      notifyCrmError('Failed to update contact. Your edit may not have saved.');
+    });
   };
 
   const addOpportunity = (opp: Opportunity) => {
     const id = opp.id || generateId();
     const full = { ...opp, id };
     setOpportunities((prev) => [full, ...prev]);
-    dbCreateOpportunity(full).catch((e) => { console.error('addOpp error:', e); setOpportunities((prev) => prev.filter((o) => o.id !== id)); });
+    dbCreateOpportunity(full).catch((e) => {
+      console.error('addOpp error:', e);
+      setOpportunities((prev) => prev.filter((o) => o.id !== id));
+      notifyCrmError('Failed to save opportunity. Please try again.');
+    });
   };
 
+  // FIX: addActivity used to be the only optimistic add* helper without
+  // a rollback path. dbCreateActivity().catch(console.error) silently
+  // swallowed failures, so a failed save left the row visible in the UI
+  // until the next refresh — at which point the fresh DB fetch wiped it
+  // out and the user assumed the activity had "disappeared." This is the
+  // exact failure mode behind Jeff Harding's missing Ron Marriott log
+  // (May 6, 2026). Now we roll back and tell the user.
   const addActivity = (act: Activity) => {
     const id = act.id || generateId();
     const full = { ...act, id };
     setActivities((prev) => [full, ...prev]);
-    dbCreateActivity(full).catch(console.error);
+    dbCreateActivity(full).catch((e) => {
+      console.error('addActivity error:', e);
+      setActivities((prev) => prev.filter((a) => a.id !== id));
+      notifyCrmError('Failed to save activity. Please try again.');
+    });
   };
 
   const addTask = (task: Task) => {
     const id = task.id || generateId();
     const full = { ...task, id };
     setTasks((prev) => [full, ...prev]);
-    dbCreateTask(full).catch((e) => { console.error('addTask error:', e); setTasks((prev) => prev.filter((t) => t.id !== id)); });
+    dbCreateTask(full).catch((e) => {
+      console.error('addTask error:', e);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      notifyCrmError('Failed to save task. Please try again.');
+    });
   };
 
   const updateOpportunityStage = (id: string, stage: Stage) => {
     setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, stage } : o)));
-    dbUpdateOpportunity(id, { stage }).catch(console.error);
+    dbUpdateOpportunity(id, { stage }).catch((e) => {
+      console.error('updateOpportunityStage error:', e);
+      notifyCrmError('Failed to update opportunity stage.');
+    });
   };
 
   const updateOpportunityOwner = (id: string, ownerId: string) => {
     setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, ownerId } : o)));
-    dbUpdateOpportunity(id, { ownerId } as Partial<Opportunity>).catch(console.error);
+    dbUpdateOpportunity(id, { ownerId } as Partial<Opportunity>).catch((e) => {
+      console.error('updateOpportunityOwner error:', e);
+      notifyCrmError('Failed to reassign opportunity.');
+    });
   };
 
   const updateTask = (id: string, updates: Partial<Task>) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-    dbUpdateTask(id, updates).catch(console.error);
+    dbUpdateTask(id, updates).catch((e) => {
+      console.error('updateTask error:', e);
+      notifyCrmError('Failed to update task. Your edit may not have saved.');
+    });
   };
 
   const toggleTask = (id: string) => {
@@ -300,16 +376,26 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     if (!task) return;
     const newStatus = task.status === 'Open' ? 'Completed' as const : 'Open' as const;
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
-    dbUpdateTask(id, { status: newStatus }).catch(console.error);
+    dbUpdateTask(id, { status: newStatus }).catch((e) => {
+      console.error('toggleTask error:', e);
+      notifyCrmError('Failed to toggle task status.');
+    });
   };
 
+  // Delete handlers: failures here mean the row is gone from the UI but
+  // still in the DB — annoying (it'll reappear on refresh) but not data
+  // loss. We still surface the toast so the user knows the action wasn't
+  // committed and can retry rather than assuming success.
   const deleteAccount = (id: string) => {
     setContacts((prev) => prev.filter((c) => c.accountId !== id));
     setOpportunities((prev) => prev.filter((o) => o.accountId !== id));
     setActivities((prev) => prev.filter((a) => a.accountId !== id));
     setTasks((prev) => prev.filter((t) => t.relatedAccountId !== id));
     setAccounts((prev) => prev.filter((a) => a.id !== id));
-    dbDeleteAccounts([id]).catch(console.error);
+    dbDeleteAccounts([id]).catch((e) => {
+      console.error('deleteAccount error:', e);
+      notifyCrmError('Failed to delete account. Refresh to see the latest state.');
+    });
   };
 
   const deleteAccountsBulk = (ids: string[]) => {
@@ -319,33 +405,51 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     setActivities((prev) => prev.filter((a) => !idSet.has(a.accountId)));
     setTasks((prev) => prev.filter((t) => !idSet.has(t.relatedAccountId ?? '')));
     setAccounts((prev) => prev.filter((a) => !idSet.has(a.id)));
-    dbDeleteAccounts(ids).catch(console.error);
+    dbDeleteAccounts(ids).catch((e) => {
+      console.error('deleteAccountsBulk error:', e);
+      notifyCrmError('Failed to delete some accounts. Refresh to see the latest state.');
+    });
   };
 
   const deleteContact = (id: string) => {
     setContacts((prev) => prev.filter((c) => c.id !== id));
-    dbDeleteContacts([id]).catch(console.error);
+    dbDeleteContacts([id]).catch((e) => {
+      console.error('deleteContact error:', e);
+      notifyCrmError('Failed to delete contact. Refresh to see the latest state.');
+    });
   };
 
   const deleteContactsBulk = (ids: string[]) => {
     const idSet = new Set(ids);
     setContacts((prev) => prev.filter((c) => !idSet.has(c.id)));
-    dbDeleteContacts(ids).catch(console.error);
+    dbDeleteContacts(ids).catch((e) => {
+      console.error('deleteContactsBulk error:', e);
+      notifyCrmError('Failed to delete some contacts. Refresh to see the latest state.');
+    });
   };
 
   const deleteOpportunity = (id: string) => {
     setOpportunities((prev) => prev.filter((o) => o.id !== id));
-    dbDeleteOpportunity(id).catch(console.error);
+    dbDeleteOpportunity(id).catch((e) => {
+      console.error('deleteOpportunity error:', e);
+      notifyCrmError('Failed to delete opportunity. Refresh to see the latest state.');
+    });
   };
 
   const deleteTask = (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
-    dbDeleteTask(id).catch(console.error);
+    dbDeleteTask(id).catch((e) => {
+      console.error('deleteTask error:', e);
+      notifyCrmError('Failed to delete task. Refresh to see the latest state.');
+    });
   };
 
   const deleteActivity = (id: string) => {
     setActivities((prev) => prev.filter((a) => a.id !== id));
-    dbDeleteActivity(id).catch(console.error);
+    dbDeleteActivity(id).catch((e) => {
+      console.error('deleteActivity error:', e);
+      notifyCrmError('Failed to delete activity. Refresh to see the latest state.');
+    });
   };
 
   const getActivitiesForAccount = (accountId: string) =>
