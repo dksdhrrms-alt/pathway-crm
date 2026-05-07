@@ -228,6 +228,17 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     to_raw: JSON.stringify(d.to ?? []),
     cc_raw: JSON.stringify(d.cc ?? []),
   });
+  // One-shot diagnostic: log every key in `data` plus a header preview.
+  // BCC delivery rewrites the visible `to` field to the inbound mailbox,
+  // so the only chance of recovering the original recipient is some
+  // form of preserved header that Resend may surface under `headers`.
+  console.warn('[inbound-email] step: payload shape', {
+    data_keys: Object.keys(d),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    has_headers: !!(d as any).headers,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    headers_preview: (d as any).headers ? JSON.stringify((d as any).headers).slice(0, 800) : null,
+  });
   const recipientCandidates = uniqueLower([
     ...(d.to || []).map(extractEmail),
     ...(d.cc || []).map(extractEmail),
