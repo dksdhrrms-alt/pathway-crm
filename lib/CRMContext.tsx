@@ -13,6 +13,7 @@ import {
 } from './db';
 import { supabase, supabaseEnabled } from './supabase';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
+import { cacheGet, cacheSet, CACHE_KEYS } from './cache';
 
 interface CRMContextType {
   accounts: Account[];
@@ -52,57 +53,114 @@ interface CRMContextType {
   setSaleRecords: React.Dispatch<React.SetStateAction<SaleRecord[]>>;
   setUploadHistory: React.Dispatch<React.SetStateAction<UploadHistoryEntry[]>>;
   refreshData: () => Promise<void>;
+  // True while non-critical data (saleRecords, uploadHistory) is still
+  // being fetched. Pages that don't need these (Dashboard, /accounts,
+  // /contacts, /opportunities, /tasks, /activities) ignore this. Pages
+  // that do (/sales, /reports, /sales-dashboard) can show a sub-loader.
+  loadingExtras: boolean;
 }
 
 const CRMContext = createContext<CRMContextType | null>(null);
 
 export function CRMProvider({ children }: { children: React.ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [saleRecords, setSaleRecords] = useState<SaleRecord[]>([]);
-  const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>([]);
+  // ── SWR initial state from localStorage ────────────────────────────────
+  // We read each table's last snapshot from localStorage synchronously in
+  // the useState initializer so React's first paint already has data —
+  // no spinner gate, no flash of empty UI. The background refresh below
+  // then replaces these arrays with fresh rows from Supabase. This is
+  // why the dashboard feels instant on the second-and-onwards cold start
+  // even though the network roundtrip still takes a few seconds.
+  const [accounts, setAccounts] = useState<Account[]>(() => cacheGet<Account[]>(CACHE_KEYS.accounts) ?? []);
+  const [contacts, setContacts] = useState<Contact[]>(() => cacheGet<Contact[]>(CACHE_KEYS.contacts) ?? []);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(() => cacheGet<Opportunity[]>(CACHE_KEYS.opportunities) ?? []);
+  const [activities, setActivities] = useState<Activity[]>(() => cacheGet<Activity[]>(CACHE_KEYS.activities) ?? []);
+  const [tasks, setTasks] = useState<Task[]>(() => cacheGet<Task[]>(CACHE_KEYS.tasks) ?? []);
+  const [saleRecords, setSaleRecords] = useState<SaleRecord[]>(() => cacheGet<SaleRecord[]>(CACHE_KEYS.saleRecords) ?? []);
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>(() => cacheGet<UploadHistoryEntry[]>(CACHE_KEYS.uploadHistory) ?? []);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [salesBudgets, setSalesBudgets] = useState<any[]>([]);
-  const [accountBudgets, setAccountBudgets] = useState<AccountBudget[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [accountBudgets, setAccountBudgets] = useState<AccountBudget[]>(() => cacheGet<AccountBudget[]>(CACHE_KEYS.accountBudgets) ?? []);
+  // `loading` is for the *critical* tables (accounts/contacts/opps/tasks/
+  // activities). It starts false if we already have a cached snapshot —
+  // the page can render its layout immediately. It only gates rendering
+  // on first-ever cold start where the cache is empty.
+  const [loading, setLoading] = useState<boolean>(() => {
+    const haveCriticalCache =
+      !!cacheGet<Account[]>(CACHE_KEYS.accounts) &&
+      !!cacheGet<Opportunity[]>(CACHE_KEYS.opportunities) &&
+      !!cacheGet<Task[]>(CACHE_KEYS.tasks);
+    return !haveCriticalCache;
+  });
+  // `loadingExtras` covers the heavyweight tables (saleRecords ~4s,
+  // uploadHistory ~4s). Keeping these out of `loading` is the single
+  // biggest win in this whole optimization — cuts ~6s off perceived
+  // cold-start time on dashboards that don't need them.
+  const [loadingExtras, setLoadingExtras] = useState<boolean>(() => {
+    const haveExtrasCache =
+      !!cacheGet<SaleRecord[]>(CACHE_KEYS.saleRecords);
+    return !haveExtrasCache;
+  });
   const [error, setError] = useState<string | null>(null);
 
+  // Two-phase load:
+  //   Phase 1 (critical, blocks `loading`): the five tables every page
+  //     reads on render — accounts, contacts, opportunities, tasks,
+  //     activities. Run in parallel; setLoading(false) as soon as all
+  //     five resolve.
+  //   Phase 2 (non-critical, blocks `loadingExtras` only): saleRecords
+  //     and uploadHistory — only touched by /sales and reports.
+  // Budgets are best-effort; failures are swallowed because the tables
+  // may not exist in older deployments.
   const loadAll = useCallback(async () => {
-    console.log('[CRM] Loading data from Supabase...');
-    setLoading(true);
     setError(null);
+
+    // ── Phase 1: critical tables in parallel ──────────────────────────
     try {
-      const [accs, cons, opps, tsks, acts, sales, uploads] = await Promise.all([
+      const [accs, cons, opps, tsks, acts] = await Promise.all([
         dbGetAccounts(), dbGetContacts(), dbGetOpportunities(),
-        dbGetTasks(), dbGetActivities(), dbGetSaleRecords(), dbGetUploadHistory(),
+        dbGetTasks(), dbGetActivities(),
       ]);
-      // Load budgets separately (tables might not exist)
-      try {
-        const { supabase: sb } = await import('./supabase');
-        const { data: budgets } = await sb.from('sales_budgets').select('*');
-        setSalesBudgets(budgets || []);
-      } catch { /* */ }
-      try {
-        const ab = await dbGetAccountBudgets();
-        setAccountBudgets(ab);
-      } catch { /* */ }
-      console.log('[CRM] Loaded: accounts=' + accs.length + ' contacts=' + cons.length + ' opps=' + opps.length + ' tasks=' + tsks.length + ' activities=' + acts.length + ' sales=' + sales.length);
-      setAccounts(accs);
-      setContacts(cons);
-      setOpportunities(opps);
-      setTasks(tsks);
-      setActivities(acts);
-      setSaleRecords(sales);
-      setUploadHistory(uploads);
+      setAccounts(accs); cacheSet(CACHE_KEYS.accounts, accs);
+      setContacts(cons); cacheSet(CACHE_KEYS.contacts, cons);
+      setOpportunities(opps); cacheSet(CACHE_KEYS.opportunities, opps);
+      setTasks(tsks); cacheSet(CACHE_KEYS.tasks, tsks);
+      setActivities(acts); cacheSet(CACHE_KEYS.activities, acts);
     } catch (err) {
-      console.error('[CRM] Supabase load error:', err);
+      console.error('[CRM] critical load error:', err);
       setError('Failed to load data from database.');
     } finally {
+      // Always release the gate — if a critical fetch failed but we have
+      // a cached snapshot, we'd rather render stale than block forever.
       setLoading(false);
     }
+
+    // Account budgets are small and used by dashboard / accounts pages —
+    // run them with the critical phase but don't block on failure.
+    try {
+      const ab = await dbGetAccountBudgets();
+      setAccountBudgets(ab);
+      cacheSet(CACHE_KEYS.accountBudgets, ab);
+    } catch { /* tolerated */ }
+
+    // ── Phase 2: non-critical tables ──────────────────────────────────
+    try {
+      const [sales, uploads] = await Promise.all([
+        dbGetSaleRecords(), dbGetUploadHistory(),
+      ]);
+      setSaleRecords(sales); cacheSet(CACHE_KEYS.saleRecords, sales);
+      setUploadHistory(uploads); cacheSet(CACHE_KEYS.uploadHistory, uploads);
+    } catch (err) {
+      console.error('[CRM] extras load error:', err);
+    } finally {
+      setLoadingExtras(false);
+    }
+
+    // Budgets table is optional (older deployments). Best-effort.
+    try {
+      const { supabase: sb } = await import('./supabase');
+      const { data: budgets } = await sb.from('sales_budgets').select('*');
+      setSalesBudgets(budgets || []);
+    } catch { /* tolerated */ }
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
@@ -304,7 +362,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
   return (
     <CRMContext.Provider value={{
       accounts, contacts, opportunities, activities, tasks,
-      saleRecords, uploadHistory, salesBudgets, accountBudgets, setAccountBudgets, loading, error,
+      saleRecords, uploadHistory, salesBudgets, accountBudgets, setAccountBudgets, loading, loadingExtras, error,
       addAccount, updateAccount, addContact, updateContact,
       addOpportunity, addActivity, addTask,
       updateOpportunityStage, updateOpportunityOwner, updateTask, toggleTask,

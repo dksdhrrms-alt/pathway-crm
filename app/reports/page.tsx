@@ -80,7 +80,11 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const isSalesDirector = role === 'sales_director';
   const MONO_GROUP = ['monogastrics', 'swine'];
 
-  const { activities: allActivities, accounts, contacts, tasks: allTasks, opportunities: allOpps, saleRecords, salesBudgets, loading } = useCRM();
+  // /reports renders charts that depend on sale_records, so wait for the
+  // non-critical phase too (loadingExtras). Pages that don't read
+  // saleRecords (Dashboard, /accounts, …) ignore loadingExtras and render
+  // as soon as the critical phase completes.
+  const { activities: allActivities, accounts, contacts, tasks: allTasks, opportunities: allOpps, saleRecords, salesBudgets, loading, loadingExtras } = useCRM();
   const { users: allUsers } = useUsers();
 
   const activeUsers = useMemo(() => {
@@ -362,7 +366,8 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
     finally { setIsGenerating(false); }
   }
 
-  if (loading) return <LoadingSpinner />;
+  // Wait for both phases — reports depend on saleRecords (loadingExtras).
+  if (loading || loadingExtras) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">

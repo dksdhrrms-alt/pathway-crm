@@ -8,6 +8,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
+import { cacheClear } from '@/lib/cache';
 
 interface TopBarProps {
   searchValue?: string;
@@ -163,7 +164,14 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
 
             {/* Sign out */}
             <button
-              onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: '/login' }); }}
+              onClick={() => {
+                setDropdownOpen(false);
+                // Clear the SWR cache so a different user signing in on
+                // the same device doesn't briefly see the previous user's
+                // data hydrated from localStorage.
+                cacheClear();
+                signOut({ callbackUrl: '/login' });
+              }}
               className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-t border-gray-100 dark:border-slate-800"
             >
               <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

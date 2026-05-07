@@ -25,7 +25,9 @@ export default function InsightsPage() {
   const role = (session?.user as { role?: string })?.role ?? '';
   const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(role);
 
-  const { saleRecords, opportunities, activities, accounts, tasks, loading } = useCRM();
+  // /insights charts depend on saleRecords — wait for the non-critical
+  // phase too. Other pages that don't read saleRecords ignore loadingExtras.
+  const { saleRecords, opportunities, activities, accounts, tasks, loading, loadingExtras } = useCRM();
   const { users } = useUsers();
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -185,7 +187,8 @@ export default function InsightsPage() {
     }
   }
 
-  if (loading) return <LoadingSpinner />;
+  // Wait for both phases — insights depends on saleRecords (loadingExtras).
+  if (loading || loadingExtras) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">

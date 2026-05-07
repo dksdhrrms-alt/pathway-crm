@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { AppUser, UserRole, UserStatus } from './users';
 import { dbGetUsers, dbUpdateUser, dbCreateUser } from './db';
+import { cacheGet, cacheSet, CACHE_KEYS } from './cache';
 
 interface UserContextType {
   users: AppUser[];
@@ -17,14 +18,29 @@ const UserContext = createContext<UserContextType | null>(null);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
-  const [users, setUsers] = useState<AppUser[]>([]);
+  // SWR: hydrate from localStorage so the user list (used by avatars,
+  // filters, badges, etc.) renders immediately on cold start instead of
+  // waiting for the dbGetUsers() roundtrip — which used to land at the
+  // same time as the seven CRMContext fetches and contend for bandwidth.
+  const [users, setUsers] = useState<AppUser[]>(() => cacheGet<AppUser[]>(CACHE_KEYS.users) ?? []);
+  // Idempotency guard. StrictMode + provider re-renders used to fire
+  // dbGetUsers() multiple times during the cold-start window, doubling
+  // the effective server load for users data.
+  const fetchedRef = useRef(false);
 
   const syncUsers = useCallback(async () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     try {
       const dbUsers = await dbGetUsers();
-      if (dbUsers.length > 0) setUsers(dbUsers);
+      if (dbUsers.length > 0) {
+        setUsers(dbUsers);
+        cacheSet(CACHE_KEYS.users, dbUsers);
+      }
     } catch (err) {
       console.error('Failed to load users:', err);
+      // Allow retry on next mount cycle if this failed.
+      fetchedRef.current = false;
     }
   }, []);
 
