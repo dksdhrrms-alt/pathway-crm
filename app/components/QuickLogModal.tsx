@@ -138,7 +138,14 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         justifyContent: 'center', padding: '16px',
       }}
     >
-      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px' }} className="dark:bg-slate-900">
+      {/*
+        maxHeight 90vh + overflowY auto: the form has grown long enough
+        (type, subject, description, contacts list, internal participants,
+        date) that on smaller viewports the Save/Cancel buttons used to
+        sit below the fold with no way to scroll. Cap the modal at 90%
+        of viewport and scroll inside the modal itself.
+      */}
+      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px', maxHeight: '90vh', overflowY: 'auto' }} className="dark:bg-slate-900">
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>

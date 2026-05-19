@@ -87,7 +87,7 @@ export default function NewTaskModal({
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Task</h2>
           <button

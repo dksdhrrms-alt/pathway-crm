@@ -126,7 +126,16 @@ export default function LogActivityModal({
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
       tabIndex={-1}
     >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6">
+      {/*
+        max-h-[90vh] + overflow-y-auto: the form has grown long (account,
+        contacts list, subject, description, internal-participants
+        checkboxes, date, …) and used to overflow the viewport on
+        smaller screens — Save/Cancel buttons at the bottom would be
+        unreachable. Cap the modal at 90% of viewport height and scroll
+        inside the modal itself, so the backdrop stays fully covered
+        and the user can always reach the footer.
+      */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Log Activity</h2>
           <button
