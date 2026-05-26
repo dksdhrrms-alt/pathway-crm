@@ -78,6 +78,13 @@ function ScanCardIcon() {
 function InsightsIcon() {
   return <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>;
 }
+function ArchiveIcon() {
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+    </svg>
+  );
+}
 function AdminIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -139,12 +146,18 @@ export default function Sidebar() {
   // Build menu from navItems + permission check
   const menuMap: Record<string, string> = {
     '/dashboard': 'home', '/accounts': 'accounts', '/contacts': 'contacts',
-    '/opportunities': 'opportunities', '/tasks': 'tasks', '/reports': 'reports',
+    '/opportunities': 'opportunities', '/tasks': 'tasks',
+    '/archive': 'archive',
+    '/reports': 'reports',
     '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
   };
 
   const allItems = [
     ...navItems,
+    // Archive sits right after Tasks: it's a personal log of everything
+    // the user recorded. Available to every role (see useMenuAccess
+    // ROLE_DEFAULTS — `archive` is in every set).
+    { href: '/archive' as const, label: 'Archive', icon: ArchiveIcon },
     { href: '/reports' as const, label: 'Reports', icon: ReportsIcon },
     { href: '/insights' as const, label: 'Insights', icon: InsightsIcon },
     { href: '/scan-card' as const, label: 'Scan Card', icon: ScanCardIcon },

@@ -4,14 +4,18 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase, supabaseEnabled } from '@/lib/supabase';
 
+// `archive` is everyone's own personal log — included in every role's
+// default set so each user can always see their own activity history.
+// Admin/CEO/etc. additionally get a user picker on the Archive page to
+// view other people's archives (gated server-side / page-side, not here).
 const ROLE_DEFAULTS: Record<string, Set<string>> = {
-  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard']),
-  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights', 'sales', 'sales_dashboard']),
-  sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks']),
-  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'reports', 'insights']),
+  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
+  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights', 'sales', 'sales_dashboard']),
+  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights', 'sales', 'sales_dashboard']),
+  sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive']),
+  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'reports', 'insights']),
 };
 
 const FULL_ACCESS = ['admin', 'administrative_manager', 'ceo'];
