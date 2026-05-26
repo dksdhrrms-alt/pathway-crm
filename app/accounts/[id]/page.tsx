@@ -13,6 +13,7 @@ import NewTaskModal from '@/app/components/NewTaskModal';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import EditAccountModal from '@/app/components/EditAccountModal';
+import { downloadAccountWorkbook } from '@/lib/exportAccount';
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -256,6 +257,48 @@ export default function AccountDetailPage() {
                   }}
                 >
                   Edit
+                </button>
+                {/*
+                  Export Excel: bundles everything we have for this account
+                  (profile, activities, contacts, deals, tasks, purchase
+                  history) into a single 6-sheet workbook. Useful for
+                  handovers, QBR prep, and pre-delete backups. The
+                  aggregate*/children-rolled-up data sets above already
+                  account for parent/child accounts, so the export reflects
+                  what the user sees on this page.
+                */}
+                <button
+                  onClick={() => {
+                    if (!account) return;
+                    const today = new Date().toISOString().split('T')[0];
+                    const safeName = account.name.replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 60);
+                    downloadAccountWorkbook(
+                      {
+                        account,
+                        contacts: accountContacts,
+                        opportunities: allAccountOpps,
+                        activities: accountActivities,
+                        tasks: accountTasks,
+                        saleRecords: accountSales,
+                        users,
+                        allAccounts: accounts,
+                      },
+                      `account-${safeName}-${today}.xlsx`,
+                    );
+                  }}
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'transparent', color: 'white',
+                    cursor: 'pointer', fontSize: '13px',
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  }}
+                  title="Download 6-sheet Excel: Profile, Activities, Contacts, Opportunities, Tasks, Purchase History"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export
                 </button>
                 <button
                   onClick={() => setShowTaskModal(true)}
