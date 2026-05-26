@@ -20,6 +20,7 @@ import EditOpportunityModal from '@/app/components/EditOpportunityModal';
 import ViewTabs from '@/app/components/ViewTabs';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
 import { useViewFilter } from '@/hooks/useViewFilter';
+import { downloadOpportunitiesWorkbook } from '@/lib/exportOpportunities';
 
 const TODAY = new Date().toISOString().split('T')[0];
 const STAGES: Stage[] = [
@@ -186,6 +187,36 @@ export default function OpportunitiesPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <ViewTabs activeView={activeView} onChange={setActiveView} teamLabel={teamLabel} showCompany={canViewCompany} showTeam={canViewTeam} />
+              {/*
+                Export uses *oppList* (the post-owner-filter list shown on
+                screen), not the full unfiltered opportunities array.
+                "Export what I see" is the least-surprising behavior — if
+                a user filters to Personal + Owner=Dave and clicks Export,
+                they get Dave's personal pipeline, not the company's.
+                Workbook structure: see lib/exportOpportunities.ts.
+              */}
+              <button
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const filterTag = ownerFilter === 'all' ? '' : `-${(users.find((u) => u.id === ownerFilter)?.name ?? 'owner').replace(/\s+/g, '_')}`;
+                  downloadOpportunitiesWorkbook(
+                    {
+                      opportunities: oppList,
+                      accounts,
+                      users,
+                      scopeLabel: `${viewLabel}${ownerFilter !== 'all' ? ` · ${users.find((u) => u.id === ownerFilter)?.name ?? ''}` : ''}`,
+                    },
+                    `opportunities-pipeline-${viewLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_')}${filterTag}-${today}.xlsx`,
+                  );
+                }}
+                className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5"
+                title="Download multi-sheet Excel workbook (Summary, All Deals, By Stage, Forecast, Closed History)"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Excel
+              </button>
               <button
                 onClick={() => setShowNewModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
