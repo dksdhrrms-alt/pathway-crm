@@ -339,13 +339,14 @@ export default function AccountDetailPage() {
           </div>
 
           {/* ========== SUMMARY ========== */}
-          <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="dark:bg-slate-900 dark:border-slate-700">
+          <div style={{ border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="bg-white dark:bg-slate-900 dark:border-slate-700">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Summary</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Summary</h3>
               {!editingNotes ? (
                 <button
                   onClick={() => { setNotesDraft(account.notes || ''); setEditingNotes(true); }}
-                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #1a4731', color: '#1a4731', background: 'white', cursor: 'pointer' }}
+                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #1a4731', color: '#1a4731', cursor: 'pointer' }}
+                  className="bg-white dark:bg-slate-900"
                 >
                   {account.notes ? 'Edit' : '+ Add Summary'}
                 </button>
@@ -353,7 +354,8 @@ export default function AccountDetailPage() {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => setEditingNotes(false)}
-                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#6b7280', background: 'white', cursor: 'pointer' }}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #d1d5db', color: '#6b7280', cursor: 'pointer' }}
+                    className="bg-white dark:bg-slate-900 dark:border-slate-600"
                   >
                     Cancel
                   </button>
@@ -427,10 +429,10 @@ export default function AccountDetailPage() {
             }
 
             return (
-              <div style={{ background: 'white', border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="dark:bg-slate-900 dark:border-slate-700">
+              <div style={{ border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="bg-white dark:bg-slate-900 dark:border-slate-700">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Complexes ({totalChildren})</h3>
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Complexes ({totalChildren})</h3>
                     <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>Sorted by pipeline contribution · highest first</p>
                   </div>
                 </div>
@@ -563,20 +565,21 @@ export default function AccountDetailPage() {
               {/* Activity Timeline */}
               <div
                 style={{
-                  background: 'white', border: '0.5px solid #e5e7eb',
+                  border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px', marginBottom: '20px',
                 }}
-                className="dark:bg-slate-900 dark:border-slate-700"
+                className="bg-white dark:bg-slate-900 dark:border-slate-700"
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Activity Timeline</h3>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Activity Timeline</h3>
                   <button
                     onClick={() => setShowLogModal(true)}
                     style={{
                       fontSize: '12px', padding: '5px 12px', borderRadius: '6px',
                       border: '1px solid #1a4731', color: '#1a4731',
-                      background: 'white', cursor: 'pointer',
+                      cursor: 'pointer',
                     }}
+                    className="bg-white dark:bg-slate-900"
                   >
                     + Log
                   </button>
@@ -703,13 +706,13 @@ export default function AccountDetailPage() {
               {/* Purchase History */}
               <div
                 style={{
-                  background: 'white', border: '0.5px solid #e5e7eb',
+                  border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px',
                 }}
-                className="dark:bg-slate-900 dark:border-slate-700"
+                className="bg-white dark:bg-slate-900 dark:border-slate-700"
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Purchase History</h3>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Purchase History</h3>
                   <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
                     {([['list', 'List'], ['quarterly', 'Q Compare']] as const).map(([v, l]) => (
                       <button key={v} onClick={() => setPurchaseView(v)}
@@ -865,7 +868,8 @@ export default function AccountDetailPage() {
                           )}
                           {products.length > 1 && (
                             <select value={purchaseProduct} onChange={(e) => setPurchaseProduct(e.target.value)}
-                              style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '3px 8px', background: 'white' }}>
+                              className="bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
+                              style={{ fontSize: '11px', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '3px 8px' }}>
                               <option value="all">All Products</option>
                               {products.map((p) => <option key={p} value={p}>{p}</option>)}
                             </select>
@@ -946,11 +950,12 @@ export default function AccountDetailPage() {
               {/* Key Contacts */}
               <div
                 style={{
-                  background: 'white', border: '0.5px solid #e5e7eb',
+                  border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px', marginBottom: '16px',
                 }}
+                className="bg-white dark:bg-slate-900 dark:border-slate-700"
               >
-                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>Key Contacts</h3>
+                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Key Contacts</h3>
                 {accountContacts.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px' }}>No contacts yet.</div>
                 ) : (
@@ -1024,11 +1029,12 @@ export default function AccountDetailPage() {
               {/* Open Deals */}
               <div
                 style={{
-                  background: 'white', border: '0.5px solid #e5e7eb',
+                  border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px', marginBottom: '16px',
                 }}
+                className="bg-white dark:bg-slate-900 dark:border-slate-700"
               >
-                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>Open Deals</h3>
+                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Open Deals</h3>
                 {openDeals.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px' }}>No open deals.</div>
                 ) : (
@@ -1071,12 +1077,12 @@ export default function AccountDetailPage() {
               {/* Open Tasks */}
               <div
                 style={{
-                  background: 'white', border: '0.5px solid #e5e7eb',
+                  border: '0.5px solid #e5e7eb',
                   borderRadius: '12px', padding: '20px',
                 }}
-                className="dark:bg-slate-900 dark:border-slate-700"
+                className="bg-white dark:bg-slate-900 dark:border-slate-700"
               >
-                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }}>Open Tasks</h3>
+                <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Open Tasks</h3>
                 {accountTasks.filter((t) => t.status !== 'Completed').length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px' }}>No open tasks.</div>
                 ) : (
@@ -1181,8 +1187,8 @@ export default function AccountDetailPage() {
             background: 'rgba(0,0,0,0.4)',
           }}
         >
-          <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '380px', margin: '0 16px', padding: '24px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>Delete Account</h2>
+          <div style={{ borderRadius: '12px', width: '100%', maxWidth: '380px', margin: '0 16px', padding: '24px' }} className="bg-white dark:bg-slate-900">
+            <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }} className="text-gray-900 dark:text-gray-100">Delete Account</h2>
             <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
               Are you sure you want to delete <strong>{account.name}</strong>?
             </p>

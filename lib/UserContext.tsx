@@ -33,9 +33,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     fetchedRef.current = true;
     try {
       const dbUsers = await dbGetUsers();
-      if (dbUsers.length > 0) {
-        setUsers(dbUsers);
-        cacheSet(CACHE_KEYS.users, dbUsers);
+      // Defense in depth: even though dbGetUsers() now selects an explicit
+      // column list that excludes `password`, scrub it here too. The cached
+      // value lands in localStorage — we never want password material to
+      // sit there if a future code change reintroduces it server-side.
+      const safeUsers = dbUsers.map(({ password: _password, ...u }) => u as AppUser);
+      if (safeUsers.length > 0) {
+        setUsers(safeUsers);
+        cacheSet(CACHE_KEYS.users, safeUsers);
       }
     } catch (err) {
       console.error('Failed to load users:', err);

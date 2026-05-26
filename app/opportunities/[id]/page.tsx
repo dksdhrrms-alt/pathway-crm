@@ -106,7 +106,7 @@ export default function OpportunityDetailPage() {
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 mb-6 mt-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{opp.name}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{opp.name}</h1>
                 <div className="flex flex-wrap items-center gap-3 mt-2">
                   {account && (
                     <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline" style={{ color: '#2d6a4f' }}>
@@ -114,16 +114,16 @@ export default function OpportunityDetailPage() {
                     </Link>
                   )}
                   <StageBadge stage={opp.stage} />
-                  <span className="text-sm font-bold text-gray-800">{formatCurrency(opp.amount)}</span>
-                  <span className="text-sm text-gray-500">Close: {formatDate(opp.closeDate)}</span>
-                  <span className="text-sm text-gray-500">{opp.probability}% probability</span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-100">{formatCurrency(opp.amount)}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Close: {formatDate(opp.closeDate)}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{opp.probability}% probability</span>
                   {isAdmin ? (
                     <span className="flex items-center gap-1.5">
-                      <span className="text-sm text-gray-500">Owner:</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Owner:</span>
                       <select
                         value={currentOwnerId}
                         onChange={(e) => handleOwnerChange(e.target.value)}
-                        className="text-sm font-medium border border-gray-200 rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 bg-white"
+                        className="text-sm font-medium border border-gray-200 dark:border-slate-600 rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 bg-white dark:bg-slate-800 dark:text-gray-100"
                         style={{ color: '#1a4731' }}
                       >
                         {allUsers.map((u) => (
@@ -132,25 +132,25 @@ export default function OpportunityDetailPage() {
                       </select>
                     </span>
                   ) : (
-                    <span className="text-sm text-gray-500">Owner: {getOwnerName(currentOwnerId)}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Owner: {getOwnerName(currentOwnerId)}</span>
                   )}
                 </div>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowEditModal(true)}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1">
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   Edit
                 </button>
                 <button
                   onClick={() => setShowTaskModal(true)}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors"
                 >
                   + New Task
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-3 py-2 text-sm font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-3 py-2 text-sm font-medium border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   Delete
                 </button>
@@ -158,18 +158,18 @@ export default function OpportunityDetailPage() {
             </div>
 
             {/* Key fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100 dark:border-slate-700">
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Next Step</p>
-                <p className="text-sm text-gray-700 mt-1">{opp.nextStep || '—'}</p>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Next Step</p>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{opp.nextStep || '—'}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Lead Source</p>
-                <p className="text-sm text-gray-700 mt-1">{opp.leadSource || '—'}</p>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Lead Source</p>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{opp.leadSource || '—'}</p>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Created Date</p>
-                <p className="text-sm text-gray-700 mt-1">{formatDate(opp.createdDate)}</p>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Created Date</p>
+                <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{formatDate(opp.createdDate)}</p>
               </div>
             </div>
           </div>
@@ -178,13 +178,13 @@ export default function OpportunityDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Contact Roles */}
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Contact Roles</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Contact Roles</h2>
               {oppContacts.length === 0 ? (
-                <p className="text-sm text-gray-400">No contacts linked.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No contacts linked.</p>
               ) : (
                 <ul className="space-y-3">
                   {oppContacts.map((c) => (
-                    <li key={c.id} className="flex items-center gap-3 pb-3 border-b border-gray-50 last:border-0">
+                    <li key={c.id} className="flex items-center gap-3 pb-3 border-b border-gray-50 dark:border-slate-800 last:border-0">
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
                         style={{ backgroundColor: '#2d6a4f' }}
@@ -194,12 +194,12 @@ export default function OpportunityDetailPage() {
                       <div>
                         <Link
                           href={`/contacts/${c.id}`}
-                          className="text-sm font-medium hover:underline"
+                          className="text-sm font-medium hover:underline dark:!text-emerald-400"
                           style={{ color: '#1a4731' }}
                         >
                           {c.firstName} {c.lastName}
                         </Link>
-                        <p className="text-xs text-gray-500">{c.title}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{c.title}</p>
                       </div>
                     </li>
                   ))}
@@ -209,32 +209,32 @@ export default function OpportunityDetailPage() {
 
             {/* Related Tasks */}
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Related Tasks</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Related Tasks</h2>
               {relatedTasks.length === 0 ? (
-                <p className="text-sm text-gray-400">No tasks linked.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">No tasks linked.</p>
               ) : (
                 <ul className="space-y-2">
                   {relatedTasks.map((task) => {
                     const isOverdue = task.dueDate < TODAY && task.status === 'Open';
                     return (
-                      <li key={task.id} className="pb-2 border-b border-gray-50 last:border-0">
+                      <li key={task.id} className="pb-2 border-b border-gray-50 dark:border-slate-800 last:border-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium text-gray-800">{task.subject}</p>
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{task.subject}</p>
                           <span
                             className={`text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
                               task.status === 'Completed'
-                                ? 'bg-green-50 text-green-600'
+                                ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300'
                                 : task.priority === 'High'
-                                ? 'bg-red-50 text-red-600'
+                                ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300'
                                 : task.priority === 'Medium'
-                                ? 'bg-amber-50 text-amber-600'
-                                : 'bg-gray-50 text-gray-500'
+                                ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300'
+                                : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {task.status === 'Completed' ? 'Done' : task.priority}
                           </span>
                         </div>
-                        <span className={`text-xs ${isOverdue ? 'text-red-600' : 'text-gray-400'}`}>
+                        <span className={`text-xs ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
                           {task.status === 'Completed' ? 'Completed' : `Due ${formatDate(task.dueDate)}`}
                           {isOverdue ? ' (overdue)' : ''}
                         </span>
@@ -247,9 +247,9 @@ export default function OpportunityDetailPage() {
           </div>
 
           {/* Activity Timeline */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-gray-900">Activity Timeline</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Activity Timeline</h2>
               <button
                 onClick={() => setShowLogModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
@@ -266,8 +266,8 @@ export default function OpportunityDetailPage() {
             />
 
             {/* Deal Comments */}
-            <div className="mt-6 pt-4 border-t border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Deal Comments</h3>
+            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Deal Comments</h3>
               <CommentThread parentType="opportunity" parentId={oppId} />
             </div>
           </div>
@@ -306,7 +306,7 @@ export default function OpportunityDetailPage() {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
               >
                 Cancel
               </button>

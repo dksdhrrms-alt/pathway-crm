@@ -8,7 +8,7 @@ import { Activity, ActivityType } from '@/lib/data';
 import { getRoleLabel, UserTeam } from '@/lib/users';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DateRange = '7d' | '30d' | '90d' | 'custom';
 type ActivityFilter = 'all' | ActivityType;
@@ -1035,7 +1035,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   <Tooltip />
                   <Bar dataKey="total" name="Total Activities" radius={[0, 4, 4, 0]}>
                     {teamStats.map((t, i) => (
-                      <rect key={i} fill={t.color} />
+                      <Cell key={i} fill={t.color} />
                     ))}
                   </Bar>
                 </BarChart>

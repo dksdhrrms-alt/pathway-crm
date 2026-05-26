@@ -145,7 +145,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         sit below the fold with no way to scroll. Cap the modal at 90%
         of viewport and scroll inside the modal itself.
       */}
-      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px', maxHeight: '90vh', overflowY: 'auto' }} className="dark:bg-slate-900">
+      <div style={{ borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px', maxHeight: '90vh', overflowY: 'auto' }} className="bg-white dark:bg-slate-900">
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
@@ -168,11 +168,11 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               style={{
                 padding: '10px 4px', borderRadius: '10px',
                 border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
-                background: type === t.id ? '#f0f7ee' : 'white',
+                background: type === t.id ? '#f0f7ee' : undefined,
                 cursor: 'pointer', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: '4px',
               }}
-              className="dark:border-slate-600 dark:bg-slate-800"
+              className={type === t.id ? 'dark:border-emerald-500 dark:bg-emerald-900/30' : 'bg-white dark:border-slate-600 dark:bg-slate-800'}
             >
               <span style={{ fontSize: '20px' }}>{t.emoji}</span>
               <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
@@ -191,10 +191,10 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             style={{
               padding: '10px 10px', fontSize: '13px',
               border: '1px solid #e5e7eb', borderRadius: '8px',
-              boxSizing: 'border-box', background: 'white',
+              boxSizing: 'border-box',
               color: '#1f2937', fontFamily: 'inherit',
             }}
-            className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
+            className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
           />
           <select
             value={purpose}
@@ -202,10 +202,10 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             style={{
               width: '100%', padding: '10px 12px', fontSize: '13px',
               border: '1px solid #e5e7eb', borderRadius: '8px',
-              boxSizing: 'border-box', background: 'white', cursor: 'pointer',
+              boxSizing: 'border-box', cursor: 'pointer',
               color: purpose ? '#1f2937' : '#9ca3af',
             }}
-            className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
           >
             <option value="">— Purpose (optional) —</option>
             {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }} className="dark:bg-slate-800 dark:text-gray-100">{p}</option>)}
@@ -244,9 +244,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               fontSize: '14px',
               border: accountId ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
               borderRadius: '8px', boxSizing: 'border-box',
-              background: accountId ? '#f0f7ee' : 'white',
+              background: accountId ? '#f0f7ee' : undefined,
             }}
-            className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className={accountId ? 'dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
           />
           {accountName && (
             <button
@@ -263,10 +263,10 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           {showAccountDD && accountSearch && filteredAccounts.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-              background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px',
+              border: '1px solid #e5e7eb', borderRadius: '8px',
               boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10001,
               maxHeight: '220px', overflowY: 'auto',
-            }}>
+            }} className="bg-white dark:bg-slate-800 dark:border-slate-600">
               {filteredAccounts.map((a) => (
                 <div
                   key={a.id}
@@ -278,7 +278,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
                   }}
                   className="dark:border-slate-700 dark:text-gray-200"
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
                 >
                   <div style={{
                     width: '30px', height: '30px', borderRadius: '6px', background: '#1a4731',
@@ -321,9 +321,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               fontSize: '14px',
               border: selectedContactObjs.length > 0 ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
               borderRadius: '8px', boxSizing: 'border-box',
-              background: selectedContactObjs.length > 0 ? '#f0f7ee' : 'white',
+              background: selectedContactObjs.length > 0 ? '#f0f7ee' : undefined,
             }}
-            className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+            className={selectedContactObjs.length > 0 ? 'dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
           />
           {contactSearch && (
             <button
@@ -342,10 +342,10 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           {showContactDD && contactSearch && filteredContacts.length > 0 && (
             <div style={{
               position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
-              background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px',
+              border: '1px solid #e5e7eb', borderRadius: '8px',
               boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10001,
               maxHeight: '220px', overflowY: 'auto',
-            }}>
+            }} className="bg-white dark:bg-slate-800 dark:border-slate-600">
               {filteredContacts.map((c) => {
                 const fullName = `${c.firstName} ${c.lastName}`;
                 const acctName = c.accountName || accounts.find((a) => a.id === c.accountId)?.name || '';
@@ -368,7 +368,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
                     }}
                     className="dark:border-slate-700 dark:text-gray-200"
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
                   >
                     <div style={{
                       width: '30px', height: '30px', borderRadius: '50%', background: '#185FA5',
@@ -425,10 +425,10 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               style={{
                 width: '100%', padding: '10px 12px', fontSize: '13px',
                 border: '1px solid #e5e7eb', borderRadius: '8px',
-                background: 'white', cursor: 'pointer', boxSizing: 'border-box',
+                cursor: 'pointer', boxSizing: 'border-box',
                 color: '#1f2937', fontFamily: 'inherit',
               }}
-              className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
+              className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
               {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </div>
@@ -442,13 +442,13 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             style={{
               width: '100%', padding: '8px 12px', fontSize: '12px',
               border: '1px solid #e5e7eb', borderRadius: '8px',
-              background: internalParticipants.size > 0 ? '#eff6ff' : 'white',
+              background: internalParticipants.size > 0 ? '#eff6ff' : undefined,
               borderColor: internalParticipants.size > 0 ? '#bfdbfe' : '#e5e7eb',
               color: internalParticipants.size > 0 ? '#1e40af' : '#666',
               cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', fontFamily: 'inherit',
             }}
-            className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-300"
+            className={internalParticipants.size > 0 ? 'dark:border-blue-700 dark:bg-blue-900/30 dark:text-blue-200' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-300'}
           >
             <span>👥 Internal Participants {internalParticipants.size > 0 && `(${internalParticipants.size})`}</span>
             <span style={{ transform: showParticipants ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>▼</span>
@@ -458,7 +458,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               {activeUsers.filter((u) => u.id !== session?.user?.id).map((u) => (
                 <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '0.5px solid #f3f4f6' }} className="dark:border-slate-700 dark:text-gray-200"
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}>
+                  onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}>
                   <input type="checkbox" checked={internalParticipants.has(u.id)} onChange={() => toggleParticipant(u.id)} className="dark:bg-slate-700 dark:border-slate-600" />
                   <span>{u.name}</span>
                 </label>

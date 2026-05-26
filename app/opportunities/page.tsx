@@ -375,10 +375,10 @@ export default function OpportunitiesPage() {
                                       </div>
                                       {/* Deal aging + last activity */}
                                       <div className="flex items-center gap-2 mt-1.5">
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${createdDays > 60 ? 'bg-red-50 text-red-600' : createdDays > 30 ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-500'}`}>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${createdDays > 60 ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300' : createdDays > 30 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-gray-50 text-gray-500 dark:bg-slate-700 dark:text-gray-300'}`}>
                                           {createdDays}d old
                                         </span>
-                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isStale ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isStale ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-300'}`}>
                                           {daysSinceAct === 999 ? 'No activity' : daysSinceAct === 0 ? 'Today' : `${daysSinceAct}d ago`}
                                         </span>
                                       </div>
@@ -387,7 +387,7 @@ export default function OpportunitiesPage() {
                                           Close: {formatDate(opp.closeDate)}
                                         </p>
                                         <div
-                                          className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold flex items-center justify-center"
+                                          className="w-6 h-6 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300 text-[10px] font-semibold flex items-center justify-center"
                                           title={getOwnerName(opp.ownerId)}
                                         >
                                           {getOwnerInitials(opp.ownerId)}

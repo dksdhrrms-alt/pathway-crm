@@ -37,7 +37,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
 
   function handleStageChange(s: Stage) { setStage(s); setProbability(STAGE_PROB[s] ?? probability); }
 
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
 
@@ -58,20 +58,18 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
       // Use updateOpportunityStage for stage changes, and direct db update for everything else
       if (stage !== opportunity.stage) updateOpportunityStage(opportunity.id, stage);
 
-      // Update all fields via db
-      import('@/lib/db').then(({ dbUpdateOpportunity }) => {
-        dbUpdateOpportunity(opportunity.id, updates).catch(console.error);
-      });
-
-      // Update local context
-      const { useCRM: _ } = require('@/lib/CRMContext');
-      void _;
-      // The parent will handle context update via onSaved callback
+      // Await the DB write so onSaved() runs after persistence.
+      // Previously the import().then() promise was fire-and-forget while
+      // onSaved()/onClose() ran synchronously — the parent's window.location.reload()
+      // could fire before dbUpdateOpportunity() committed, dropping the edit.
+      const { dbUpdateOpportunity } = await import('@/lib/db');
+      await dbUpdateOpportunity(opportunity.id, updates);
 
       onSaved();
       onClose();
     } catch (err) {
-      console.error('EditOpportunityModal save failed:', err);
+      console.error('Edit opportunity failed:', err);
+      alert('Failed to save changes. Please try again.');
       setSubmitting(false);
     }
   }

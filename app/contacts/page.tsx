@@ -315,7 +315,7 @@ function ContactsPageInner() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <ExportButton filename={`contacts-${new Date().toISOString().split('T')[0]}`} title="Contacts" columns={exportColumns} rows={filtered} />
-              <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
+              <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1a4731' }}>+ New Contact</button>
             </div>
           </div>

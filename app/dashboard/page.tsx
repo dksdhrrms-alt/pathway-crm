@@ -85,6 +85,19 @@ export default function DashboardPage() {
   const [showNewAccount, setShowNewAccount] = useState(false);
   const [showNewContact, setShowNewContact] = useState(false);
 
+  // Date/greeting must be computed client-side only — calling `new Date()` directly
+  // inside JSX caused React hydration error #418 because SSR and CSR ran at
+  // different wall-clock instants (different date strings + different hour buckets).
+  const [currentTimeLabel, setCurrentTimeLabel] = useState<{ date: string; greeting: string }>({ date: '', greeting: 'Good morning' });
+  useEffect(() => {
+    const now = new Date();
+    const h = now.getHours();
+    setCurrentTimeLabel({
+      date: now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+      greeting: h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening',
+    });
+  }, []);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem('quota_target');
@@ -248,9 +261,9 @@ export default function DashboardPage() {
           {/* ============ NEW HEADER ============ */}
           <div className="mt-6 mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{currentTimeLabel.date}</p>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; })()},{' '}
+                {currentTimeLabel.greeting},{' '}
                 <span style={{ color: '#1a4731' }}>{userName.split(' ')[0] || 'there'}</span>
                 <span className="text-gray-400">.</span>
               </h1>
@@ -295,7 +308,7 @@ export default function DashboardPage() {
               { id: 'contact', label: 'New Contact', sub: 'Add a person', emoji: '👤', onClick: () => setShowNewContact(true) },
             ].map((a) => (
               <button key={a.id} onClick={a.onClick} className="text-left">
-                <div className="bg-white border border-gray-200 hover:border-green-400 hover:shadow-md transition-all rounded-xl p-4 cursor-pointer h-full">
+                <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 hover:border-green-400 dark:hover:border-green-500 hover:shadow-md transition-all rounded-xl p-4 cursor-pointer h-full">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0" style={{ backgroundColor: '#f0f7ee' }}>{a.emoji}</div>
                     <div className="flex-1 min-w-0">

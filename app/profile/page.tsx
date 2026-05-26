@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
@@ -18,9 +18,22 @@ export default function ProfilePage() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(currentUser?.profilePhoto ?? null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(currentUser?.profilePhoto ?? null);
 
+  // currentUser hydrates asynchronously (UserContext fetches dbGetUsers on
+  // mount). Without this effect the form keeps stale empty values from the
+  // initial render and editing the profile would clobber the real name/phone
+  // with empty strings.
+  useEffect(() => {
+    if (!currentUser) return;
+    setName(currentUser.name ?? '');
+    setPhone(currentUser.phone ?? '');
+    setProfilePhoto(currentUser.profilePhoto ?? null);
+    setPhotoPreview(currentUser.profilePhoto ?? null);
+  }, [currentUser]);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
 
   const [infoErrors, setInfoErrors] = useState<Record<string, string>>({});
   const [pwErrors, setPwErrors] = useState<Record<string, string>>({});
@@ -71,13 +84,10 @@ export default function ProfilePage() {
     setToast('Profile updated successfully');
   }
 
-  function handleUpdatePassword(e: React.FormEvent) {
+  async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!currentPassword) errs.currentPassword = 'Current password is required.';
-    else if (currentUser?.password && currentPassword !== currentUser.password) {
-      errs.currentPassword = 'Current password is incorrect.';
-    }
     if (!newPassword) errs.newPassword = 'New password is required.';
     else if (newPassword.length < 8) errs.newPassword = 'Password must be at least 8 characters.';
     if (!confirmNewPassword) errs.confirmNewPassword = 'Please confirm your new password.';
@@ -85,11 +95,60 @@ export default function ProfilePage() {
     setPwErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    updateCurrentUser({ password: newPassword });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmNewPassword('');
-    setToast('Password updated successfully');
+    setPwSubmitting(true);
+    try {
+      // All credential verification happens server-side now. The previous
+      // implementation compared the typed password against the client-cached
+      // user record, which (a) required shipping the password hash to the
+      // browser and (b) could not work once passwords were bcrypt-hashed.
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          confirm: confirmNewPassword,
+        }),
+      });
+
+      if (!res.ok) {
+        let message = 'Could not update password.';
+        try {
+          const body = (await res.json()) as { error?: string };
+          if (body?.error) message = body.error;
+        } catch {
+          // Non-JSON error body — fall back to the generic message.
+        }
+
+        if (res.status === 401) {
+          setPwErrors({ currentPassword: message });
+        } else if (res.status === 400) {
+          // Validation errors from zod come back as `Invalid <field>: <msg>`.
+          // Map them to the right input where we can; otherwise show on the
+          // new-password field as a catch-all.
+          if (/currentPassword/i.test(message)) {
+            setPwErrors({ currentPassword: message });
+          } else if (/confirm/i.test(message)) {
+            setPwErrors({ confirmNewPassword: message });
+          } else {
+            setPwErrors({ newPassword: message });
+          }
+        } else {
+          setPwErrors({ newPassword: message });
+        }
+        return;
+      }
+
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setToast('Password updated successfully');
+    } catch (err) {
+      console.error('[profile] password update threw:', err);
+      setPwErrors({ newPassword: 'Network error. Please try again.' });
+    } finally {
+      setPwSubmitting(false);
+    }
   }
 
   return (
@@ -100,11 +159,11 @@ export default function ProfilePage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Profile</h1>
 
           {/* Section A: Profile Photo */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 mb-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-5">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Profile Photo</h2>
             <div className="flex items-center gap-5">
               <div
-                className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden border-2 border-gray-200"
+                className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden border-2 border-gray-200 dark:border-slate-700"
                 style={{ backgroundColor: photoPreview ? 'transparent' : primaryColor }}
               >
                 {photoPreview ? (
@@ -117,7 +176,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
                 >
                   Change Photo
                 </button>
@@ -125,12 +184,12 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
-                    className="text-sm text-gray-400 hover:text-red-500 transition-colors text-left"
+                    className="text-sm text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors text-left"
                   >
                     Remove Photo
                   </button>
                 )}
-                <p className="text-xs text-gray-400">Initials shown if no photo selected</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Initials shown if no photo selected</p>
               </div>
               <input
                 ref={fileInputRef}
@@ -143,46 +202,46 @@ export default function ProfilePage() {
           </div>
 
           {/* Section B: Personal Information */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-6 mb-5">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-5">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Personal Information</h2>
             <form onSubmit={handleSaveInfo} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => { setName(e.target.value); setInfoErrors((p) => ({ ...p, name: '' })); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                {infoErrors.name && <p className="text-xs text-red-600 mt-1">{infoErrors.name}</p>}
+                {infoErrors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{infoErrors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
                 <input
                   type="email"
                   value={session?.user?.email ?? ''}
                   disabled
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-400 cursor-not-allowed"
+                  className="w-full border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-400 mt-1">Contact admin to change email</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Contact admin to change email</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Phone Number</label>
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Role</label>
                 <div className="flex items-center gap-2">
                   <span
                     className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-white"
@@ -190,12 +249,12 @@ export default function ProfilePage() {
                   >
                     {getRoleLabel((session?.user?.role ?? 'sales') as import('@/lib/users').UserRole)}
                   </span>
-                  <span className="text-xs text-gray-400">Contact admin to change role</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Contact admin to change role</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Team</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Team</label>
                 <div className="flex items-center gap-2">
                   {currentUser?.team ? (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium" style={{
@@ -204,8 +263,8 @@ export default function ProfilePage() {
                     }}>
                       {{ monogastrics: 'Monogastrics', swine: 'Swine', ruminants: 'Ruminants', latam: 'LATAM', familyb2b: 'Family / B2B', marketing: 'Marketing', management: 'Management' }[currentUser.team] || currentUser.team}
                     </span>
-                  ) : <span className="text-sm text-gray-400">No team assigned</span>}
-                  <span className="text-xs text-gray-400">Contact admin to change team</span>
+                  ) : <span className="text-sm text-gray-400 dark:text-gray-500">No team assigned</span>}
+                  <span className="text-xs text-gray-400 dark:text-gray-500">Contact admin to change team</span>
                 </div>
               </div>
 
@@ -222,52 +281,53 @@ export default function ProfilePage() {
           </div>
 
           {/* Section C: Change Password */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Change Password</h2>
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Current Password</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => { setCurrentPassword(e.target.value); setPwErrors((p) => ({ ...p, currentPassword: '' })); }}
                   placeholder="••••••••"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                {pwErrors.currentPassword && <p className="text-xs text-red-600 mt-1">{pwErrors.currentPassword}</p>}
+                {pwErrors.currentPassword && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{pwErrors.currentPassword}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">New Password</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => { setNewPassword(e.target.value); setPwErrors((p) => ({ ...p, newPassword: '' })); }}
                   placeholder="Min. 8 characters"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                {pwErrors.newPassword && <p className="text-xs text-red-600 mt-1">{pwErrors.newPassword}</p>}
+                {pwErrors.newPassword && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{pwErrors.newPassword}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Confirm New Password</label>
                 <input
                   type="password"
                   value={confirmNewPassword}
                   onChange={(e) => { setConfirmNewPassword(e.target.value); setPwErrors((p) => ({ ...p, confirmNewPassword: '' })); }}
                   placeholder="Re-enter new password"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                {pwErrors.confirmNewPassword && <p className="text-xs text-red-600 mt-1">{pwErrors.confirmNewPassword}</p>}
+                {pwErrors.confirmNewPassword && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{pwErrors.confirmNewPassword}</p>}
               </div>
 
               <div className="flex justify-end pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity"
+                  disabled={pwSubmitting}
+                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  Update Password
+                  {pwSubmitting ? 'Updating…' : 'Update Password'}
                 </button>
               </div>
             </form>

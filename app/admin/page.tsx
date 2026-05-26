@@ -169,7 +169,7 @@ export default function AdminPage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Panel</h1>
               <span className="text-xs px-2 py-0.5 rounded-full font-semibold text-white bg-purple-600">Admin</span>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               Pathway Intermediates USA · Signed in as {session?.user?.name}
             </p>
           </div>
@@ -179,8 +179,8 @@ export default function AdminPage() {
             <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Seed Database</p>
-                  <p className="text-xs text-gray-500">Populate Supabase with demo data (only works if tables are empty)</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Seed Database</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Populate Supabase with demo data (only works if tables are empty)</p>
                 </div>
                 {!seedConfirm ? (
                   <button
@@ -195,7 +195,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setSeedConfirm(false)}
                       disabled={seeding}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                      className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -235,13 +235,13 @@ export default function AdminPage() {
             <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Secure Passwords</p>
-                  <p className="text-xs text-gray-500">Hash all plain-text passwords with bcrypt (one-time migration)</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Secure Passwords</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Hash all plain-text passwords with bcrypt (one-time migration)</p>
                 </div>
                 {!migrateConfirm ? (
                   <button
                     onClick={() => setMigrateConfirm(true)}
-                    className="shrink-0 px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    className="shrink-0 px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800/60"
                   >
                     Migrate Passwords
                   </button>
@@ -250,7 +250,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setMigrateConfirm(false)}
                       disabled={migrating}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                      className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -298,7 +298,7 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('users')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                activeTab === 'users' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'users' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               User Management
@@ -311,7 +311,7 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('permissions')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'permissions' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'permissions' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               User Permissions
@@ -319,7 +319,7 @@ export default function AdminPage() {
             <button
               onClick={() => setActiveTab('health')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-                activeTab === 'health' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'health' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
               }`}
             >
               Data Health
@@ -336,45 +336,45 @@ export default function AdminPage() {
               {/* Company totals */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Open Deals</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{totalOpenDeals}</p>
-                  <p className="text-xs text-gray-400 mt-1">Across all reps</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Open Deals</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{totalOpenDeals}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Across all reps</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Pipeline</p>
-                  <p className="text-3xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCurrency(totalPipeline)}</p>
-                  <p className="text-xs text-gray-400 mt-1">Sum of open deal values</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Pipeline</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{formatCurrency(totalPipeline)}</span></p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Sum of open deal values</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Overdue Tasks</p>
-                  <p className={`text-3xl font-bold mt-1 ${totalOverdue > 0 ? 'text-red-600' : 'text-gray-900'}`}>{totalOverdue}</p>
-                  <p className="text-xs text-gray-400 mt-1">Past due, still open</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Overdue Tasks</p>
+                  <p className={`text-3xl font-bold mt-1 ${totalOverdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100'}`}>{totalOverdue}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Past due, still open</p>
                 </div>
               </div>
 
               {/* Team table */}
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-900">Team Overview</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{allUsers.length} users</p>
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Team Overview</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{allUsers.length} users</p>
                 </div>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50">
-                      <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">User</th>
-                      <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Role</th>
-                      <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Open Deals</th>
-                      <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Pipeline Value</th>
-                      <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Open Tasks</th>
-                      <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Overdue</th>
-                      <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Last Activity</th>
+                    <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">User</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Role</th>
+                      <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Open Deals</th>
+                      <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Pipeline Value</th>
+                      <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Open Tasks</th>
+                      <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Overdue</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Activity</th>
                     </tr>
                   </thead>
                   <tbody>
                     {repStats.map(({ user, openDeals, pipelineValue, overdueTaskCount, openTaskCount, lastActivity }) => {
                       const isCurrentUser = user.id === currentUserId;
                       return (
-                        <tr key={user.id} className={`border-b border-gray-50 transition-colors ${isCurrentUser ? 'bg-green-50/40' : 'hover:bg-gray-50/60'}`}>
+                        <tr key={user.id} className={`border-b border-gray-50 dark:border-slate-800 transition-colors ${isCurrentUser ? 'bg-green-50/40 dark:bg-green-900/20' : 'hover:bg-gray-50/60 dark:hover:bg-slate-800/60'}`}>
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
                               <div
@@ -388,11 +388,11 @@ export default function AdminPage() {
                                 )}
                               </div>
                               <div>
-                                <p className="font-medium text-gray-900">
+                                <p className="font-medium text-gray-900 dark:text-gray-100">
                                   {user.name}
-                                  {isCurrentUser && <span className="ml-1.5 text-xs text-gray-400">(you)</span>}
+                                  {isCurrentUser && <span className="ml-1.5 text-xs text-gray-400 dark:text-gray-500">(you)</span>}
                                 </p>
-                                <p className="text-xs text-gray-400">{user.email}</p>
+                                <p className="text-xs text-gray-400 dark:text-gray-500">{user.email}</p>
                               </div>
                             </div>
                           </td>
@@ -402,20 +402,20 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <span className={`font-semibold ${openDeals > 0 ? 'text-gray-900' : 'text-gray-400'}`}>{openDeals}</span>
+                            <span className={`font-semibold ${openDeals > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{openDeals}</span>
                           </td>
                           <td className="px-5 py-4 text-right">
                             <span className="font-medium" style={{ color: pipelineValue > 0 ? '#1a4731' : '#9ca3af' }}>
-                              {pipelineValue > 0 ? formatCurrency(pipelineValue) : '—'}
+                              <span className={pipelineValue > 0 ? 'dark:!text-emerald-400' : 'dark:!text-gray-500'}>{pipelineValue > 0 ? formatCurrency(pipelineValue) : '—'}</span>
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-right text-gray-600">{openTaskCount}</td>
+                          <td className="px-5 py-4 text-right text-gray-600 dark:text-gray-300">{openTaskCount}</td>
                           <td className="px-5 py-4 text-right">
-                            <span className={`font-medium ${overdueTaskCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                            <span className={`font-medium ${overdueTaskCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
                               {overdueTaskCount > 0 ? overdueTaskCount : '—'}
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-gray-500">{formatDate(lastActivity)}</td>
+                          <td className="px-5 py-4 text-gray-500 dark:text-gray-400">{formatDate(lastActivity)}</td>
                         </tr>
                       );
                     })}
@@ -426,11 +426,11 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'users' && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-semibold text-gray-900">User Management</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">{allUsers.length} users</p>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">User Management</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{allUsers.length} users</p>
                 </div>
                 <button onClick={() => setShowCreateUser(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
                   + Create User
@@ -438,7 +438,7 @@ export default function AdminPage() {
               </div>
 
               {/* Status filter tabs */}
-              <div className="flex gap-1 px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <div className="flex gap-1 px-4 py-3 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
                 {(['all', 'pending', 'active', 'inactive'] as StatusFilter[]).map((f) => {
                   const count = f === 'all' ? allUsers.length : allUsers.filter((u) => u.status === f).length;
                   return (
@@ -446,7 +446,7 @@ export default function AdminPage() {
                       key={f}
                       onClick={() => setStatusFilter(f)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        statusFilter === f ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:text-gray-700'
+                        statusFilter === f ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm border border-gray-200 dark:border-slate-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                       }`}
                     >
                       {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -455,7 +455,7 @@ export default function AdminPage() {
                           {count}
                         </span>
                       ) : (
-                        <span className="text-gray-400 text-xs">({count})</span>
+                        <span className="text-gray-400 dark:text-gray-500 text-xs">({count})</span>
                       )}
                     </button>
                   );
@@ -464,13 +464,13 @@ export default function AdminPage() {
 
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">User</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Phone</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Team</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Role</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Status</th>
-                    <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Actions</th>
+                  <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">User</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Phone</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Team</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Role</th>
+                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Status</th>
+                    <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -478,7 +478,7 @@ export default function AdminPage() {
                     const isCurrentUser = user.id === currentUserId;
                     const badge = statusBadge[user.status];
                     return (
-                      <tr key={user.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                      <tr key={user.id} className="border-b border-gray-50 dark:border-slate-800 hover:bg-gray-50/60 dark:hover:bg-slate-800/60 transition-colors">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             <div
@@ -492,15 +492,15 @@ export default function AdminPage() {
                               )}
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">
+                              <p className="font-medium text-gray-900 dark:text-gray-100">
                                 {user.name}
-                                {isCurrentUser && <span className="ml-1.5 text-xs text-gray-400">(you)</span>}
+                                {isCurrentUser && <span className="ml-1.5 text-xs text-gray-400 dark:text-gray-500">(you)</span>}
                               </p>
-                              <p className="text-xs text-gray-400">{user.email}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">{user.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-gray-500 text-xs">{user.phone || '—'}</td>
+                        <td className="px-5 py-4 text-gray-500 dark:text-gray-400 text-xs">{user.phone || '—'}</td>
                         <td className="px-5 py-4">
                           <select value={(user as { team?: string }).team || ''} onChange={async (e) => {
                             const newTeam = e.target.value;
@@ -511,7 +511,7 @@ export default function AdminPage() {
                               await sb.from('users').update({ team: newTeam }).eq('id', user.id);
                               setToast(`${user.name}'s team updated`);
                             } catch { setToast('Failed to update team'); }
-                          }} className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                          }} className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
                             <option value="">— No team —</option>
                             <option value="monogastrics">Monogastrics</option>
                             <option value="swine">↳ Swine</option>
@@ -527,7 +527,7 @@ export default function AdminPage() {
                             value={user.role}
                             onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole, user.name)}
                             disabled={isCurrentUser}
-                            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
+                            className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
                           >
                             {ASSIGNABLE_ROLES.map((r) => (
                               <option key={r} value={r}>{getRoleLabel(r)}</option>
@@ -580,7 +580,7 @@ export default function AdminPage() {
                   })}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400">
+                      <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                         No users match this filter.
                       </td>
                     </tr>
@@ -597,27 +597,27 @@ export default function AdminPage() {
           {activeTab === 'health' && (
             <div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Orphan Account Names</p>
-                  <p className={`text-3xl font-bold mt-1 ${orphanCount > 0 ? 'text-amber-600' : 'text-gray-900'}`}>{orphanCount}</p>
-                  <p className="text-xs text-gray-400 mt-1">In sales data but not in CRM</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Orphan Account Names</p>
+                  <p className={`text-3xl font-bold mt-1 ${orphanCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-gray-100'}`}>{orphanCount}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">In sales data but not in CRM</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Sales Records Affected</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{orphanRecordCount.toLocaleString()}</p>
-                  <p className="text-xs text-gray-400 mt-1">Of {saleRecords.length.toLocaleString()} total</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Sales Records Affected</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{orphanRecordCount.toLocaleString()}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Of {saleRecords.length.toLocaleString()} total</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Unattributed Revenue</p>
-                  <p className="text-3xl font-bold mt-1" style={{ color: orphanTotalAmount > 0 ? '#b45309' : '#1a4731' }}>{formatCurrency(orphanTotalAmount)}</p>
-                  <p className="text-xs text-gray-400 mt-1">Not linked to any account</p>
+                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Unattributed Revenue</p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: orphanTotalAmount > 0 ? '#b45309' : '#1a4731' }}><span className={orphanTotalAmount > 0 ? 'dark:!text-amber-400' : 'dark:!text-emerald-400'}>{formatCurrency(orphanTotalAmount)}</span></p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Not linked to any account</p>
                 </div>
               </div>
 
               <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100">
-                  <h2 className="text-base font-semibold text-gray-900">Sales Data Without CRM Account</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Sales Data Without CRM Account</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {orphanCount === 0
                       ? 'All sales records are linked to a CRM Account. ✓'
                       : `${orphanCount} unique account name${orphanCount > 1 ? 's' : ''} in sales data have no matching CRM Account. Create the missing accounts to attribute their revenue properly.`}
@@ -626,33 +626,33 @@ export default function AdminPage() {
                 {orphanCount > 0 ? (
                   <div className="overflow-x-auto" style={{ maxHeight: 600 }}>
                     <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-gray-50">
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Account Name (from Sales)</th>
-                          <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Records</th>
-                          <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Total Revenue</th>
-                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Last Sale</th>
-                          <th className="text-left px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Possible Match?</th>
+                      <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800/50">
+                        <tr className="border-b border-gray-100 dark:border-slate-800">
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Account Name (from Sales)</th>
+                          <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Records</th>
+                          <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Total Revenue</th>
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Sale</th>
+                          <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Possible Match?</th>
                         </tr>
                       </thead>
                       <tbody>
                         {orphanSalesAccounts.map((o, i) => (
-                          <tr key={i} className="border-b border-gray-50 hover:bg-amber-50/30 transition-colors">
+                          <tr key={i} className="border-b border-gray-50 dark:border-slate-800 hover:bg-amber-50/30 dark:hover:bg-amber-900/10 transition-colors">
                             <td className="px-5 py-3">
-                              <p className="font-medium text-gray-900">{o.name}</p>
+                              <p className="font-medium text-gray-900 dark:text-gray-100">{o.name}</p>
                             </td>
-                            <td className="px-5 py-3 text-right text-gray-700 font-medium">{o.recordCount.toLocaleString()}</td>
-                            <td className="px-5 py-3 text-right font-semibold" style={{ color: '#1a4731' }}>{formatCurrency(o.totalAmount)}</td>
-                            <td className="px-5 py-3 text-sm text-gray-500">{formatDate(o.lastDate)}</td>
+                            <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200 font-medium">{o.recordCount.toLocaleString()}</td>
+                            <td className="px-5 py-3 text-right font-semibold" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{formatCurrency(o.totalAmount)}</span></td>
+                            <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">{formatDate(o.lastDate)}</td>
                             <td className="px-5 py-3">
                               {o.suggestion ? (
                                 <span className="text-xs">
-                                  <span className="text-gray-400">Did you mean </span>
-                                  <span className="font-medium text-blue-700">{o.suggestion}</span>
-                                  <span className="text-gray-400">?</span>
+                                  <span className="text-gray-400 dark:text-gray-500">Did you mean </span>
+                                  <span className="font-medium text-blue-700 dark:text-blue-400">{o.suggestion}</span>
+                                  <span className="text-gray-400 dark:text-gray-500">?</span>
                                 </span>
                               ) : (
-                                <span className="text-xs text-gray-400">—</span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
                               )}
                             </td>
                           </tr>
@@ -662,11 +662,11 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="px-6 py-12 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-3">
-                      <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-3">
+                      <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
-                    <p className="text-sm font-medium text-gray-900">All clear!</p>
-                    <p className="text-xs text-gray-500 mt-1">Every sales record is linked to a known CRM Account.</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">All clear!</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Every sales record is linked to a known CRM Account.</p>
                   </div>
                 )}
               </div>
@@ -682,7 +682,7 @@ export default function AdminPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Delete User Permanently</h2>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Are you sure you want to permanently delete <strong>{showDeleteUser.name}</strong>? This will remove their account from the system completely. This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowDeleteUser(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+              <button onClick={() => setShowDeleteUser(null)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
               <button onClick={confirmDeleteUser} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete Permanently</button>
             </div>
           </div>
@@ -763,13 +763,13 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-gray-900">User Permissions</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Grant or restrict menu access for each individual user. Individual permissions override role defaults.</p>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">User Permissions</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Grant or restrict menu access for each individual user. Individual permissions override role defaults.</p>
       </div>
 
       <div className="mb-4">
         <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users..."
-          className="w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          className="w-64 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div className="space-y-2">
@@ -777,33 +777,33 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
           const isExpanded = expandedUserId === user.id;
           const count = overrideCount(user.id);
           return (
-            <div key={user.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div key={user.id} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
               <button onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
-                className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left">
+                className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors text-left">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
                   style={{ backgroundColor: '#1a4731' }}>
                   {user.initials || user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-900">{user.name}</span>
-                  <span className="ml-2 text-xs text-gray-400">{user.email}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
+                  <span className="ml-2 text-xs text-gray-400 dark:text-gray-500">{user.email}</span>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[user.role] ?? 'bg-gray-100 text-gray-600'}`}>
                   {getRoleLabel(user.role)}
                 </span>
-                {count > 0 && <span className="text-xs text-amber-600 font-medium">{count} override{count > 1 ? 's' : ''}</span>}
-                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {count > 0 && <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{count} override{count > 1 ? 's' : ''}</span>}
+                <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
 
               {isExpanded && (
-                <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50">
+                <div className="px-5 py-4 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/40">
                   {/* Permission grid */}
                   <div className="overflow-x-auto mb-4">
                     <table className="w-full text-xs">
-                      <thead><tr className="border-b border-gray-200">
-                        {MENU_ITEMS.map((m) => <th key={m} className="text-center px-2 py-1.5 font-medium text-gray-500 whitespace-nowrap">{m}</th>)}
+                      <thead><tr className="border-b border-gray-200 dark:border-slate-700">
+                        {MENU_ITEMS.map((m) => <th key={m} className="text-center px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{m}</th>)}
                       </tr></thead>
                       <tbody><tr>
                         {MENU_ITEMS.map((menu) => {
@@ -812,9 +812,9 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
                             <td key={menu} className="text-center px-2 py-2">
                               <button onClick={() => cyclePerm(user.id, menu)}
                                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                  perm === 'allow' ? 'bg-green-100 text-green-700' :
-                                  perm === 'deny' ? 'bg-red-100 text-red-600' :
-                                  'bg-gray-100 text-gray-500'
+                                  perm === 'allow' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
+                                  perm === 'deny' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300' :
+                                  'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-300'
                                 }`}>
                                 {perm === 'allow' ? '✓ Allow' : perm === 'deny' ? '✗ Deny' : '— Default'}
                               </button>
@@ -827,9 +827,9 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
 
                   {/* Data visibility */}
                   <div className="flex items-center gap-4 mb-4">
-                    <span className="text-xs font-medium text-gray-700">Data visibility:</span>
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Data visibility:</span>
                     {(['default', 'own', 'all'] as const).map((v) => (
-                      <label key={v} className="flex items-center gap-1 text-xs text-gray-600">
+                      <label key={v} className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
                         <input type="radio" name={`vis-${user.id}`} checked={(dataVis[user.id] ?? 'default') === v}
                           onChange={() => setDataVis((prev) => ({ ...prev, [user.id]: v }))}
                           className="text-green-600" />
@@ -891,45 +891,45 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Create New User</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Create New User</h2>
         <form onSubmit={handleSave} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Full Name *</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            {errors.name && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.name}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email *</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            {errors.email && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.email}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password *</label>
             <div className="relative">
               <input type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 pr-10" />
-              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">{showPw ? 'Hide' : 'Show'}</button>
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 pr-10" />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-xs">{showPw ? 'Hide' : 'Show'}</button>
             </div>
-            {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
+            {errors.password && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.password}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
-            <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            {errors.confirmPw && <p className="text-xs text-red-600 mt-1">{errors.confirmPw}</p>}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Confirm Password *</label>
+            <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            {errors.confirmPw && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.confirmPw}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Phone</label>
+            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Role *</label>
+            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
               {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{getRoleLabel(r)}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
             <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#1a4731' }}>
               {saving ? 'Creating...' : 'Create User'}
             </button>

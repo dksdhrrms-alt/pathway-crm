@@ -10,7 +10,11 @@ export async function GET() {
   // pickers, owners, etc.) — but we still gate it behind authentication.
   const { error } = await requireAuth();
   if (error) return error;
-  return NextResponse.json(getStoreUsers());
+  // Never expose password hashes (or, worse, legacy plaintext passwords) to
+  // the client. Strip them before serialising.
+  const users = getStoreUsers();
+  const sanitized = users.map(({ password: _password, ...rest }) => rest);
+  return NextResponse.json(sanitized);
 }
 
 export async function POST(request: Request) {

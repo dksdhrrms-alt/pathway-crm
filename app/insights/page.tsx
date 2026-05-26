@@ -203,7 +203,7 @@ export default function InsightsPage() {
             </div>
             <div className="flex items-center gap-3">
               <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                 {[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
               <button onClick={generateAIInsight} disabled={aiLoading}
@@ -224,7 +224,7 @@ export default function InsightsPage() {
               { label: 'Overdue Tasks', value: String(overdueTasks), sub: 'Need attention', color: overdueTasks > 0 ? '#E24B4A' : '#0F6E56' },
             ].map((kpi) => (
               <div key={kpi.label} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
-                <p className="text-xs font-medium text-gray-500 uppercase">{kpi.label}</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{kpi.label}</p>
                 <p className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
                 <p className="text-xs mt-0.5" style={{ color: kpi.color }}>{kpi.sub}</p>
               </div>
@@ -233,12 +233,12 @@ export default function InsightsPage() {
 
           {/* AI Insights Panel */}
           {aiInsight && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6" style={{ borderLeft: '4px solid #1a4731' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-6" style={{ borderLeft: '4px solid #1a4731' }}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-gray-900">AI Analysis</h2>
-                <button onClick={() => setAiInsight(null)} className="text-gray-400 hover:text-gray-600 text-sm">Dismiss</button>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">AI Analysis</h2>
+                <button onClick={() => setAiInsight(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm">Dismiss</button>
               </div>
-              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{aiInsight}</div>
+              <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{aiInsight}</div>
             </div>
           )}
 
@@ -249,8 +249,8 @@ export default function InsightsPage() {
               empty PieChart on first render. */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             {/* Revenue Trend */}
-            <div className="lg:col-span-2 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Revenue Trend - {selectedYear} vs {selectedYear - 1}</h2>
+            <div className="lg:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue Trend - {selectedYear} vs {selectedYear - 1}</h2>
               <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
                 <div style={{ minWidth: '500px', height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={1}>
@@ -269,8 +269,8 @@ export default function InsightsPage() {
             </div>
 
             {/* Category Pie */}
-            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Revenue by Category</h2>
+            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue by Category</h2>
               {categoryBreakdown.length === 0 ? (
                 <div className="flex items-center justify-center text-xs text-gray-400" style={{ height: 220 }}>
                   No revenue data yet
@@ -303,8 +303,8 @@ export default function InsightsPage() {
           {/* Charts Row 2: Top Accounts + Activity Trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Top Accounts */}
-            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Top 10 Accounts by Revenue</h2>
+            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Top 10 Accounts by Revenue</h2>
               <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
                 <div style={{ minWidth: '400px', height: 300 }}>
                   <ResponsiveContainer width="100%" height="100%" minWidth={1}>
@@ -321,8 +321,8 @@ export default function InsightsPage() {
             </div>
 
             {/* Activity Trend */}
-            <div className="min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Activity Trend (Last 6 Months)</h2>
+            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Activity Trend (Last 6 Months)</h2>
               <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
@@ -342,18 +342,18 @@ export default function InsightsPage() {
           </div>
 
           {/* Pipeline by Stage */}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Pipeline by Stage</h2>
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-6">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Stage</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {pipelineByStage.map((s) => {
                 const stageColor: Record<string, string> = { Prospect: '#94a3b8', Prospecting: '#6366f1', Qualified: '#06b6d4', Qualification: '#3b82f6', 'Trial Started': '#14b8a6', Proposal: '#f59e0b', Negotiation: '#f97316', 'Closed Won': '#22c55e', 'Closed Lost': '#ef4444' };
                 return (
-                  <div key={s.stage} className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div key={s.stage} className="bg-gray-50 dark:bg-slate-800/40 rounded-lg p-4 text-center">
                     <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: stageColor[s.stage] || '#888' }}>
                       {s.count}
                     </div>
-                    <p className="text-xs font-medium text-gray-700">{s.stage}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{fmt(s.value)}</p>
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-200">{s.stage}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{fmt(s.value)}</p>
                   </div>
                 );
               })}

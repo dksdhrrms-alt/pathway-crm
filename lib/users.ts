@@ -7,6 +7,13 @@ export interface AppUser {
   id: string;
   name: string;
   email: string;
+  /**
+   * Stored on server-side rows (write paths: register, login, password
+   * change, legacy file-store). API responses and the in-memory user list
+   * exposed to the client NEVER include this — both /api/users and
+   * dbGetUsers explicitly strip it. Kept as a required field so existing
+   * write-path callers (login, seed, userStore) type-check.
+   */
   password: string;
   role: UserRole;
   initials: string;
@@ -16,6 +23,18 @@ export interface AppUser {
   team?: UserTeam;
 }
 
+/**
+ * Demo / development seed accounts.
+ *
+ * These were originally `status: 'active'` with a shared `demo1234` password
+ * so the file-store fallback would let anyone log in as the admin during
+ * local dev. That is unacceptable in production, where the file-store
+ * fallback can still be reached if Supabase env vars are missing. We mark
+ * every seed account as `inactive` so the credentials provider rejects
+ * them (see auth.ts: `if (user.status !== 'active') return null;`).
+ *
+ * A real admin must be created via /api/admin/create-user.
+ */
 export const users: AppUser[] = [
   {
     id: 'user-002',
@@ -24,7 +43,7 @@ export const users: AppUser[] = [
     password: 'demo1234',
     role: 'admin',
     initials: 'AM',
-    status: 'active',
+    status: 'inactive',
     phone: '+1 (555) 100-0001',
   },
   {
@@ -34,7 +53,7 @@ export const users: AppUser[] = [
     password: 'demo1234',
     role: 'sales',
     initials: 'SM',
-    status: 'active',
+    status: 'inactive',
     phone: '+1 (555) 100-0002',
   },
   {
@@ -44,7 +63,7 @@ export const users: AppUser[] = [
     password: 'demo1234',
     role: 'sales',
     initials: 'JH',
-    status: 'active',
+    status: 'inactive',
     phone: '+1 (555) 100-0003',
   },
   {
@@ -54,7 +73,7 @@ export const users: AppUser[] = [
     password: 'demo1234',
     role: 'coo',
     initials: 'RT',
-    status: 'active',
+    status: 'inactive',
     phone: '+1 (555) 100-0004',
   },
   {
@@ -64,7 +83,7 @@ export const users: AppUser[] = [
     password: 'demo1234',
     role: 'marketing',
     initials: 'LC',
-    status: 'active',
+    status: 'inactive',
     phone: '+1 (555) 100-0005',
   },
 ];

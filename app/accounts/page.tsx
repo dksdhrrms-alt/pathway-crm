@@ -371,7 +371,7 @@ export default function AccountsPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <ExportButton filename={`accounts-${new Date().toISOString().split('T')[0]}`} title="Accounts" columns={exportColumns} rows={filtered} />
-              <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">+ Import</button>
+              <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800">+ Import</button>
               <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
             </div>
           </div>
@@ -610,10 +610,10 @@ export default function AccountsPage() {
                 })}
                 {hasMore && (
                   <tr>
-                    <td colSpan={visibleCols.length + 2} className="px-4 py-4 text-center bg-gray-50/40">
-                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500">
+                    <td colSpan={visibleCols.length + 2} className="px-4 py-4 text-center bg-gray-50/40 dark:bg-slate-800/40">
+                      <div className="flex items-center justify-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                         <span>
-                          Showing <span className="font-medium text-gray-700">{visibleRows.length}</span> of <span className="font-medium text-gray-700">{renderedRows.length}</span>
+                          Showing <span className="font-medium text-gray-700 dark:text-gray-200">{visibleRows.length}</span> of <span className="font-medium text-gray-700 dark:text-gray-200">{renderedRows.length}</span>
                         </span>
                         <button
                           type="button"
@@ -627,7 +627,7 @@ export default function AccountsPage() {
                           <button
                             type="button"
                             onClick={() => setDisplayLimit(renderedRows.length)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600"
                           >
                             Show all ({remaining})
                           </button>

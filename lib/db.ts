@@ -61,7 +61,14 @@ function genId(): string {
 
 export async function dbGetUsers(): Promise<AppUser[]> {
   if (!supabaseEnabled) return [];
-  const { data, error } = await supabase.from('users').select('*').order('name').range(0, 9999);
+  // Explicit column list — never SELECT * here, otherwise the password
+  // column (bcrypt hash or, worst case, legacy plaintext) is shipped down
+  // to every client through the UserContext fetch.
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, name, email, role, status, initials, team, phone, profile_photo, created_at')
+    .order('name')
+    .range(0, 9999);
   if (error) throw error;
   return mapRows<AppUser>(data || []);
 }

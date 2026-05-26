@@ -159,8 +159,8 @@ export default function TasksPage() {
                     activeTab === tab
                       ? 'bg-white/20 text-white'
                       : tab === 'Overdue' && tabCounts[tab] > 0
-                      ? 'bg-red-100 text-red-600'
-                      : 'bg-gray-100 text-gray-500'
+                      ? 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-300'
+                      : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-gray-400'
                   }`}
                 >
                   {tabCounts[tab]}
@@ -180,14 +180,14 @@ export default function TasksPage() {
             ) : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
+                  <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
                     <th className="w-8 px-4 py-3"></th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Subject</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Related To</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Due Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Priority</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Owner</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Subject</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Related To</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Due Date</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Priority</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Owner</th>
                     <th className="w-10 px-4 py-3"></th>
                   </tr>
                 </thead>

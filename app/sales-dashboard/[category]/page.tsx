@@ -508,18 +508,18 @@ export default function SalesDashboardPage() {
                           </span>
                         ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-700" style={{ borderLeft: '2px solid #e5e7eb', background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
+                      <td className={`px-4 py-3 text-right text-gray-700 dark:text-gray-300 ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`} style={{ borderLeft: '2px solid #e5e7eb' }}>
                         {ytdBgt > 0 && !isFuture ? fmt(ytdBgt) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium" style={{ color: isFuture ? '#ccc' : '#1a4731', background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
-                        {ytdAct > 0 && !isFuture ? fmt(ytdAct) : '—'}
+                      <td className={`px-4 py-3 text-right font-medium ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`} style={{ color: isFuture ? '#ccc' : '#1a4731' }}>
+                        <span className="dark:!text-emerald-400">{ytdAct > 0 && !isFuture ? fmt(ytdAct) : '—'}</span>
                       </td>
-                      <td className="px-4 py-3 text-right" style={{ background: isCurrent ? '#f0f7ee' : '#fafafa' }}>
+                      <td className={`px-4 py-3 text-right ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`}>
                         <span className="font-semibold" style={{ color: ytdAct > 0 && !isFuture ? pctColor(ytdPct) : '#9ca3af' }}>{ytdAct > 0 && !isFuture ? `${ytdPct}%` : '—'}</span>
                       </td>
                     </tr>
                     {expandedMonth === mo && (
-                      <tr><td colSpan={8} className="p-0 bg-gray-50/30">
+                      <tr><td colSpan={8} className="p-0 bg-gray-50/30 dark:bg-slate-800/30">
                         <AccountBreakdown month={mo} year={year} category={category} salesData={salesData} />
                         <ManagerBreakdown month={mo} year={year} category={category} salesData={salesData} />
                       </td></tr>
@@ -555,16 +555,16 @@ export default function SalesDashboardPage() {
           {category === 'all' && categoryBreakdown.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
               {categoryBreakdown.map((cb) => (
-                <div key={cb.category} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                  <h3 className="text-sm font-semibold text-gray-900 capitalize mb-3">{cb.category}</h3>
+                <div key={cb.category} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize mb-3">{cb.category}</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-500">Budget</span><span className="font-medium">{fmt(cb.budget)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Actual</span><span className="font-medium" style={{ color: '#1a4731' }}>{fmt(cb.actual)}</span></div>
-                    <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Budget</span><span className="font-medium dark:text-gray-200">{fmt(cb.budget)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Actual</span><span className="font-medium" style={{ color: '#1a4731' }}>{fmt(cb.actual)}</span></div>
+                    <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2">
                       <div className="h-2 rounded-full" style={{ width: `${Math.min(cb.pct, 100)}%`, backgroundColor: pctColor(cb.pct) }} />
                     </div>
-                    <div className="flex justify-between"><span className="text-gray-500">Achievement</span><span className="font-semibold" style={{ color: pctColor(cb.pct) }}>{cb.pct}%</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Top Product</span><span className="text-xs text-gray-700 truncate max-w-[120px]">{cb.topProduct}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Achievement</span><span className="font-semibold" style={{ color: pctColor(cb.pct) }}>{cb.pct}%</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Top Product</span><span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{cb.topProduct}</span></div>
                   </div>
                   <Link href={`/sales-dashboard/${cb.category}`} className="block mt-3 text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>
                     View Details →
@@ -576,19 +576,19 @@ export default function SalesDashboardPage() {
 
           {/* Top Accounts */}
           {topAccounts.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-base font-semibold text-gray-900">Top Accounts — {year}</h2>
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-800">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Top Accounts — {year}</h2>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="w-12 text-center px-3 py-3 font-medium text-gray-500 text-xs">#</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase">Account</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase">Category</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">Total Sales</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">% of Total</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase">YoY</th>
+                  <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
+                    <th className="w-12 text-center px-3 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs">#</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Account</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Category</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Total Sales</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">% of Total</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">YoY</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -600,9 +600,9 @@ export default function SalesDashboardPage() {
                       <React.Fragment key={a.name}>
                         <tr
                           onClick={() => setExpandedAccount(isOpen ? null : a.name)}
-                          className={`border-b border-gray-50 cursor-pointer transition-colors ${isOpen ? 'bg-green-50/40' : 'hover:bg-gray-50/60'}`}
+                          className={`border-b border-gray-50 dark:border-slate-800 cursor-pointer transition-colors ${isOpen ? 'bg-green-50/40 dark:bg-green-900/20' : 'hover:bg-gray-50/60 dark:hover:bg-slate-800/60'}`}
                         >
-                          <td className="text-center px-3 py-3 text-gray-400 text-xs">
+                          <td className="text-center px-3 py-3 text-gray-400 dark:text-gray-500 text-xs">
                             <span className="inline-flex items-center gap-1">
                               <span style={{ display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s', fontSize: '9px' }}>▶</span>
                               {i + 1}
@@ -611,72 +611,72 @@ export default function SalesDashboardPage() {
                           <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
                               {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
-                                <a href={`/accounts/${match.id}`} onClick={(e) => e.stopPropagation()} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline">{a.name}</a>
-                              ) : <span className="text-gray-800">{a.name}</span>; })()}
+                                <a href={`/accounts/${match.id}`} onClick={(e) => e.stopPropagation()} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline dark:!text-emerald-400">{a.name}</a>
+                              ) : <span className="text-gray-800 dark:text-gray-100">{a.name}</span>; })()}
                               {a.isIntegration && (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-100" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
+                                <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-100 dark:border-blue-800" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
                                   ◆ Integration · +{a.childCount}
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-600 capitalize">{a.category}</span></td>
-                          <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}>{fmt(a.amount)}</td>
-                          <td className="px-4 py-3 text-right text-gray-500">{a.pctOfTotal}%</td>
+                          <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 capitalize">{a.category}</span></td>
+                          <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{fmt(a.amount)}</span></td>
+                          <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{a.pctOfTotal}%</td>
                           <td className="px-4 py-3 text-right">
                             {trend !== null ? (
-                              <span className={trend >= 0 ? 'text-green-600' : 'text-red-600'}>{trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>
-                            ) : <span className="text-gray-400">—</span>}
+                              <span className={trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%</span>
+                            ) : <span className="text-gray-400 dark:text-gray-500">—</span>}
                           </td>
                         </tr>
                         {isOpen && (
-                          <tr className="border-b border-gray-100 bg-gray-50/40">
+                          <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50/40 dark:bg-slate-800/40">
                             <td colSpan={6} className="p-0">
                               <div className="px-6 py-4">
                                 <div className="flex items-center justify-between mb-3">
-                                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Product × Month — {a.name} ({year})</p>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide">Product × Month — {a.name} ({year})</p>
                                   {a.isIntegration && (
-                                    <span className="text-[10px] text-blue-600">includes {a.childCount} child account{a.childCount > 1 ? 's' : ''}</span>
+                                    <span className="text-[10px] text-blue-600 dark:text-blue-400">includes {a.childCount} child account{a.childCount > 1 ? 's' : ''}</span>
                                   )}
                                 </div>
                                 {products.length === 0 ? (
-                                  <p className="text-sm text-gray-400 text-center py-4">No product data for this account in {year}.</p>
+                                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No product data for this account in {year}.</p>
                                 ) : (
                                   <div className="overflow-x-auto">
-                                    <table className="w-full text-xs border border-gray-200 rounded">
+                                    <table className="w-full text-xs border border-gray-200 dark:border-slate-700 rounded">
                                       <thead>
-                                        <tr className="bg-white border-b border-gray-200">
-                                          <th className="text-left px-3 py-2 font-medium text-gray-500 sticky left-0 bg-white z-10" style={{ minWidth: 200 }}>Product</th>
+                                        <tr className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
+                                          <th className="text-left px-3 py-2 font-medium text-gray-500 dark:text-gray-400 sticky left-0 bg-white dark:bg-slate-900 z-10" style={{ minWidth: 200 }}>Product</th>
                                           {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m) => (
-                                            <th key={m} className="text-right px-2 py-2 font-medium text-gray-500" style={{ minWidth: 70 }}>{m}</th>
+                                            <th key={m} className="text-right px-2 py-2 font-medium text-gray-500 dark:text-gray-400" style={{ minWidth: 70 }}>{m}</th>
                                           ))}
-                                          <th className="text-right px-3 py-2 font-medium text-gray-700 bg-gray-100" style={{ minWidth: 90 }}>Total</th>
+                                          <th className="text-right px-3 py-2 font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800" style={{ minWidth: 90 }}>Total</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {products.map((p) => (
-                                          <tr key={p.name} className="border-b border-gray-100 hover:bg-white">
-                                            <td className="px-3 py-1.5 font-medium text-gray-800 sticky left-0 bg-gray-50/40 hover:bg-white z-10">{p.name}</td>
+                                          <tr key={p.name} className="border-b border-gray-100 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800/30">
+                                            <td className="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 sticky left-0 bg-gray-50/40 dark:bg-slate-800/40 hover:bg-white z-10">{p.name}</td>
                                             {p.monthly.map((amt, mi) => (
-                                              <td key={mi} className={`text-right px-2 py-1.5 ${amt > 0 ? 'text-gray-700' : 'text-gray-300'}`}>
+                                              <td key={mi} className={`text-right px-2 py-1.5 ${amt > 0 ? 'text-gray-700 dark:text-gray-200' : 'text-gray-300 dark:text-gray-600'}`}>
                                                 {amt > 0 ? fmt(amt) : '—'}
                                               </td>
                                             ))}
-                                            <td className="text-right px-3 py-1.5 font-semibold bg-gray-50" style={{ color: '#1a4731' }}>{fmt(p.total)}</td>
+                                            <td className="text-right px-3 py-1.5 font-semibold bg-gray-50 dark:bg-slate-800/50" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{fmt(p.total)}</span></td>
                                           </tr>
                                         ))}
                                         {/* Monthly totals row */}
-                                        <tr className="border-t-2 border-gray-300 bg-white">
-                                          <td className="px-3 py-2 font-semibold text-gray-700 sticky left-0 bg-white z-10">TOTAL</td>
+                                        <tr className="border-t-2 border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+                                          <td className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200 sticky left-0 bg-white dark:bg-slate-900 z-10">TOTAL</td>
                                           {Array.from({ length: 12 }).map((_, mi) => {
                                             const monthTotal = products.reduce((s, p) => s + p.monthly[mi], 0);
                                             return (
-                                              <td key={mi} className={`text-right px-2 py-2 font-semibold ${monthTotal > 0 ? 'text-gray-900' : 'text-gray-300'}`}>
+                                              <td key={mi} className={`text-right px-2 py-2 font-semibold ${monthTotal > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600'}`}>
                                                 {monthTotal > 0 ? fmt(monthTotal) : '—'}
                                               </td>
                                             );
                                           })}
-                                          <td className="text-right px-3 py-2 font-bold" style={{ color: '#1a4731', backgroundColor: '#e8f5e9' }}>{fmt(a.amount)}</td>
+                                          <td className="text-right px-3 py-2 font-bold" style={{ color: '#1a4731', backgroundColor: '#e8f5e9' }}><span className="dark:!text-emerald-300">{fmt(a.amount)}</span></td>
                                         </tr>
                                       </tbody>
                                     </table>
@@ -782,7 +782,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '950px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ borderRadius: '16px', width: '100%', maxWidth: '950px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} className="bg-white dark:bg-slate-900">
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Account Budgets - {year}</h2>
@@ -795,9 +795,9 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '800px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ textAlign: 'left', padding: '8px 10px', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white', minWidth: '140px' }}>Account</th>
-                {MONTHS.map((m, i) => <th key={i} style={{ padding: '8px 2px', textAlign: 'center', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white', minWidth: '56px' }}>{m}</th>)}
-                <th style={{ padding: '8px 10px', textAlign: 'right', color: '#888', fontWeight: 500, position: 'sticky', top: 0, background: 'white' }}>Annual</th>
+                <th style={{ textAlign: 'left', padding: '8px 10px', color: '#888', fontWeight: 500, position: 'sticky', top: 0, minWidth: '140px' }} className="bg-white dark:bg-slate-900 dark:text-gray-400">Account</th>
+                {MONTHS.map((m, i) => <th key={i} style={{ padding: '8px 2px', textAlign: 'center', color: '#888', fontWeight: 500, position: 'sticky', top: 0, minWidth: '56px' }} className="bg-white dark:bg-slate-900 dark:text-gray-400">{m}</th>)}
+                <th style={{ padding: '8px 10px', textAlign: 'right', color: '#888', fontWeight: 500, position: 'sticky', top: 0 }} className="bg-white dark:bg-slate-900 dark:text-gray-400">Annual</th>
               </tr>
             </thead>
             <tbody>
@@ -843,7 +843,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
           </div>
         </div>
         <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexShrink: 0 }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', background: 'white', cursor: 'pointer', fontSize: '13px' }}>Cancel</button>
+          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '13px' }} className="bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100">Cancel</button>
           <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: saving ? '#e5e7eb' : '#1a4731', color: saving ? '#888' : 'white', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>
             {saving ? 'Saving...' : 'Save All'}
           </button>
@@ -892,40 +892,40 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Set {CATEGORY_LABELS[category]} Budget</h2>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Set {CATEGORY_LABELS[category]} Budget</h2>
 
         <div className="flex items-center gap-3 mb-5">
-          <label className="text-sm font-medium text-gray-700">Year:</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Year:</label>
           <input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))}
-            className="w-24 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            className="w-24 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
           {MONTH_FULL.map((m, i) => (
             <div key={m} className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 w-24 flex-shrink-0">{m}</label>
+              <label className="text-sm text-gray-600 dark:text-gray-300 w-24 flex-shrink-0">{m}</label>
               <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm">$</span>
                 <input type="text" value={amounts[i] ? amounts[i].toLocaleString() : ''}
                   onChange={(e) => { const v = [...amounts]; v[i] = parseInt(e.target.value.replace(/,/g, '')) || 0; setAmounts(v); }}
                   placeholder="0"
-                  className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
               </div>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center gap-3 mb-5 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3 mb-5 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
           <input type="text" value={uniformVal} onChange={(e) => setUniformVal(e.target.value)} placeholder="Amount"
-            className="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-          <button onClick={applyUniform} className="text-sm font-medium text-green-700 hover:underline">Apply to all months</button>
-          <span className="text-gray-300">|</span>
-          <button onClick={copyLastYear} className="text-sm font-medium text-blue-600 hover:underline">Copy from {year - 1}</button>
+            className="w-32 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <button onClick={applyUniform} className="text-sm font-medium text-green-700 dark:text-green-400 hover:underline">Apply to all months</button>
+          <span className="text-gray-300 dark:text-gray-600">|</span>
+          <button onClick={copyLastYear} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Copy from {year - 1}</button>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: '#1a4731' }}>
