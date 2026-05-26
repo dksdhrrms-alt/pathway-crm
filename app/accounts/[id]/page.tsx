@@ -263,7 +263,7 @@ export default function AccountDetailPage() {
                   (profile, activities, contacts, deals, tasks, purchase
                   history) into a single 6-sheet workbook. Useful for
                   handovers, QBR prep, and pre-delete backups. The
-                  aggregate*/children-rolled-up data sets above already
+                  aggregate / children-rolled-up data sets above already
                   account for parent/child accounts, so the export reflects
                   what the user sees on this page.
                 */}
