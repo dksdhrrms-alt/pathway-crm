@@ -130,7 +130,7 @@ export default function RndBudgetModal({ year, team, currentAmount, currentNotes
             >
               Cancel
             </button>
-            <SubmitButton pending={submitting}>Save</SubmitButton>
+            <SubmitButton type="submit" pending={submitting}>Save</SubmitButton>
           </div>
         </form>
       </div>

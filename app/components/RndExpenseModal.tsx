@@ -245,7 +245,7 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, de
               >
                 Cancel
               </button>
-              <SubmitButton pending={submitting}>
+              <SubmitButton type="submit" pending={submitting}>
                 {editing ? 'Save' : 'Add'}
               </SubmitButton>
             </div>
