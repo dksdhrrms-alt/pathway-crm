@@ -1,5 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
-import type { Account, Contact, Opportunity, Activity, Task, AccountBudget } from './data';
+import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense } from './data';
 import type { AppUser } from './users';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import type { BudgetEntry } from './budgetStore';
@@ -138,7 +138,17 @@ export async function dbDeleteAccounts(ids: string[]): Promise<void> {
 
 export async function dbGetContacts(): Promise<Contact[]> {
   if (!supabaseEnabled) return [];
-  const { data, error } = await supabase.from('contacts').select('*').order('first_name').range(0, 9999);
+  // Exclude soft-deleted rows. archived_at IS NULL = active. The column
+  // was added by data-migration/03-archive-ghost-contacts.sql which
+  // archived 323 ghost contacts (no email + no account). Without this
+  // filter those rows would still appear in the UI even though they're
+  // logically deleted.
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .is('archived_at', null)
+    .order('first_name')
+    .range(0, 9999);
   if (error) throw error;
   return mapRows<Contact>(data || []);
 }
@@ -222,7 +232,16 @@ export async function dbDeleteTask(id: string): Promise<void> {
 
 export async function dbGetActivities(): Promise<Activity[]> {
   if (!supabaseEnabled) return [];
-  const { data, error } = await supabase.from('activities').select('*').order('date', { ascending: false }).range(0, 9999);
+  // Exclude soft-deleted activities. archived_at IS NULL = active.
+  // The column was added by data-migration/04-cleanup-orphan-activities.sql
+  // (which archived 56 fully-orphan rows) and is also used by
+  // 05-dedupe-activities.sql (which archived 27 duplicate rows).
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*')
+    .is('archived_at', null)
+    .order('date', { ascending: false })
+    .range(0, 9999);
   if (error) throw error;
   return mapRows<Activity>(data || []);
 }
@@ -332,6 +351,65 @@ export async function dbUpsertAccountBudget(accountName: string, year: number, m
   const { error } = await supabase.from('account_budgets').upsert({
     id, account_name: accountName, year, month, budget_amount: amount, category,
   }, { onConflict: 'id' });
+  if (error) throw error;
+}
+
+// ── R&D Budgets ─────────────────────────────────────────────────────────────
+
+export async function dbGetRndBudgets(): Promise<RndBudget[]> {
+  if (!supabaseEnabled) return [];
+  const { data, error } = await supabase.from('rnd_budgets').select('*').order('year', { ascending: false });
+  if (error) { console.error('[DB] rnd_budgets error:', error.message); return []; }
+  return mapRows<RndBudget>(data || []);
+}
+
+export async function dbUpsertRndBudget(year: number, annualAmount: number, notes?: string): Promise<void> {
+  if (!supabaseEnabled) return;
+  // Deterministic id — one row per year. Upsert ensures the row is either
+  // created on first save or updated in place on subsequent edits.
+  const id = `rnd-budget-${year}`;
+  const { error } = await supabase.from('rnd_budgets').upsert(
+    { id, year, annual_amount: annualAmount, notes: notes ?? null, updated_at: new Date().toISOString() },
+    { onConflict: 'id' },
+  );
+  if (error) throw error;
+}
+
+// ── R&D Expenses ────────────────────────────────────────────────────────────
+
+export async function dbGetRndExpenses(): Promise<RndExpense[]> {
+  if (!supabaseEnabled) return [];
+  const { data, error } = await supabase
+    .from('rnd_expenses')
+    .select('*')
+    .is('archived_at', null)
+    .order('year', { ascending: false })
+    .order('month', { ascending: true });
+  if (error) { console.error('[DB] rnd_expenses error:', error.message); return []; }
+  return mapRows<RndExpense>(data || []);
+}
+
+export async function dbCreateRndExpense(expense: RndExpense): Promise<RndExpense> {
+  const row = toSnake(expense);
+  const { data, error } = await supabase.from('rnd_expenses').insert(row).select().single();
+  if (error) throw error;
+  return toCamel(data) as unknown as RndExpense;
+}
+
+export async function dbUpdateRndExpense(id: string, updates: Partial<RndExpense>): Promise<void> {
+  if (!supabaseEnabled) return;
+  const { error } = await supabase.from('rnd_expenses').update(toSnake(updates)).eq('id', id);
+  if (error) throw error;
+}
+
+export async function dbDeleteRndExpense(id: string): Promise<void> {
+  if (!supabaseEnabled) return;
+  // Soft delete via archived_at — preserves history and matches the rest
+  // of the codebase (contacts, activities) post data-migration/03+04.
+  const { error } = await supabase
+    .from('rnd_expenses')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id);
   if (error) throw error;
 }
 

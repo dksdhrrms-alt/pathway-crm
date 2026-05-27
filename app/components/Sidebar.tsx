@@ -85,6 +85,15 @@ function ArchiveIcon() {
     </svg>
   );
 }
+function RndIcon() {
+  // Lab flask — signals research/experiments, matches the "🔬" used in mockup.
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3h6m-5 0v6.5L4 19a2 2 0 001.7 3h12.6a2 2 0 001.7-3L14 9.5V3" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 15h10" />
+    </svg>
+  );
+}
 function AdminIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,6 +157,7 @@ export default function Sidebar() {
     '/dashboard': 'home', '/accounts': 'accounts', '/contacts': 'contacts',
     '/opportunities': 'opportunities', '/tasks': 'tasks',
     '/archive': 'archive',
+    '/rnd': 'rnd',
     '/reports': 'reports',
     '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
   };
@@ -158,6 +168,9 @@ export default function Sidebar() {
     // the user recorded. Available to every role (see useMenuAccess
     // ROLE_DEFAULTS — `archive` is in every set).
     { href: '/archive' as const, label: 'Archive', icon: ArchiveIcon },
+    // R&D budget tracker — yearly budget + 12-month grid of expense entries.
+    // Marketing/etc. similar trackers can be added later as siblings.
+    { href: '/rnd' as const, label: 'R&D', icon: RndIcon },
     { href: '/reports' as const, label: 'Reports', icon: ReportsIcon },
     { href: '/insights' as const, label: 'Insights', icon: InsightsIcon },
     { href: '/scan-card' as const, label: 'Scan Card', icon: ScanCardIcon },

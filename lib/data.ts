@@ -175,6 +175,29 @@ export interface AccountBudget {
   category: string;
 }
 
+// R&D budget tracker — one annual budget row per year, plus a list of
+// expense entries each tagged to a (year, month) cell of the on-screen
+// 12-card grid. See app/rnd/page.tsx and supabase/rnd_schema.sql.
+export interface RndBudget {
+  id: string;
+  year: number;
+  annualAmount: number;
+  notes?: string;
+  updatedAt?: string;
+}
+
+export interface RndExpense {
+  id: string;
+  year: number;
+  month: number;       // 1–12
+  name: string;
+  description?: string;
+  amount: number;
+  ownerId?: string;
+  createdAt?: string;
+  archivedAt?: string | null;
+}
+
 export const initialAccounts: Account[] = [
   {
     id: 'acc-001',
