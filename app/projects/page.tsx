@@ -80,6 +80,12 @@ export default function ProjectsPage() {
 
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedTeam, setSelectedTeam] = useState<ProjectTeam | null>(null);
+  // Ref to the "Completed projects" panel + a flag that lights up while a
+  // bar is being dragged over it. The drop-target rect is read from the
+  // ref inside GanttBar's pointer-up handler — no library, no global
+  // state manager, just clientY vs. boundingClientRect.
+  const completedZoneRef = useRef<HTMLDivElement | null>(null);
+  const [dragOverCompleted, setDragOverCompleted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -248,6 +254,8 @@ export default function ProjectsPage() {
               year={selectedYear}
               projects={inYear}
               todayMarkerPct={todayMarkerPct}
+              completedZoneRef={completedZoneRef}
+              onDragOverCompletedChange={setDragOverCompleted}
               onEdit={(p) => setModal({ mode: 'edit', project: p })}
               onDateShift={async (id, newStart, newEnd) => {
                 // Optimistic update + persist. On error, reload to reconcile.
@@ -261,20 +269,51 @@ export default function ProjectsPage() {
                   reload();
                 }
               }}
+              onMarkCompleted={async (id) => {
+                // Drop-to-complete: same optimistic + persist pattern as
+                // date shift. Bar instantly disappears from the Gantt
+                // (filtered out by stage === 'completed') and the
+                // completed tray re-sorts to put this row on top.
+                setProjects((prev) => prev.map((p) => p.id === id ? {
+                  ...p,
+                  stage: 'completed' as const,
+                  completedAt: new Date().toISOString(),
+                } : p));
+                try {
+                  await dbUpdateProject(id, { stage: 'completed' });
+                } catch (err) {
+                  const msg = err instanceof Error ? err.message : String(err);
+                  console.error('Mark completed failed:', msg);
+                  setError(`Mark completed failed: ${msg}`);
+                  reload();
+                }
+              }}
             />
 
-            {/* Completed tray */}
-            <div className="mt-8">
+            {/* Completed tray — also the drop target. completedZoneRef
+                is read by GanttBar's pointer-up handler to decide
+                whether the drag should mark-complete vs. date-shift. */}
+            <div
+              ref={completedZoneRef}
+              className={`mt-8 rounded-lg transition-all ${
+                dragOverCompleted
+                  ? 'ring-2 ring-green-400 dark:ring-green-500 bg-green-50/60 dark:bg-green-950/20 p-2 -m-2'
+                  : ''
+              }`}
+            >
               <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
                 </svg>
                 Completed projects
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">({completed.length})</span>
+                {dragOverCompleted && (
+                  <span className="ml-2 text-xs text-green-700 dark:text-green-400 font-medium">Drop here to complete</span>
+                )}
               </h2>
               {completed.length === 0 ? (
                 <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800/60 rounded-lg px-3 py-3 border border-dashed border-gray-300 dark:border-slate-700">
-                  Projects marked &quot;Completed&quot; will show up here. Change a project&apos;s stage to Completed to move it out of the timeline.
+                  Drag a project bar here to mark it completed, or click a bar and choose &quot;Mark as completed&quot;.
                 </div>
               ) : (
                 <div className="bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-800">
@@ -327,11 +366,17 @@ interface GanttPanelProps {
   year: number;
   projects: Project[];
   todayMarkerPct: number | null;
+  /** Ref to the "Completed projects" panel. Read inside GanttBar's
+   *  pointer-up handler to decide if the drag ended inside the
+   *  drop zone (→ mark completed) vs. inside the timeline (→ date shift). */
+  completedZoneRef: React.RefObject<HTMLDivElement | null>;
+  onDragOverCompletedChange: (over: boolean) => void;
   onEdit: (p: Project) => void;
   onDateShift: (id: string, newStart: string, newEnd: string) => void;
+  onMarkCompleted: (id: string) => void;
 }
 
-function GanttPanel({ year, projects, todayMarkerPct, onEdit, onDateShift }: GanttPanelProps) {
+function GanttPanel({ year, projects, todayMarkerPct, completedZoneRef, onDragOverCompletedChange, onEdit, onDateShift, onMarkCompleted }: GanttPanelProps) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
       {/* Month header */}
@@ -384,8 +429,11 @@ function GanttPanel({ year, projects, todayMarkerPct, onEdit, onDateShift }: Gan
                 key={p.id}
                 project={p}
                 year={year}
+                completedZoneRef={completedZoneRef}
+                onDragOverCompletedChange={onDragOverCompletedChange}
                 onEdit={onEdit}
                 onDateShift={onDateShift}
+                onMarkCompleted={onMarkCompleted}
               />
             ))}
           </div>
@@ -402,14 +450,19 @@ function GanttPanel({ year, projects, todayMarkerPct, onEdit, onDateShift }: Gan
 interface GanttBarProps {
   project: Project;
   year: number;
+  completedZoneRef: React.RefObject<HTMLDivElement | null>;
+  onDragOverCompletedChange: (over: boolean) => void;
   onEdit: (p: Project) => void;
   onDateShift: (id: string, newStart: string, newEnd: string) => void;
+  onMarkCompleted: (id: string) => void;
 }
 
-function GanttBar({ project, year, onEdit, onDateShift }: GanttBarProps) {
+function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, onEdit, onDateShift, onMarkCompleted }: GanttBarProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const [dragDeltaPct, setDragDeltaPct] = useState(0);
-  const draggingRef = useRef<{ startX: number; rowWidth: number; moved: boolean } | null>(null);
+  // Track full drag state including last pointer Y — needed so onPointerUp
+  // can ask "are we over the Completed zone?" without recomputing.
+  const draggingRef = useRef<{ startX: number; startY: number; rowWidth: number; moved: boolean; overCompleted: boolean } | null>(null);
 
   const yearDays = daysInYear(year);
   const yearStart = new Date(year, 0, 1);
@@ -435,24 +488,41 @@ function GanttBar({ project, year, onEdit, onDateShift }: GanttBarProps) {
   const team = TEAM_BY_ID[project.team];
   const stageLabel = STAGE_LABEL[project.stage];
 
+  /** Is the pointer currently inside the Completed-projects panel? */
+  function isOverCompletedZone(clientX: number, clientY: number): boolean {
+    const el = completedZoneRef.current;
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  }
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (!rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
-    draggingRef.current = { startX: e.clientX, rowWidth: rect.width, moved: false };
+    draggingRef.current = { startX: e.clientX, startY: e.clientY, rowWidth: rect.width, moved: false, overCompleted: false };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const drag = draggingRef.current;
     if (!drag) return;
     const dx = e.clientX - drag.startX;
-    if (Math.abs(dx) > 3) drag.moved = true;
+    const dy = e.clientY - drag.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
     setDragDeltaPct((dx / drag.rowWidth) * 100);
+
+    // Light up the Completed zone whenever the pointer enters it.
+    const over = isOverCompletedZone(e.clientX, e.clientY);
+    if (over !== drag.overCompleted) {
+      drag.overCompleted = over;
+      onDragOverCompletedChange(over);
+    }
   }
   function onPointerUp(e: React.PointerEvent<HTMLDivElement>) {
     const drag = draggingRef.current;
     draggingRef.current = null;
     if (!drag) return;
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    onDragOverCompletedChange(false);
 
     if (!drag.moved) {
       // Treat as click → open edit modal.
@@ -461,7 +531,15 @@ function GanttBar({ project, year, onEdit, onDateShift }: GanttBarProps) {
       return;
     }
 
-    // Convert pixel delta → days (rounded), then shift both endpoints.
+    // Dropped on the Completed tray → mark completed (takes precedence
+    // over any horizontal delta — we ignore date shift in that case).
+    if (isOverCompletedZone(e.clientX, e.clientY)) {
+      setDragDeltaPct(0);
+      onMarkCompleted(project.id);
+      return;
+    }
+
+    // Otherwise: convert pixel delta → days (rounded), shift both endpoints.
     const deltaPx = e.clientX - drag.startX;
     const deltaDays = Math.round((deltaPx / drag.rowWidth) * yearDays);
     setDragDeltaPct(0);
@@ -475,6 +553,7 @@ function GanttBar({ project, year, onEdit, onDateShift }: GanttBarProps) {
   function onPointerCancel() {
     draggingRef.current = null;
     setDragDeltaPct(0);
+    onDragOverCompletedChange(false);
   }
 
   return (

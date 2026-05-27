@@ -133,6 +133,26 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
     }
   }
 
+  /** One-click "Mark as completed" / "Reopen". Toggles between completed
+   *  and the previous stage (defaults to 'in_progress' when reopening a
+   *  finished project). completed_at is auto-managed in lib/db. */
+  async function handleToggleComplete() {
+    if (!editing) return;
+    setError(null);
+    setSubmitting(true);
+    const next: ProjectStage = editing.stage === 'completed' ? 'in_progress' : 'completed';
+    try {
+      await dbUpdateProject(editing.id, { stage: next });
+      onChanged();
+      onClose();
+    } catch (err) {
+      const msg = extractErrorMessage(err);
+      console.error('ProjectModal toggle complete failed:', err);
+      setError(`Failed to update: ${msg}`);
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -242,6 +262,38 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
           {error && (
             <div role="alert" className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
               {error}
+            </div>
+          )}
+
+          {/* "Mark as completed" shortcut — only relevant in edit mode.
+              Sits as its own row above the standard footer so the
+              "celebration" action gets visual weight, and so users don't
+              have to dig into the Stage dropdown for the single most
+              common state change. Toggles back to "Reopen" once done. */}
+          {editing && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleToggleComplete}
+                disabled={submitting}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 ${
+                  editing.stage === 'completed'
+                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30'
+                    : 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950/30'
+                }`}
+              >
+                {editing.stage === 'completed' ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a4 4 0 014 4v0a4 4 0 01-4 4H7M3 10l4-4m-4 4l4 4" /></svg>
+                    Reopen project
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" /></svg>
+                    Mark as completed
+                  </>
+                )}
+              </button>
             </div>
           )}
 
