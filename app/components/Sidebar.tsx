@@ -124,6 +124,10 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [salesDashOpen, setSalesDashOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith('/reports'));
+  // R&D / Marketing parent menu — expandable. Default-expanded if the
+  // user is already on one of the child routes so they don't have to
+  // click it back open on every navigation.
+  const [rndMarketingOpen, setRndMarketingOpen] = useState(pathname.startsWith('/rnd'));
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const userId = session?.user?.id ?? '';
@@ -168,9 +172,8 @@ export default function Sidebar() {
     // the user recorded. Available to every role (see useMenuAccess
     // ROLE_DEFAULTS — `archive` is in every set).
     { href: '/archive' as const, label: 'Archive', icon: ArchiveIcon },
-    // R&D budget tracker — yearly budget + 12-month grid of expense entries.
-    // Marketing/etc. similar trackers can be added later as siblings.
-    { href: '/rnd' as const, label: 'R&D', icon: RndIcon },
+    // NOTE: /rnd is now rendered as a sub-item under the "R&D / Marketing"
+    // expandable parent below — don't add it back to allItems.
     { href: '/reports' as const, label: 'Reports', icon: ReportsIcon },
     { href: '/insights' as const, label: 'Insights', icon: InsightsIcon },
     { href: '/scan-card' as const, label: 'Scan Card', icon: ScanCardIcon },
@@ -270,6 +273,38 @@ export default function Sidebar() {
                     {item.label}
                   </Link>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* R&D / Marketing — expandable parent. Currently has one child
+            (Budget Tracker → /rnd); Marketing sub-pages can be added later. */}
+        {canAccess('rnd') && (
+          <div>
+            <button
+              onClick={() => setRndMarketingOpen(!rndMarketingOpen)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                pathname.startsWith('/rnd') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <RndIcon />
+              <span>R&amp;D / Marketing</span>
+              <svg className={`w-4 h-4 ml-auto transition-transform ${rndMarketingOpen || pathname.startsWith('/rnd') ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {(rndMarketingOpen || pathname.startsWith('/rnd')) && (
+              <div className="ml-8 mt-1 space-y-0.5">
+                <Link
+                  href="/rnd"
+                  onClick={() => setMobileOpen(false)}
+                  className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                    pathname === '/rnd' || pathname.startsWith('/rnd/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  Budget Tracker
+                </Link>
               </div>
             )}
           </div>
