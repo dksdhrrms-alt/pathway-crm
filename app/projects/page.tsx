@@ -150,9 +150,11 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
-      <TopBar />
+      <TopBar placeholder="Search projects..." />
 
-      <div className="px-4 md:px-8 py-6 max-w-7xl mx-auto">
+      {/* pt-16 reserves space for the fixed TopBar (h ≈ 64px). Same
+          pattern as /rnd — without this the page title slides under it. */}
+      <main className="pt-16 px-4 md:px-8 py-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
@@ -300,7 +302,7 @@ export default function ProjectsPage() {
             </div>
           </>
         )}
-      </div>
+      </main>
 
       {modal && (
         <ProjectModal
