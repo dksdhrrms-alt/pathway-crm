@@ -43,13 +43,16 @@ FROM contacts c
 LEFT JOIN users u ON u.id = c.owner_id
 WHERE c.owner_name IS DISTINCT FROM u.name;
 
-SELECT c.id, c.name AS contact_name, c.owner_id,
+-- Contacts use first_name / last_name (no single `name` column).
+SELECT c.id,
+       TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')) AS contact_name,
+       c.owner_id,
        c.owner_name AS stale_name,
        u.name       AS actual_name
 FROM contacts c
 LEFT JOIN users u ON u.id = c.owner_id
 WHERE c.owner_name IS DISTINCT FROM u.name
-ORDER BY c.name
+ORDER BY c.first_name NULLS LAST, c.last_name NULLS LAST
 LIMIT 20;
 
 -- ---------------------------------------------------------------------
@@ -71,8 +74,11 @@ WHERE (email IS NULL OR email = '')
 GROUP BY owner_name
 ORDER BY ghost_count DESC;
 
--- Sample
-SELECT id, name, owner_name, created_at
+-- Sample (contacts use first_name + last_name)
+SELECT id,
+       TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) AS name,
+       owner_name,
+       created_at
 FROM contacts
 WHERE (email IS NULL OR email = '')
   AND (account_id IS NULL OR account_id = '')
@@ -92,12 +98,14 @@ WHERE (contact_id IS NULL OR contact_id = '')
   AND (account_id IS NULL OR account_id = '')
   AND COALESCE(subject, '') NOT LIKE '[SYSTEM]%';
 
-SELECT id, subject, date, owner_name, type
-FROM activities
-WHERE (contact_id IS NULL OR contact_id = '')
-  AND (account_id IS NULL OR account_id = '')
-  AND COALESCE(subject, '') NOT LIKE '[SYSTEM]%'
-ORDER BY date DESC NULLS LAST
+-- activities table has owner_id only (no owner_name column). Join users for the name.
+SELECT a.id, a.subject, a.date, a.owner_id, u.name AS owner, a.type
+FROM activities a
+LEFT JOIN users u ON u.id = a.owner_id
+WHERE (a.contact_id IS NULL OR a.contact_id = '')
+  AND (a.account_id IS NULL OR a.account_id = '')
+  AND COALESCE(a.subject, '') NOT LIKE '[SYSTEM]%'
+ORDER BY a.date DESC NULLS LAST
 LIMIT 20;
 
 SELECT 'ISSUE 4b: activities with broken contact_id' AS check_name;
@@ -168,7 +176,7 @@ SELECT 'ISSUE 7: duplicate contact emails' AS check_name;
 SELECT LOWER(TRIM(email)) AS normalized_email,
        COUNT(*) AS cnt,
        array_agg(id ORDER BY created_at NULLS LAST, id) AS contact_ids,
-       array_agg(name) AS names
+       array_agg(TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))) AS names
 FROM contacts
 WHERE email IS NOT NULL AND email <> ''
 GROUP BY LOWER(TRIM(email))

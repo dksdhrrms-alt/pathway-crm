@@ -288,6 +288,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
       const { data: contactRows, error: cErr } = await supabase
         .from('contacts')
         .select('id, email, account_id')
+        .is('archived_at', null)
         .or(orFilter);
       if (cErr) console.error('[inbound-email] contact lookup error:', cErr.message);
       console.warn('[inbound-email] step: contact lookup', {
@@ -316,6 +317,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
       .select('contact_id, account_id, date')
       .eq('owner_id', ownerId)
       .gte('date', since)
+      .is('archived_at', null)
       .not('contact_id', 'is', null)
       .order('date', { ascending: false })
       .limit(1);

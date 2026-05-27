@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
   try {
     // Fetch accounts and their latest activity
     const { data: accounts } = await sb.from('accounts').select('id, name, owner_id');
-    const { data: activities } = await sb.from('activities').select('account_id, date').order('date', { ascending: false });
+    // Skip archived activities — they no longer reflect real customer engagement
+    // (orphan/duplicate rows cleaned by data-migration/04 + 05).
+    const { data: activities } = await sb.from('activities').select('account_id, date').is('archived_at', null).order('date', { ascending: false });
 
     if (!accounts || !activities) {
       return Response.json({ error: 'Failed to fetch data' }, { status: 500 });

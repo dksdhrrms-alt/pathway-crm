@@ -28,10 +28,11 @@ ALTER TABLE contacts
 -- ---------------------------------------------------------------------
 -- STEP 1: Identify duplicate emails (active contacts only)
 -- ---------------------------------------------------------------------
+-- contacts uses first_name + last_name (no `name` column)
 SELECT LOWER(TRIM(email)) AS normalized_email,
        COUNT(*) AS dup_count,
        array_agg(id ORDER BY created_at NULLS LAST, id) AS contact_ids,
-       array_agg(name) AS names,
+       array_agg(TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))) AS names,
        array_agg(account_id) AS account_ids
 FROM contacts
 WHERE email IS NOT NULL
@@ -47,7 +48,9 @@ ORDER BY dup_count DESC, normalized_email;
 -- ---------------------------------------------------------------------
 -- Example for eric.stejskal@trouwnutrition.com:
 --
--- SELECT c.id, c.name, c.account_id, c.owner_name, c.created_at,
+-- SELECT c.id,
+--        TRIM(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')) AS name,
+--        c.account_id, c.owner_name, c.created_at,
 --        (SELECT COUNT(*) FROM activities a WHERE a.contact_id = c.id) AS activity_cnt
 -- FROM contacts c
 -- WHERE LOWER(TRIM(c.email)) = LOWER(TRIM('eric.stejskal@trouwnutrition.com'))
