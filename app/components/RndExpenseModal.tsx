@@ -17,8 +17,8 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import type { RndExpense } from '@/lib/data';
-import { generateId } from '@/lib/data';
+import type { RndExpense, RndTeam } from '@/lib/data';
+import { generateId, RND_TEAMS } from '@/lib/data';
 import { dbCreateRndExpense, dbUpdateRndExpense, dbDeleteRndExpense } from '@/lib/db';
 import SubmitButton from './SubmitButton';
 
@@ -29,6 +29,9 @@ interface Props {
   editing?: RndExpense | null;
   defaultYear: number;
   defaultMonth: number;
+  /** Pre-select this team when adding a new entry. Useful when the user
+   *  clicked + Add from inside a team-filtered view. */
+  defaultTeam?: RndTeam;
   /** Years that should appear in the year dropdown — current year + a few around it. */
   yearOptions: number[];
   onClose: () => void;
@@ -36,13 +39,14 @@ interface Props {
   onChanged: () => void;
 }
 
-export default function RndExpenseModal({ editing, defaultYear, defaultMonth, yearOptions, onClose, onChanged }: Props) {
+export default function RndExpenseModal({ editing, defaultYear, defaultMonth, defaultTeam, yearOptions, onClose, onChanged }: Props) {
   const { data: session } = useSession();
   const [name, setName] = useState(editing?.name ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
   const [amount, setAmount] = useState<string>(editing ? String(editing.amount) : '');
   const [year, setYear] = useState<number>(editing?.year ?? defaultYear);
   const [month, setMonth] = useState<number>(editing?.month ?? defaultMonth);
+  const [team, setTeam] = useState<RndTeam>(editing?.team ?? defaultTeam ?? 'other');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,12 +74,14 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, ye
           amount: parsedAmount,
           year,
           month,
+          team,
         });
       } else {
         await dbCreateRndExpense({
           id: generateId(),
           year,
           month,
+          team,
           name: trimmedName,
           description: description.trim() || undefined,
           amount: parsedAmount,
@@ -157,6 +163,20 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, ye
               rows={2}
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Team <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={team}
+              onChange={(e) => setTeam(e.target.value as RndTeam)}
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              {RND_TEAMS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This expense counts against the selected team&apos;s annual budget.</p>
           </div>
 
           <div className="grid grid-cols-3 gap-3">

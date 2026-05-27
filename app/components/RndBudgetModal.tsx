@@ -15,17 +15,21 @@
 
 import { useEffect, useState } from 'react';
 import { dbUpsertRndBudget } from '@/lib/db';
+import type { RndTeam } from '@/lib/data';
+import { RND_TEAMS } from '@/lib/data';
 import SubmitButton from './SubmitButton';
 
 interface Props {
   year: number;
+  team: RndTeam;
   currentAmount: number;
   currentNotes?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function RndBudgetModal({ year, currentAmount, currentNotes, onClose, onSaved }: Props) {
+export default function RndBudgetModal({ year, team, currentAmount, currentNotes, onClose, onSaved }: Props) {
+  const teamLabel = RND_TEAMS.find((t) => t.id === team)?.label ?? team;
   const [amount, setAmount] = useState<string>(currentAmount > 0 ? String(currentAmount) : '');
   const [notes, setNotes] = useState<string>(currentNotes ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -44,7 +48,7 @@ export default function RndBudgetModal({ year, currentAmount, currentNotes, onCl
     if (!Number.isFinite(parsed) || parsed < 0) { setError('Amount must be a positive number.'); return; }
     setSubmitting(true);
     try {
-      await dbUpsertRndBudget(year, parsed, notes.trim() || undefined);
+      await dbUpsertRndBudget(year, team, parsed, notes.trim() || undefined);
       onSaved();
       onClose();
     } catch (err) {
@@ -64,7 +68,7 @@ export default function RndBudgetModal({ year, currentAmount, currentNotes, onCl
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            R&D budget — {year}
+            R&D budget — {teamLabel} {year}
           </h2>
           <button
             onClick={onClose}
@@ -95,7 +99,7 @@ export default function RndBudgetModal({ year, currentAmount, currentNotes, onCl
               autoFocus
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total R&D budget for {year}. Spending is tracked per month against this number.</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{teamLabel} team&apos;s annual budget for {year}. Spending tagged to {teamLabel} is tracked against this number.</p>
           </div>
 
           <div>

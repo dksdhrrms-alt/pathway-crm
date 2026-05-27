@@ -175,12 +175,24 @@ export interface AccountBudget {
   category: string;
 }
 
-// R&D budget tracker — one annual budget row per year, plus a list of
-// expense entries each tagged to a (year, month) cell of the on-screen
-// 12-card grid. See app/rnd/page.tsx and supabase/rnd_schema.sql.
+// R&D budget tracker — budgets are split by team (Ruminant, Poultry,
+// Swine, LATAM, Other) so each team has its own annual envelope and
+// expenses count against the matching team's pool.
+// See app/rnd/page.tsx and supabase/rnd_schema.sql.
+export type RndTeam = 'ruminant' | 'poultry' | 'swine' | 'latam' | 'other';
+
+export const RND_TEAMS: { id: RndTeam; label: string }[] = [
+  { id: 'ruminant', label: 'Ruminant' },
+  { id: 'poultry',  label: 'Poultry'  },
+  { id: 'swine',    label: 'Swine'    },
+  { id: 'latam',    label: 'LATAM'    },
+  { id: 'other',    label: 'Other'    },
+];
+
 export interface RndBudget {
   id: string;
   year: number;
+  team: RndTeam;
   annualAmount: number;
   notes?: string;
   updatedAt?: string;
@@ -190,6 +202,7 @@ export interface RndExpense {
   id: string;
   year: number;
   month: number;       // 1–12
+  team: RndTeam;
   name: string;
   description?: string;
   amount: number;

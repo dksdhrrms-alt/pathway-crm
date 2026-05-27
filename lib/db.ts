@@ -1,5 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
-import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense } from './data';
+import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense, RndTeam } from './data';
 import type { AppUser } from './users';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import type { BudgetEntry } from './budgetStore';
@@ -363,13 +363,14 @@ export async function dbGetRndBudgets(): Promise<RndBudget[]> {
   return mapRows<RndBudget>(data || []);
 }
 
-export async function dbUpsertRndBudget(year: number, annualAmount: number, notes?: string): Promise<void> {
+export async function dbUpsertRndBudget(year: number, team: RndTeam, annualAmount: number, notes?: string): Promise<void> {
   if (!supabaseEnabled) return;
-  // Deterministic id — one row per year. Upsert ensures the row is either
-  // created on first save or updated in place on subsequent edits.
-  const id = `rnd-budget-${year}`;
+  // Deterministic id — one row per (year, team). Upsert ensures the row
+  // is either created on first save or updated in place on subsequent
+  // edits, regardless of which user makes the change.
+  const id = `rnd-budget-${year}-${team}`;
   const { error } = await supabase.from('rnd_budgets').upsert(
-    { id, year, annual_amount: annualAmount, notes: notes ?? null, updated_at: new Date().toISOString() },
+    { id, year, team, annual_amount: annualAmount, notes: notes ?? null, updated_at: new Date().toISOString() },
     { onConflict: 'id' },
   );
   if (error) throw error;
