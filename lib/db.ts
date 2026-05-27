@@ -26,6 +26,15 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   expectedStartDate: 'expected_start_date',
   parentAccountId: 'parent_account_id',
   internalParticipants: 'internal_participants',
+  // Marketing project tracker (/projects). Without these, toSnake() leaves
+  // the keys camelCase and Supabase rejects them with PGRST204 "column not
+  // found in schema cache".
+  startDate: 'start_date', endDate: 'end_date',
+  completedAt: 'completed_at', sortOrder: 'sort_order',
+  archivedAt: 'archived_at',
+  // R&D expense column — same reason. (Already silently broken for the
+  // rnd table soft-delete; explicit mapping makes it deterministic.)
+  annualAmount: 'annual_amount', updatedAt: 'updated_at',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};
