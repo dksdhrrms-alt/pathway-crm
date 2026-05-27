@@ -127,7 +127,9 @@ export default function Sidebar() {
   // R&D / Marketing parent menu — expandable. Default-expanded if the
   // user is already on one of the child routes so they don't have to
   // click it back open on every navigation.
-  const [rndMarketingOpen, setRndMarketingOpen] = useState(pathname.startsWith('/rnd'));
+  const [rndMarketingOpen, setRndMarketingOpen] = useState(
+    pathname.startsWith('/rnd') || pathname.startsWith('/projects'),
+  );
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const userId = session?.user?.id ?? '';
@@ -162,6 +164,7 @@ export default function Sidebar() {
     '/opportunities': 'opportunities', '/tasks': 'tasks',
     '/archive': 'archive',
     '/rnd': 'rnd',
+    '/projects': 'projects',
     '/reports': 'reports',
     '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
   };
@@ -278,33 +281,47 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* R&D / Marketing — expandable parent. Currently has one child
-            (Budget Tracker → /rnd); Marketing sub-pages can be added later. */}
-        {canAccess('rnd') && (
+        {/* R&D / Marketing — expandable parent. Sub-items:
+              · Budget Tracker → /rnd  (R&D + Event budget grid)
+              · Project        → /projects  (marketing project Gantt) */}
+        {(canAccess('rnd') || canAccess('projects')) && (
           <div>
             <button
               onClick={() => setRndMarketingOpen(!rndMarketingOpen)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith('/rnd') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+                pathname.startsWith('/rnd') || pathname.startsWith('/projects') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`}
             >
               <RndIcon />
               <span>R&amp;D / Marketing</span>
-              <svg className={`w-4 h-4 ml-auto transition-transform ${rndMarketingOpen || pathname.startsWith('/rnd') ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-4 h-4 ml-auto transition-transform ${rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/projects') ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {(rndMarketingOpen || pathname.startsWith('/rnd')) && (
+            {(rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/projects')) && (
               <div className="ml-8 mt-1 space-y-0.5">
-                <Link
-                  href="/rnd"
-                  onClick={() => setMobileOpen(false)}
-                  className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
-                    pathname === '/rnd' || pathname.startsWith('/rnd/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  Budget Tracker
-                </Link>
+                {canAccess('rnd') && (
+                  <Link
+                    href="/rnd"
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                      pathname === '/rnd' || pathname.startsWith('/rnd/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    Budget Tracker
+                  </Link>
+                )}
+                {canAccess('projects') && (
+                  <Link
+                    href="/projects"
+                    onClick={() => setMobileOpen(false)}
+                    className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                      pathname === '/projects' || pathname.startsWith('/projects/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    Project
+                  </Link>
+                )}
               </div>
             )}
           </div>

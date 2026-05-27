@@ -221,6 +221,50 @@ export interface RndExpense {
   archivedAt?: string | null;
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Marketing project tracker (/projects).
+//
+// Reuses the R&D team taxonomy plus an additional 'npd' (New Product
+// Development) bucket. Stages are kanban-like — 'completed' bubbles the
+// project into the auto-collected "Completed projects" tray at the
+// bottom of the page.
+// See app/projects/page.tsx and supabase/projects_schema.sql.
+// ─────────────────────────────────────────────────────────────────────
+export type ProjectTeam = RndTeam | 'npd';
+export type ProjectStage = 'planning' | 'in_progress' | 'review' | 'completed';
+
+export const PROJECT_TEAMS: { id: ProjectTeam; label: string; color: string; textColor: string }[] = [
+  // color = bar fill, textColor = label / badge text on that fill (800–900 from same ramp).
+  { id: 'ruminant', label: 'Ruminant', color: '#97C459', textColor: '#173404' },
+  { id: 'poultry',  label: 'Poultry',  color: '#EF9F27', textColor: '#412402' },
+  { id: 'swine',    label: 'Swine',    color: '#ED93B1', textColor: '#4B1528' },
+  { id: 'latam',    label: 'LATAM',    color: '#5DCAA5', textColor: '#04342C' },
+  { id: 'other',    label: 'Other',    color: '#B4B2A9', textColor: '#2C2C2A' },
+  { id: 'npd',      label: 'New Product Development', color: '#AFA9EC', textColor: '#26215C' },
+];
+
+export const PROJECT_STAGES: { id: ProjectStage; label: string }[] = [
+  { id: 'planning',    label: 'Planning'    },
+  { id: 'in_progress', label: 'In progress' },
+  { id: 'review',      label: 'Review'      },
+  { id: 'completed',   label: 'Completed'   },
+];
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  team: ProjectTeam;
+  stage: ProjectStage;
+  startDate: string;         // ISO date (YYYY-MM-DD)
+  endDate: string;           // ISO date (YYYY-MM-DD) — deadline
+  completedAt?: string | null;
+  sortOrder: number;         // vertical row ordering on the Gantt
+  ownerId?: string;
+  createdAt?: string;
+  archivedAt?: string | null;
+}
+
 export const initialAccounts: Account[] = [
   {
     id: 'acc-001',

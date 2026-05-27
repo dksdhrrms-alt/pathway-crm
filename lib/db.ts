@@ -1,5 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
-import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense, RndTeam, RndCategory } from './data';
+import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense, RndTeam, RndCategory, Project } from './data';
 import type { AppUser } from './users';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import type { BudgetEntry } from './budgetStore';
@@ -411,6 +411,67 @@ export async function dbDeleteRndExpense(id: string): Promise<void> {
     .update({ archived_at: new Date().toISOString() })
     .eq('id', id);
   if (error) throw error;
+}
+
+// ── Projects (marketing tracker) ────────────────────────────────────────────
+
+export async function dbGetProjects(): Promise<Project[]> {
+  if (!supabaseEnabled) return [];
+  // Filter archived; sort_order asc keeps user-defined row ordering on the
+  // Gantt stable across reloads. created_at is the tie-breaker.
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .is('archived_at', null)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) { console.error('[DB] projects error:', error.message); return []; }
+  return mapRows<Project>(data || []);
+}
+
+export async function dbCreateProject(project: Project): Promise<Project> {
+  const row = toSnake(project);
+  const { data, error } = await supabase.from('projects').insert(row).select().single();
+  if (error) throw error;
+  return toCamel(data) as unknown as Project;
+}
+
+export async function dbUpdateProject(id: string, updates: Partial<Project>): Promise<void> {
+  if (!supabaseEnabled) return;
+  // Auto-stamp completed_at when stage flips to 'completed', and clear it
+  // when stage moves back to anything else. Caller doesn't need to manage
+  // this field; it's purely derived from stage transitions.
+  const patch: Partial<Project> = { ...updates };
+  if (Object.prototype.hasOwnProperty.call(updates, 'stage')) {
+    if (updates.stage === 'completed') {
+      patch.completedAt = patch.completedAt ?? new Date().toISOString();
+    } else {
+      patch.completedAt = null;
+    }
+  }
+  const { error } = await supabase.from('projects').update(toSnake(patch)).eq('id', id);
+  if (error) throw error;
+}
+
+export async function dbDeleteProject(id: string): Promise<void> {
+  if (!supabaseEnabled) return;
+  // Soft delete — matches contacts / activities / rnd_expenses pattern.
+  const { error } = await supabase
+    .from('projects')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/** Bulk-update sort_order after drag-and-drop reorder. Sequential awaits
+ *  are fine here — reorders are at most a handful of rows. */
+export async function dbReorderProjects(orderedIds: string[]): Promise<void> {
+  if (!supabaseEnabled || orderedIds.length === 0) return;
+  await Promise.all(
+    orderedIds.map((id, idx) =>
+      supabase.from('projects').update({ sort_order: idx }).eq('id', id),
+    ),
+  );
 }
 
 // ── Connection test ─────────────────────────────────────────────────────────
