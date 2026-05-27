@@ -24,6 +24,21 @@ import { generateId, PROJECT_TEAMS, PROJECT_STAGES } from '@/lib/data';
 import { dbCreateProject, dbUpdateProject, dbDeleteProject } from '@/lib/db';
 import SubmitButton from './SubmitButton';
 
+/** Unwrap a thrown value into a human-readable string. Handles three
+ *  shapes: native Error, Supabase error ({ message, details, hint, code }),
+ *  and anything else (fall back to JSON). Without this, Supabase errors
+ *  stringify as "[object Object]" and the real cause hides. */
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    const e = err as { message?: string; details?: string; hint?: string; code?: string };
+    const parts = [e.message, e.details, e.hint, e.code ? `(code ${e.code})` : null].filter(Boolean);
+    if (parts.length) return parts.join(' — ');
+    try { return JSON.stringify(err); } catch { return String(err); }
+  }
+  return String(err);
+}
+
 interface Props {
   /** When set, edit that project. Otherwise create new. */
   editing?: Project | null;
@@ -92,8 +107,11 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
       onChanged();
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('ProjectModal save failed:', msg);
+      // Supabase errors are plain objects `{ message, details, hint, code }`
+      // — not `Error` instances. `String(err)` would print "[object Object]"
+      // and hide the actual reason. extractErrorMessage unwraps both cases.
+      const msg = extractErrorMessage(err);
+      console.error('ProjectModal save failed:', err);
       setError(`Save failed: ${msg}`);
       setSubmitting(false);
     }
@@ -108,7 +126,8 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
       onChanged();
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = extractErrorMessage(err);
+      console.error('ProjectModal delete failed:', err);
       setError(`Delete failed: ${msg}`);
       setSubmitting(false);
     }
