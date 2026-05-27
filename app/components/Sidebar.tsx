@@ -319,7 +319,7 @@ export default function Sidebar() {
                       pathname === '/projects' || pathname.startsWith('/projects/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    Project
+                    Project Tracker
                   </Link>
                 )}
               </div>
