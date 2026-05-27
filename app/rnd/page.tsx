@@ -26,8 +26,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import type { RndBudget, RndExpense, RndTeam } from '@/lib/data';
-import { RND_TEAMS } from '@/lib/data';
+import type { RndBudget, RndExpense, RndTeam, RndCategory } from '@/lib/data';
+import { RND_TEAMS, RND_CATEGORIES } from '@/lib/data';
 import { dbGetRndBudgets, dbGetRndExpenses } from '@/lib/db';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
@@ -63,6 +63,9 @@ export default function RndPage() {
   const currentMonth = now.getMonth() + 1;
 
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  // Top-of-page toggle: R&D (default) or Event. All budgets/expenses,
+  // breakdown table, and the 12-month grid are scoped to this category.
+  const [selectedCategory, setSelectedCategory] = useState<RndCategory>('rnd');
   // null = show all teams; otherwise scope the grid to that team only.
   const [selectedTeam, setSelectedTeam] = useState<RndTeam | null>(null);
   const [budgets, setBudgets] = useState<RndBudget[]>([]);
@@ -101,14 +104,16 @@ export default function RndPage() {
     return [...set].sort((a, b) => b - a);
   }, [budgets, expenses, currentYear]);
 
-  // Year-scoped data
+  // Year + category scoped data. The same DB rows are reused for both
+  // R&D and Event — distinguished by the `category` field — so this is
+  // the single filter both layers below depend on.
   const yearBudgets = useMemo(
-    () => budgets.filter((b) => b.year === selectedYear),
-    [budgets, selectedYear],
+    () => budgets.filter((b) => b.year === selectedYear && b.category === selectedCategory),
+    [budgets, selectedYear, selectedCategory],
   );
   const yearExpenses = useMemo(
-    () => expenses.filter((e) => e.year === selectedYear),
-    [expenses, selectedYear],
+    () => expenses.filter((e) => e.year === selectedYear && e.category === selectedCategory),
+    [expenses, selectedYear, selectedCategory],
   );
 
   // Per-team aggregation: budget, spent, remaining
@@ -175,16 +180,30 @@ export default function RndPage() {
         <div className="max-w-7xl mx-auto">
 
           {/* Title bar */}
-          <div className="mt-6 mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-6 mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/40">
-                <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3h6m-5 0v6.5L4 19a2 2 0 001.7 3h12.6a2 2 0 001.7-3L14 9.5V3" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 15h10" />
-                </svg>
+              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg ${
+                selectedCategory === 'rnd'
+                  ? 'bg-blue-50 dark:bg-blue-950/40'
+                  : 'bg-purple-50 dark:bg-purple-950/40'
+              }`}>
+                {selectedCategory === 'rnd' ? (
+                  /* Flask — R&D */
+                  <svg className="w-5 h-5 text-blue-600 dark:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 3h6m-5 0v6.5L4 19a2 2 0 001.7 3h12.6a2 2 0 001.7-3L14 9.5V3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 15h10" />
+                  </svg>
+                ) : (
+                  /* Calendar/ticket — Event */
+                  <svg className="w-5 h-5 text-purple-600 dark:text-purple-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                )}
               </span>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">R&D</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {selectedCategory === 'rnd' ? 'R&D' : 'Event'}
+                </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Annual budget tracker — per team</p>
               </div>
             </div>
@@ -195,6 +214,36 @@ export default function RndPage() {
             >
               {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
+          </div>
+
+          {/* R&D / Event toggle.
+              Pill-style segmented control. Switching here re-filters
+              every layer below — budgets, breakdown table, grid — by
+              the matching `category` field on each row. */}
+          <div className="mb-5 inline-flex p-0.5 rounded-lg bg-gray-100 dark:bg-slate-800">
+            {RND_CATEGORIES.map((c) => {
+              const isActive = c.id === selectedCategory;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => {
+                    setSelectedCategory(c.id);
+                    // Reset team filter when switching category so the
+                    // user always lands on the "All teams" view of the
+                    // new section.
+                    setSelectedTeam(null);
+                  }}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    isActive
+                      ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                  aria-pressed={isActive}
+                >
+                  {c.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Aggregate summary band */}
@@ -400,6 +449,7 @@ export default function RndPage() {
           <RndBudgetModal
             year={selectedYear}
             team={budgetModal.team}
+            category={selectedCategory}
             currentAmount={t?.budget ?? 0}
             currentNotes={t?.budgetRow?.notes}
             onClose={() => setBudgetModal(null)}
@@ -413,6 +463,7 @@ export default function RndPage() {
           defaultYear={expenseModal.mode === 'add' ? expenseModal.year : selectedYear}
           defaultMonth={expenseModal.mode === 'add' ? expenseModal.month : currentMonth}
           defaultTeam={expenseModal.mode === 'add' ? expenseModal.team : undefined}
+          category={selectedCategory}
           yearOptions={yearOptions}
           onClose={() => setExpenseModal(null)}
           onChanged={reload}

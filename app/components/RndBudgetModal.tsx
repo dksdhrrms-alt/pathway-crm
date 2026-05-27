@@ -15,21 +15,23 @@
 
 import { useEffect, useState } from 'react';
 import { dbUpsertRndBudget } from '@/lib/db';
-import type { RndTeam } from '@/lib/data';
-import { RND_TEAMS } from '@/lib/data';
+import type { RndTeam, RndCategory } from '@/lib/data';
+import { RND_TEAMS, RND_CATEGORIES } from '@/lib/data';
 import SubmitButton from './SubmitButton';
 
 interface Props {
   year: number;
   team: RndTeam;
+  category: RndCategory;
   currentAmount: number;
   currentNotes?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function RndBudgetModal({ year, team, currentAmount, currentNotes, onClose, onSaved }: Props) {
+export default function RndBudgetModal({ year, team, category, currentAmount, currentNotes, onClose, onSaved }: Props) {
   const teamLabel = RND_TEAMS.find((t) => t.id === team)?.label ?? team;
+  const categoryLabel = RND_CATEGORIES.find((c) => c.id === category)?.label ?? category;
   const [amount, setAmount] = useState<string>(currentAmount > 0 ? String(currentAmount) : '');
   const [notes, setNotes] = useState<string>(currentNotes ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +50,7 @@ export default function RndBudgetModal({ year, team, currentAmount, currentNotes
     if (!Number.isFinite(parsed) || parsed < 0) { setError('Amount must be a positive number.'); return; }
     setSubmitting(true);
     try {
-      await dbUpsertRndBudget(year, team, parsed, notes.trim() || undefined);
+      await dbUpsertRndBudget(year, team, category, parsed, notes.trim() || undefined);
       onSaved();
       onClose();
     } catch (err) {
@@ -68,7 +70,7 @@ export default function RndBudgetModal({ year, team, currentAmount, currentNotes
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            R&D budget — {teamLabel} {year}
+            {categoryLabel} budget — {teamLabel} {year}
           </h2>
           <button
             onClick={onClose}

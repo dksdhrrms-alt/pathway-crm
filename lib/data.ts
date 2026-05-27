@@ -175,11 +175,14 @@ export interface AccountBudget {
   category: string;
 }
 
-// R&D budget tracker — budgets are split by team (Ruminant, Poultry,
-// Swine, LATAM, Other) so each team has its own annual envelope and
-// expenses count against the matching team's pool.
+// R&D + Event budget tracker — same shape, separated by `category`.
+// Budgets are further split by team (Ruminant, Poultry, Swine, LATAM,
+// Other). The /rnd page has a top-of-page toggle between R&D and Event;
+// the underlying tables (rnd_budgets / rnd_expenses) hold both kinds
+// distinguished by the `category` column.
 // See app/rnd/page.tsx and supabase/rnd_schema.sql.
 export type RndTeam = 'ruminant' | 'poultry' | 'swine' | 'latam' | 'other';
+export type RndCategory = 'rnd' | 'event';
 
 export const RND_TEAMS: { id: RndTeam; label: string }[] = [
   { id: 'ruminant', label: 'Ruminant' },
@@ -189,10 +192,16 @@ export const RND_TEAMS: { id: RndTeam; label: string }[] = [
   { id: 'other',    label: 'Other'    },
 ];
 
+export const RND_CATEGORIES: { id: RndCategory; label: string }[] = [
+  { id: 'rnd',   label: 'R&D'   },
+  { id: 'event', label: 'Event' },
+];
+
 export interface RndBudget {
   id: string;
   year: number;
   team: RndTeam;
+  category: RndCategory;
   annualAmount: number;
   notes?: string;
   updatedAt?: string;
@@ -203,6 +212,7 @@ export interface RndExpense {
   year: number;
   month: number;       // 1–12
   team: RndTeam;
+  category: RndCategory;
   name: string;
   description?: string;
   amount: number;

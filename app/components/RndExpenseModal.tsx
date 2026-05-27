@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import type { RndExpense, RndTeam } from '@/lib/data';
+import type { RndExpense, RndTeam, RndCategory } from '@/lib/data';
 import { generateId, RND_TEAMS } from '@/lib/data';
 import { dbCreateRndExpense, dbUpdateRndExpense, dbDeleteRndExpense } from '@/lib/db';
 import SubmitButton from './SubmitButton';
@@ -32,6 +32,9 @@ interface Props {
   /** Pre-select this team when adding a new entry. Useful when the user
    *  clicked + Add from inside a team-filtered view. */
   defaultTeam?: RndTeam;
+  /** Category bucket: 'rnd' or 'event'. Pinned to whatever the page is
+   *  currently showing — users don't change it inside the modal. */
+  category: RndCategory;
   /** Years that should appear in the year dropdown — current year + a few around it. */
   yearOptions: number[];
   onClose: () => void;
@@ -39,7 +42,7 @@ interface Props {
   onChanged: () => void;
 }
 
-export default function RndExpenseModal({ editing, defaultYear, defaultMonth, defaultTeam, yearOptions, onClose, onChanged }: Props) {
+export default function RndExpenseModal({ editing, defaultYear, defaultMonth, defaultTeam, category, yearOptions, onClose, onChanged }: Props) {
   const { data: session } = useSession();
   const [name, setName] = useState(editing?.name ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
@@ -75,6 +78,7 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, de
           year,
           month,
           team,
+          // category stays the same on edit — the page-level toggle owns it.
         });
       } else {
         await dbCreateRndExpense({
@@ -82,6 +86,7 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, de
           year,
           month,
           team,
+          category,
           name: trimmedName,
           description: description.trim() || undefined,
           amount: parsedAmount,
