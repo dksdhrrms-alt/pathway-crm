@@ -33,6 +33,10 @@ export default function QuickLogFAB() {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [ownerId, setOwnerId] = useState(userId);
+  // Collapsed by default — see QuickLogModal for rationale. The FAB
+  // (floating + button) opens this same form so the toggle pattern is
+  // mirrored here to keep the two entry points consistent.
+  const [showLoggedBy, setShowLoggedBy] = useState(false);
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [showParticipants, setShowParticipants] = useState(false);
   function toggleParticipant(id: string) {
@@ -226,20 +230,49 @@ export default function QuickLogFAB() {
               </select>
             </div>
 
-            {/* Logged By — admin only */}
+            {/* Logged By — admin only, collapsed by default. Mirrors the
+                pattern in QuickLogModal so the two entry points behave
+                identically. */}
             {isAdmin && (
               <div style={{ marginBottom: '10px' }}>
-                <label style={{ display: 'block', fontSize: '11px', color: '#666', marginBottom: '4px', fontWeight: 500 }} className="dark:text-gray-400">Logged By</label>
-                <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
-                  style={{
-                    width: '100%', padding: '10px 12px', fontSize: '13px',
-                    border: '1px solid #e5e7eb', borderRadius: '8px',
-                    background: 'white', cursor: 'pointer', boxSizing: 'border-box',
-                    color: '#1f2937', fontFamily: 'inherit',
-                  }}
-                  className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
-                  {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
+                {!showLoggedBy ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowLoggedBy(true)}
+                    style={{
+                      fontSize: '11px', color: '#6b7280', background: 'transparent',
+                      border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+                      textDecoration: 'underline', textUnderlineOffset: '2px',
+                    }}
+                    className="dark:text-gray-400 hover:!text-blue-600 dark:hover:!text-blue-400"
+                  >
+                    Log as someone else?
+                  </button>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontSize: '11px', color: '#666', fontWeight: 500 }} className="dark:text-gray-400">Logged By</label>
+                      <button
+                        type="button"
+                        onClick={() => { setShowLoggedBy(false); setOwnerId(userId); }}
+                        style={{ fontSize: '11px', color: '#9ca3af', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+                        className="dark:text-gray-500 hover:!text-gray-600 dark:hover:!text-gray-300"
+                      >
+                        Reset to me
+                      </button>
+                    </div>
+                    <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', fontSize: '13px',
+                        border: '1px solid #e5e7eb', borderRadius: '8px',
+                        background: 'white', cursor: 'pointer', boxSizing: 'border-box',
+                        color: '#1f2937', fontFamily: 'inherit',
+                      }}
+                      className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
+                      {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </>
+                )}
               </div>
             )}
 
