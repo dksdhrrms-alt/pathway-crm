@@ -1,366 +1,413 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useCRM } from '@/lib/CRMContext';
-import { useUsers } from '@/lib/UserContext';
+/**
+ * /insights — "What needs my attention today?" dashboard.
+ *
+ * Five modules computed server-side in /api/insights/dashboard:
+ *   1. At-risk customers   (overdue cadence / declining / silent)
+ *   2. Likely to reorder    (predicted next-order window)
+ *   3. Whitespace           (cross-sell — products peers buy)
+ *   4. Stuck deals          (opps with no recent activity)
+ *   5. Anomaly watch        (unusual order-size swings)
+ *
+ * The top "Your day at a glance" band shows a one-line summary. Each
+ * card row links to the relevant Account / Opportunity page for the
+ * full drill-in.
+ */
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
-import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, PieChart, Pie, Cell,
-} from 'recharts';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const COLORS = ['#1a4731', '#185FA5', '#854F0B', '#534AB7', '#0F6E56', '#993556'];
-
-function fmt(n: number) {
-  if (n >= 1000000) return '$' + (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return '$' + Math.round(n / 1000) + 'K';
-  return '$' + Math.round(n).toLocaleString();
+interface AtRiskItem {
+  accountName: string;
+  reason: 'overdue' | 'declining' | 'silent';
+  detail: string;
+  lastOrder: string;
+  lifetimeValue: number;
+}
+interface ReorderItem {
+  accountName: string;
+  predictedDate: string;
+  daysUntil: number;
+  expectedAmount: number;
+}
+interface WhitespaceItem {
+  accountName: string;
+  product: string;
+  peerAdoption: number;
+  avgPeerSpend: number;
+}
+interface StuckDealItem {
+  opportunityId: string;
+  name: string;
+  accountName: string;
+  stage: string;
+  amount: number;
+  daysSinceActivity: number;
+}
+interface AnomalyItem {
+  accountName: string;
+  direction: 'spike' | 'drop';
+  currentMonth: number;
+  baseline: number;
+  ratio: number;
+}
+interface InsightsPayload {
+  summary: string;
+  atRisk: AtRiskItem[];
+  likelyReorder: ReorderItem[];
+  whitespace: WhitespaceItem[];
+  stuckDeals: StuckDealItem[];
+  anomalies: AnomalyItem[];
+  generatedAt: string;
 }
 
+function fmtUSD(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000)      return `$${Math.round(n / 1000)}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
+/** Build a deep-link to the Accounts list filtered by a single name. The
+ *  Accounts page reads `?q=` for its search input, so a click jumps the
+ *  user directly to the relevant account row without an extra step. */
+function accountLink(name: string): string {
+  return `/accounts?q=${encodeURIComponent(name)}`;
+}
+
+const REASON_TONE: Record<AtRiskItem['reason'], { bg: string; fg: string; label: string }> = {
+  overdue:   { bg: 'bg-amber-50 dark:bg-amber-950/30', fg: 'text-amber-700 dark:text-amber-300', label: 'Overdue' },
+  declining: { bg: 'bg-orange-50 dark:bg-orange-950/30', fg: 'text-orange-700 dark:text-orange-300', label: 'Declining' },
+  silent:    { bg: 'bg-rose-50 dark:bg-rose-950/30', fg: 'text-rose-700 dark:text-rose-300', label: 'Silent' },
+};
+
 export default function InsightsPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as { role?: string })?.role ?? '';
-  const isAdmin = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo'].includes(role);
+  const [data, setData] = useState<InsightsPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // /insights charts depend on saleRecords — wait for the non-critical
-  // phase too. Other pages that don't read saleRecords ignore loadingExtras.
-  const { saleRecords, opportunities, activities, accounts, tasks, loading, loadingExtras } = useCRM();
-  const { users } = useUsers();
-
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  // Recharts <PieChart> renders an empty SVG when its container measures 0×0
-  // during initial render — `cx="50%"` / `cy="50%"` get baked at zero and the
-  // sectors never re-emit even after the layout settles. We delay the chart
-  // mount by one paint frame so the grid has already laid out the card.
-  // Only the Pie needs this; LineChart / BarChart re-render correctly via
-  // their axis layout pass.
-  const [chartsReady, setChartsReady] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setChartsReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  const curMonth = new Date().getMonth() + 1;
-
-  // Monthly revenue trend (current year vs last year)
-  const revenueTrend = useMemo(() => {
-    return MONTHS.map((m, i) => {
-      const mo = i + 1;
-      const cur = saleRecords.filter((r) => {
-        const d = String(r.date || '').split('-');
-        return parseInt(d[0]) === selectedYear && parseInt(d[1]) === mo;
-      }).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-      const prev = saleRecords.filter((r) => {
-        const d = String(r.date || '').split('-');
-        return parseInt(d[0]) === selectedYear - 1 && parseInt(d[1]) === mo;
-      }).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-      return { month: m, [String(selectedYear)]: cur, [String(selectedYear - 1)]: prev };
-    });
-  }, [saleRecords, selectedYear]);
-
-  // Category breakdown (pie chart)
-  const categoryBreakdown = useMemo(() => {
-    const map: Record<string, number> = {};
-    saleRecords.forEach((r) => {
-      const d = String(r.date || '').split('-');
-      if (parseInt(d[0]) !== selectedYear) return;
-      const cat = r.category || 'other';
-      map[cat] = (map[cat] || 0) + (Number(r.amount) || 0);
-    });
-    const labels: Record<string, string> = { monogastrics: 'Poultry', ruminants: 'Ruminant', latam: 'LATAM', familyb2b: 'Family/B2B', swine: 'Swine' };
-    return Object.entries(map).map(([k, v]) => ({ name: labels[k] || k, value: v })).sort((a, b) => b.value - a.value);
-  }, [saleRecords, selectedYear]);
-
-  // Top 10 accounts by revenue
-  const topAccounts = useMemo(() => {
-    const map: Record<string, number> = {};
-    saleRecords.forEach((r) => {
-      const d = String(r.date || '').split('-');
-      if (parseInt(d[0]) !== selectedYear) return;
-      const acct = r.accountName || 'Unknown';
-      map[acct] = (map[acct] || 0) + (Number(r.amount) || 0);
-    });
-    return Object.entries(map).sort(([, a], [, b]) => b - a).slice(0, 10).map(([name, value]) => ({ name, value }));
-  }, [saleRecords, selectedYear]);
-
-  // Pipeline by stage
-  const pipelineByStage = useMemo(() => {
-    const stages = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-    return stages.map((s) => {
-      const opps = opportunities.filter((o) => o.stage === s);
-      return { stage: s, count: opps.length, value: opps.reduce((sum, o) => sum + (o.amount || 0), 0) };
-    });
-  }, [opportunities]);
-
-  // Activity trend (last 6 months)
-  const activityTrend = useMemo(() => {
-    const result: { month: string; Call: number; Meeting: number; Email: number; Note: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const y = d.getFullYear();
-      const m = d.getMonth() + 1;
-      const prefix = `${y}-${String(m).padStart(2, '0')}`;
-      const acts = activities.filter((a) => a.date?.startsWith(prefix));
-      result.push({
-        month: MONTHS[m - 1],
-        Call: acts.filter((a) => a.type === 'Call').length,
-        Meeting: acts.filter((a) => a.type === 'Meeting').length,
-        Email: acts.filter((a) => a.type === 'Email').length,
-        Note: acts.filter((a) => a.type === 'Note').length,
-      });
-    }
-    return result;
-  }, [activities]);
-
-  // Key metrics
-  const totalRevYTD = saleRecords.filter((r) => { const d = String(r.date || '').split('-'); return parseInt(d[0]) === selectedYear && parseInt(d[1]) <= curMonth; }).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  const totalRevLastYTD = saleRecords.filter((r) => { const d = String(r.date || '').split('-'); return parseInt(d[0]) === selectedYear - 1 && parseInt(d[1]) <= curMonth; }).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  const yoyGrowth = totalRevLastYTD > 0 ? Math.round(((totalRevYTD - totalRevLastYTD) / totalRevLastYTD) * 100) : 0;
-  const openPipeline = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + (o.amount || 0), 0);
-  const winRate = (() => { const closed = opportunities.filter((o) => o.stage === 'Closed Won' || o.stage === 'Closed Lost'); return closed.length > 0 ? Math.round((closed.filter((o) => o.stage === 'Closed Won').length / closed.length) * 100) : 0; })();
-  const avgDealSize = (() => { const won = opportunities.filter((o) => o.stage === 'Closed Won'); return won.length > 0 ? Math.round(won.reduce((s, o) => s + (o.amount || 0), 0) / won.length) : 0; })();
-
-  // Inactive accounts (no activity in 30+ days)
-  const inactiveAccounts = useMemo(() => {
-    const now = new Date().getTime();
-    return accounts.filter((acct) => {
-      const acctActs = activities.filter((a) => a.accountId === acct.id);
-      if (acctActs.length === 0) return true;
-      const latest = Math.max(...acctActs.map((a) => new Date(a.date + 'T00:00:00').getTime()));
-      return (now - latest) / 86400000 > 30;
-    }).length;
-  }, [accounts, activities]);
-
-  // Overdue tasks
-  const overdueTasks = tasks.filter((t) => t.status === 'Open' && t.dueDate < new Date().toISOString().split('T')[0]).length;
-
-  // AI Insight generation
-  async function generateAIInsight() {
-    setAiLoading(true);
+  async function load() {
+    setLoading(true);
+    setError(null);
     try {
-      const summary = {
-        ytdRevenue: fmt(totalRevYTD),
-        yoyGrowth: yoyGrowth + '%',
-        openPipeline: fmt(openPipeline),
-        winRate: winRate + '%',
-        avgDealSize: fmt(avgDealSize),
-        topCategories: categoryBreakdown.slice(0, 3).map((c) => `${c.name}: ${fmt(c.value)}`).join(', '),
-        topAccounts: topAccounts.slice(0, 5).map((a) => `${a.name}: ${fmt(a.value)}`).join(', '),
-        totalActivities: activities.length,
-        inactiveAccounts,
-        overdueTasks,
-        activeDeals: opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length,
-      };
-
-      const res = await fetch('/api/insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summary: { ...summary, year: selectedYear } }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.insight) {
-        setAiInsight(data.insight);
-      } else {
-        // Fallback: generate insights from data
-        const insights = [];
-        if (yoyGrowth > 0) insights.push(`Revenue is up ${yoyGrowth}% YoY - strong growth trajectory.`);
-        else if (yoyGrowth < 0) insights.push(`Revenue is down ${Math.abs(yoyGrowth)}% YoY - needs attention.`);
-        if (winRate < 30) insights.push(`Win rate at ${winRate}% is below target. Review qualification criteria.`);
-        if (inactiveAccounts > 5) insights.push(`${inactiveAccounts} accounts haven't been contacted in 30+ days. Schedule follow-ups.`);
-        if (overdueTasks > 0) insights.push(`${overdueTasks} overdue tasks need immediate attention.`);
-        if (topAccounts.length > 0) insights.push(`Top account ${topAccounts[0].name} contributing ${fmt(topAccounts[0].value)} YTD.`);
-        insights.push(`Open pipeline at ${fmt(openPipeline)} across ${opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length} deals.`);
-        setAiInsight(insights.join('\n\n'));
+      const res = await fetch('/api/insights/dashboard');
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `HTTP ${res.status}`);
       }
-    } catch {
-      setAiInsight('Failed to generate AI insights. Please try again.');
+      const j = await res.json() as InsightsPayload;
+      setData(j);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
     } finally {
-      setAiLoading(false);
+      setLoading(false);
     }
   }
-
-  // Wait for both phases — insights depends on saleRecords (loadingExtras).
-  if (loading || loadingExtras) return <LoadingSpinner />;
+  useEffect(() => { load(); }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
-      <TopBar />
-      <main className="pt-16 px-6 pb-10">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Data Insights</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Sales trends, pipeline analysis, and AI-powered recommendations</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                {[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <button onClick={generateAIInsight} disabled={aiLoading}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all"
-                style={{ backgroundColor: aiLoading ? '#e5e7eb' : '#1a4731', color: aiLoading ? '#888' : 'white', cursor: aiLoading ? 'not-allowed' : 'pointer' }}>
-                {aiLoading ? 'Analyzing...' : 'AI Insights'}
-              </button>
-            </div>
+      <TopBar placeholder="Search insights..." />
+
+      <main className="pt-16 px-4 md:px-8 py-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <svg className="w-7 h-7 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Insights
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              AI-powered daily action plan. Refreshed in real time from your sales, opportunities, and activities.
+            </p>
           </div>
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            {[
-              { label: 'YTD Revenue', value: fmt(totalRevYTD), sub: `${yoyGrowth >= 0 ? '+' : ''}${yoyGrowth}% YoY`, color: yoyGrowth >= 0 ? '#0F6E56' : '#E24B4A' },
-              { label: 'Open Pipeline', value: fmt(openPipeline), sub: `${opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length} deals`, color: '#185FA5' },
-              { label: 'Win Rate', value: winRate + '%', sub: `Avg deal ${fmt(avgDealSize)}`, color: winRate >= 40 ? '#0F6E56' : '#854F0B' },
-              { label: 'Inactive Accounts', value: String(inactiveAccounts), sub: '30+ days no contact', color: inactiveAccounts > 5 ? '#E24B4A' : '#0F6E56' },
-              { label: 'Overdue Tasks', value: String(overdueTasks), sub: 'Need attention', color: overdueTasks > 0 ? '#E24B4A' : '#0F6E56' },
-            ].map((kpi) => (
-              <div key={kpi.label} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{kpi.label}</p>
-                <p className="text-2xl font-bold mt-1" style={{ color: kpi.color }}>{kpi.value}</p>
-                <p className="text-xs mt-0.5" style={{ color: kpi.color }}>{kpi.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* AI Insights Panel */}
-          {aiInsight && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-6" style={{ borderLeft: '4px solid #1a4731' }}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">AI Analysis</h2>
-                <button onClick={() => setAiInsight(null)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm">Dismiss</button>
-              </div>
-              <div className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{aiInsight}</div>
-            </div>
-          )}
-
-          {/* Charts Row 1: Revenue Trend + Category Breakdown */}
-          {/* `min-w-0` on each grid cell prevents the default `min-width: auto`
-              behaviour from blocking ResponsiveContainer's width measurement
-              and is what was causing the recharts width(-1) warnings + the
-              empty PieChart on first render. */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            {/* Revenue Trend */}
-            <div className="lg:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue Trend - {selectedYear} vs {selectedYear - 1}</h2>
-              <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
-                <div style={{ minWidth: '500px', height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-                    <LineChart data={revenueTrend} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                      <YAxis tickFormatter={(v) => fmt(v)} width={60} tick={{ fontSize: 11 }} />
-                      <Tooltip formatter={(v) => fmt(Number(v))} />
-                      <Legend />
-                      <Line type="monotone" dataKey={String(selectedYear)} stroke="#1a4731" strokeWidth={2.5} dot={{ r: 4 }} />
-                      <Line type="monotone" dataKey={String(selectedYear - 1)} stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="5 5" dot={{ r: 3 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Category Pie */}
-            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Revenue by Category</h2>
-              {categoryBreakdown.length === 0 ? (
-                <div className="flex items-center justify-center text-xs text-gray-400" style={{ height: 220 }}>
-                  No revenue data yet
-                </div>
-              ) : (
-                <div style={{ width: '100%', height: 220 }}>
-                  {chartsReady && (
-                    <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-                      <PieChart>
-                        <Pie isAnimationActive={false} data={categoryBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent, x, y }) => <text x={x} y={y} textAnchor="middle" dominantBaseline="central" style={{ fontSize: '11px', fill: '#444' }}>{name} {((percent || 0) * 100).toFixed(0)}%</text>} labelLine={false}>
-                          {categoryBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v) => fmt(Number(v))} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              )}
-              <div className="mt-2 space-y-1">
-                {categoryBreakdown.slice(0, 4).map((c, i) => (
-                  <div key={c.name} className="flex justify-between text-xs">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />{c.name}</span>
-                    <span className="font-medium">{fmt(c.value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Charts Row 2: Top Accounts + Activity Trend */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Top Accounts */}
-            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Top 10 Accounts by Revenue</h2>
-              <div className="chart-scroll-wrapper" style={{ overflowX: 'auto' }}>
-                <div style={{ minWidth: '400px', height: 300 }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-                    <BarChart data={topAccounts} layout="vertical" margin={{ left: 10, right: 30 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" tickFormatter={(v) => fmt(v)} tick={{ fontSize: 10 }} />
-                      <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(v) => fmt(Number(v))} />
-                      <Bar dataKey="value" fill="#1a4731" radius={[0, 4, 4, 0]} barSize={18} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Activity Trend */}
-            <div className="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
-              <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Activity Trend (Last 6 Months)</h2>
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
-                  <BarChart data={activityTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Call" stackId="a" fill="#3b82f6" barSize={30} />
-                    <Bar dataKey="Meeting" stackId="a" fill="#8b5cf6" />
-                    <Bar dataKey="Email" stackId="a" fill="#22c55e" />
-                    <Bar dataKey="Note" stackId="a" fill="#f59e0b" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Pipeline by Stage */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6 mb-6">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Pipeline by Stage</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {pipelineByStage.map((s) => {
-                const stageColor: Record<string, string> = { Prospect: '#94a3b8', Prospecting: '#6366f1', Qualified: '#06b6d4', Qualification: '#3b82f6', 'Trial Started': '#14b8a6', Proposal: '#f59e0b', Negotiation: '#f97316', 'Closed Won': '#22c55e', 'Closed Lost': '#ef4444' };
-                return (
-                  <div key={s.stage} className="bg-gray-50 dark:bg-slate-800/40 rounded-lg p-4 text-center">
-                    <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: stageColor[s.stage] || '#888' }}>
-                      {s.count}
-                    </div>
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-200">{s.stage}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{fmt(s.value)}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 disabled:opacity-50"
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
         </div>
+
+        {/* Day at a glance — purple band */}
+        {!loading && data && (
+          <div className="rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/30 px-4 py-3 mb-4">
+            <div className="flex items-center gap-2 text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              Your day at a glance
+            </div>
+            <div className="text-sm text-purple-900 dark:text-purple-200 leading-relaxed">
+              {data.summary}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div role="alert" className="mb-4 text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
+            Failed to load insights: {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20"><LoadingSpinner /></div>
+        ) : data ? (
+          <>
+            {/* 2x2 grid: At-risk · Reorder · Whitespace · Stuck */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              <AtRiskCard items={data.atRisk} />
+              <ReorderCard items={data.likelyReorder} />
+              <WhitespaceCard items={data.whitespace} />
+              <StuckDealsCard items={data.stuckDeals} />
+            </div>
+
+            {/* Full-width anomaly row */}
+            <AnomalyCard items={data.anomalies} />
+          </>
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Card components — each is small and self-contained.
+// All cards follow the same shell so the page reads as a cohesive grid.
+// ──────────────────────────────────────────────────────────────────────
+
+function CardShell({
+  icon, iconColor, title, count, subtitle, emptyText, hasRows, children,
+}: {
+  icon: React.ReactNode; iconColor: string; title: string; count: number;
+  subtitle: string; emptyText: string; hasRows: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className={iconColor}>{icon}</span>
+          {title}
+        </div>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          {count}
+        </span>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{subtitle}</p>
+      <div className="border-t border-gray-100 dark:border-slate-800 -mx-1">
+        {hasRows ? children : (
+          <div className="text-xs text-gray-500 dark:text-gray-500 italic px-1 py-3 text-center">{emptyText}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AtRiskCard({ items }: { items: AtRiskItem[] }) {
+  return (
+    <CardShell
+      title="At-risk customers"
+      subtitle="Overdue cadence · declining spend · gone silent"
+      count={items.length}
+      hasRows={items.length > 0}
+      emptyText="Everyone is on cadence. Nice."
+      iconColor="text-red-500 dark:text-red-400"
+      icon={
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      }
+    >
+      {items.map((it) => {
+        const tone = REASON_TONE[it.reason];
+        return (
+          <Link
+            key={it.accountName}
+            href={accountLink(it.accountName)}
+            className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{it.detail}</div>
+            </div>
+            <div className="flex flex-col items-end flex-shrink-0">
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${tone.bg} ${tone.fg}`}>
+                {tone.label}
+              </span>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                LTV {fmtUSD(it.lifetimeValue)}
+              </span>
+            </div>
+          </Link>
+        );
+      })}
+    </CardShell>
+  );
+}
+
+function ReorderCard({ items }: { items: ReorderItem[] }) {
+  return (
+    <CardShell
+      title="Likely to reorder"
+      subtitle="Predicted next 14 days · based on past cadence"
+      count={items.length}
+      hasRows={items.length > 0}
+      emptyText="No reliable predictions right now."
+      iconColor="text-emerald-600 dark:text-emerald-400"
+      icon={
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      }
+    >
+      {items.map((it) => (
+        <Link
+          key={it.accountName}
+          href={accountLink(it.accountName)}
+          className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {it.daysUntil <= 0 ? 'due now' : `in ${it.daysUntil} day${it.daysUntil === 1 ? '' : 's'}`} · ~{fmtUSD(it.expectedAmount)}
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex-shrink-0">
+            {it.predictedDate}
+          </span>
+        </Link>
+      ))}
+    </CardShell>
+  );
+}
+
+function WhitespaceCard({ items }: { items: WhitespaceItem[] }) {
+  return (
+    <CardShell
+      title="Cross-sell · whitespace"
+      subtitle="Products peers buy that this customer doesn't"
+      count={items.length}
+      hasRows={items.length > 0}
+      emptyText="No clear whitespace gaps right now."
+      iconColor="text-purple-600 dark:text-purple-400"
+      icon={
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      }
+    >
+      {items.map((it, i) => (
+        <Link
+          key={`${it.accountName}|${it.product}|${i}`}
+          href={accountLink(it.accountName)}
+          className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {it.accountName} <span className="text-gray-400 dark:text-gray-500">→</span> {it.product}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {Math.round(it.peerAdoption * 100)}% of peers buy this · est. {fmtUSD(it.avgPeerSpend)}/yr
+            </div>
+          </div>
+        </Link>
+      ))}
+    </CardShell>
+  );
+}
+
+function StuckDealsCard({ items }: { items: StuckDealItem[] }) {
+  return (
+    <CardShell
+      title="Stuck deals"
+      subtitle="Open opps with no activity in 21+ days · top by value"
+      count={items.length}
+      hasRows={items.length > 0}
+      emptyText="No deals stalling. Pipeline moving."
+      iconColor="text-amber-600 dark:text-amber-400"
+      icon={
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      }
+    >
+      {items.map((it) => (
+        <Link
+          key={it.opportunityId}
+          href={`/opportunities/${it.opportunityId}`}
+          className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.name}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{it.accountName} · {it.stage}</div>
+          </div>
+          <div className="flex flex-col items-end flex-shrink-0">
+            <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{fmtUSD(it.amount)}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">{it.daysSinceActivity}d quiet</span>
+          </div>
+        </Link>
+      ))}
+    </CardShell>
+  );
+}
+
+function AnomalyCard({ items }: { items: AnomalyItem[] }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <span className="text-orange-600 dark:text-orange-400">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.24 17 6.343 18.5 8 18 10 18 10s1.5 1.5 1.657 2.343" />
+            </svg>
+          </span>
+          Anomaly watch
+        </div>
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          {items.length}
+        </span>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        Unusual swings worth a look — bigger or smaller than typical for the account
+      </p>
+      <div className="border-t border-gray-100 dark:border-slate-800 -mx-1">
+        {items.length === 0 ? (
+          <div className="text-xs text-gray-500 dark:text-gray-500 italic px-1 py-3 text-center">
+            No unusual patterns this month.
+          </div>
+        ) : (
+          items.map((it, i) => (
+            <Link
+              key={`${it.accountName}|${i}`}
+              href={accountLink(it.accountName)}
+              className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  This month {fmtUSD(it.currentMonth)} vs baseline {fmtUSD(it.baseline)} — {it.ratio}× normal
+                </div>
+              </div>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                it.direction === 'spike'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
+              }`}>
+                {it.direction === 'spike' ? 'Spike' : 'Drop'}
+              </span>
+            </Link>
+          ))
+        )}
+      </div>
     </div>
   );
 }
