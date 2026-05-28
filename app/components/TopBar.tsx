@@ -100,6 +100,21 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
           while it stayed visible on other pages whose search box was
           rendered. ml-auto keeps everything right-aligned regardless. */}
       <div className="relative flex items-center gap-3 ml-auto" ref={dropdownRef}>
+        {/* Quick link to the Pathway USA digital library. Opens in a
+            new tab so the CRM session stays put. Icon-only on mobile,
+            icon+label from sm: up to keep the bar tight. */}
+        <a
+          href="https://pathway-library-flame.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+          title="Open Pathway USA Library in a new tab"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          <span className="hidden sm:inline">Library</span>
+        </a>
         <ThemeToggle />
         <NotificationBell />
         <div className="hidden sm:flex items-center gap-2">
