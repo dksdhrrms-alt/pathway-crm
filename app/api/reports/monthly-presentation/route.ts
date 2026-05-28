@@ -35,23 +35,8 @@ import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import PptxGenJS from 'pptxgenjs';
-import fs from 'node:fs';
-import path from 'node:path';
 
 export const runtime = 'nodejs';
-
-/** Pathway logo, embedded as a base64 PNG data URL. Read once per
- *  request from public/. Returns null if the file is unreadable so the
- *  PPT still renders (just without the logo) instead of 500-ing. */
-function readLogoDataUrl(): string | null {
-  try {
-    const filePath = path.join(process.cwd(), 'public', 'pathway-logo.png');
-    const buf = fs.readFileSync(filePath);
-    return `data:image/png;base64,${buf.toString('base64')}`;
-  } catch {
-    return null;
-  }
-}
 
 const CAT_LABELS: Record<string, string> = {
   monogastrics: 'MONOGASTRICS',
@@ -188,17 +173,11 @@ export async function POST(request: Request) {
     fill: { color: NAVY }, line: { color: NAVY, width: 0 },
   });
 
-  // ── Pathway logo (top-right) ─────────
-  const logoDataUrl = readLogoDataUrl();
-  if (logoDataUrl) {
-    slide.addImage({ data: logoDataUrl, x: 11.3, y: 0.25, w: 1.7, h: 0.55 });
-  } else {
-    // Fallback to text if the PNG isn't on disk (shouldn't happen).
-    slide.addText('PATHWAY INTERMEDIATES', {
-      x: 10.5, y: 0.25, w: 2.5, h: 0.4,
-      fontFace: 'Calibri', fontSize: 14, bold: true, color: NAVY, align: 'right',
-    });
-  }
+  // ── Pathway logo intentionally omitted. PNG embedding rendered
+  //    inconsistently across PowerPoint versions (color shift on the
+  //    gradient + occasional cache miss on Vercel cold starts). The
+  //    bottom-right navy sweep + the centered title carry the brand
+  //    weight on their own.
 
   // ── Title (top-left) ─────────
   // Black (not navy) — matches the source deck's tone better against the
