@@ -8,6 +8,7 @@ import { Activity, ActivityType } from '@/lib/data';
 import { getRoleLabel, UserTeam } from '@/lib/users';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
+import MonthlyPresentationModal from '@/app/components/MonthlyPresentationModal';
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DateRange = '7d' | '30d' | '90d' | 'custom';
@@ -109,6 +110,10 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'individual' | 'team'>('individual');
   const [isGenerating, setIsGenerating] = useState(false);
+  // Monthly Presentation modal — independent of the Weekly Report AI flow.
+  // Both buttons sit side-by-side; one is AI-generated text (docx), the
+  // other is a data-driven cumulative-achievement deck (pptx).
+  const [showMonthlyPpt, setShowMonthlyPpt] = useState(false);
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
 
@@ -402,6 +407,18 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 {isGenerating ? '⏳ Generating...' : '✨ AI Weekly Report'}
               </button>
 
+              {/* AI Monthly Presentation — opens a month picker, then
+                  POSTs to /api/reports/monthly-presentation for a .pptx.
+                  Purple to visually distinguish from the green Weekly
+                  button (same surface, different deliverable). */}
+              <button
+                onClick={() => setShowMonthlyPpt(true)}
+                disabled={isGenerating}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all"
+                style={{ backgroundColor: isGenerating ? '#e5e7eb' : '#6d28d9', color: isGenerating ? '#888' : 'white', cursor: isGenerating ? 'not-allowed' : 'pointer' }}
+              >
+                📊 AI Monthly Presentation
+              </button>
             </div>
           </div>
 
@@ -1046,6 +1063,16 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           )}
         </div>
       </main>
+
+      {/* Monthly Presentation modal. Only rendered when open so cold-loading
+          pptxgenjs in the modal's API call doesn't block the report itself. */}
+      {showMonthlyPpt && (
+        <MonthlyPresentationModal
+          reportType={teamFilter === 'all' ? 'all' : teamFilter}
+          reportLabel={reportTitle}
+          onClose={() => setShowMonthlyPpt(false)}
+        />
+      )}
     </div>
   );
 }
