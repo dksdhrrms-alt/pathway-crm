@@ -212,7 +212,13 @@ export async function POST(request: Request) {
 
   // pptxgenjs combo chart: array of { type, data, options }. Order
   // matters — drawing the bars first lets the line render on top.
-  slide.addChart(
+  //
+  // The type cast bypasses a defect in pptxgenjs's TS overloads: the
+  // first arg is meant to allow IChartMulti[] but the declared overload
+  // collapses to (CHART_NAME, any[], IChartOpts?), so TS thinks our
+  // options object is a `data` array.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (slide.addChart as any)(
     [
       {
         type: pres.ChartType.bar,
