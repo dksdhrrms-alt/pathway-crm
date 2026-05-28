@@ -3,16 +3,16 @@
 /**
  * /insights — "What needs my attention today?" dashboard.
  *
- * Five modules computed server-side in /api/insights/dashboard:
- *   1. At-risk customers   (overdue cadence / declining / silent)
- *   2. Likely to reorder    (predicted next-order window)
- *   3. Whitespace           (cross-sell — products peers buy)
- *   4. Stuck deals          (opps with no recent activity)
- *   5. Anomaly watch        (unusual order-size swings)
+ * Five sales-rep-focused modules, computed in /api/insights/dashboard:
  *
- * The top "Your day at a glance" band shows a one-line summary. Each
- * card row links to the relevant Account / Opportunity page for the
- * full drill-in.
+ *   1. Likely to reorder    — predicted next-order window
+ *   2. Time to call         — overdue cadence, weighted by account size
+ *   3. Closing this month   — opps with close date in next 30 days
+ *   4. Personal touchpoints — contact birthdays / anniversaries
+ *   5. Top spenders waiting — high-LTV accounts gone quiet (safety net)
+ *
+ * Every row deep-links to the relevant /accounts/[id] or /opportunities/[id]
+ * detail view (NOT the filtered list).
  */
 
 import { useEffect, useState } from 'react';
@@ -20,47 +20,56 @@ import Link from 'next/link';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 
-interface AtRiskItem {
-  accountName: string;
-  reason: 'overdue' | 'declining' | 'silent';
-  detail: string;
-  lastOrder: string;
-  lifetimeValue: number;
-}
 interface ReorderItem {
+  accountId: string;
   accountName: string;
   predictedDate: string;
   daysUntil: number;
   expectedAmount: number;
 }
-interface WhitespaceItem {
+interface TimeToCallItem {
+  accountId: string;
   accountName: string;
-  product: string;
-  peerAdoption: number;
-  avgPeerSpend: number;
+  daysSinceActivity: number;
+  lastActivityType: string;
+  lastActivityDate: string;
+  lifetimeValue: number;
 }
-interface StuckDealItem {
+interface ClosingItem {
   opportunityId: string;
   name: string;
+  accountId: string;
   accountName: string;
   stage: string;
   amount: number;
-  daysSinceActivity: number;
+  probability: number;
+  weightedAmount: number;
+  closeDate: string;
+  daysUntilClose: number;
 }
-interface AnomalyItem {
+interface TouchpointItem {
+  contactId: string;
+  contactName: string;
+  accountId: string;
   accountName: string;
-  direction: 'spike' | 'drop';
-  currentMonth: number;
-  baseline: number;
-  ratio: number;
+  type: 'birthday' | 'anniversary';
+  date: string;
+  daysUntil: number;
+}
+interface TopSpenderItem {
+  accountId: string;
+  accountName: string;
+  lifetimeValue: number;
+  daysSinceActivity: number;
+  lastActivityType: string;
 }
 interface InsightsPayload {
   summary: string;
-  atRisk: AtRiskItem[];
   likelyReorder: ReorderItem[];
-  whitespace: WhitespaceItem[];
-  stuckDeals: StuckDealItem[];
-  anomalies: AnomalyItem[];
+  timeToCall: TimeToCallItem[];
+  closing: ClosingItem[];
+  personalTouchpoints: TouchpointItem[];
+  topSpenders: TopSpenderItem[];
   generatedAt: string;
 }
 
@@ -70,18 +79,11 @@ function fmtUSD(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-/** Build a deep-link to the Accounts list filtered by a single name. The
- *  Accounts page reads `?q=` for its search input, so a click jumps the
- *  user directly to the relevant account row without an extra step. */
-function accountLink(name: string): string {
-  return `/accounts?q=${encodeURIComponent(name)}`;
+/** Deep-link to a specific account or list fallback when the API couldn't
+ *  resolve an ID (rare — only when accountName has no matching row). */
+function acctHref(id: string, fallbackName: string): string {
+  return id ? `/accounts/${id}` : `/accounts?q=${encodeURIComponent(fallbackName)}`;
 }
-
-const REASON_TONE: Record<AtRiskItem['reason'], { bg: string; fg: string; label: string }> = {
-  overdue:   { bg: 'bg-amber-50 dark:bg-amber-950/30', fg: 'text-amber-700 dark:text-amber-300', label: 'Overdue' },
-  declining: { bg: 'bg-orange-50 dark:bg-orange-950/30', fg: 'text-orange-700 dark:text-orange-300', label: 'Declining' },
-  silent:    { bg: 'bg-rose-50 dark:bg-rose-950/30', fg: 'text-rose-700 dark:text-rose-300', label: 'Silent' },
-};
 
 export default function InsightsPage() {
   const [data, setData] = useState<InsightsPayload | null>(null);
@@ -123,7 +125,7 @@ export default function InsightsPage() {
               Insights
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-              AI-powered daily action plan. Refreshed in real time from your sales, opportunities, and activities.
+              Your daily sales plan, built from the activity, pipeline, and order data already in the CRM.
             </p>
           </div>
           <button
@@ -138,7 +140,7 @@ export default function InsightsPage() {
           </button>
         </div>
 
-        {/* Day at a glance — purple band */}
+        {/* Day at a glance */}
         {!loading && data && (
           <div className="rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50 dark:bg-purple-950/30 px-4 py-3 mb-4">
             <div className="flex items-center gap-2 text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
@@ -163,16 +165,16 @@ export default function InsightsPage() {
           <div className="flex items-center justify-center py-20"><LoadingSpinner /></div>
         ) : data ? (
           <>
-            {/* 2x2 grid: At-risk · Reorder · Whitespace · Stuck */}
+            {/* 2x2 grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              <AtRiskCard items={data.atRisk} />
               <ReorderCard items={data.likelyReorder} />
-              <WhitespaceCard items={data.whitespace} />
-              <StuckDealsCard items={data.stuckDeals} />
+              <TimeToCallCard items={data.timeToCall} />
+              <ClosingCard items={data.closing} />
+              <TouchpointsCard items={data.personalTouchpoints} />
             </div>
 
-            {/* Full-width anomaly row */}
-            <AnomalyCard items={data.anomalies} />
+            {/* Full-width safety net */}
+            <TopSpendersCard items={data.topSpenders} />
           </>
         ) : null}
       </main>
@@ -181,8 +183,7 @@ export default function InsightsPage() {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-// Card components — each is small and self-contained.
-// All cards follow the same shell so the page reads as a cohesive grid.
+// Card shell — single source of truth for layout.
 // ──────────────────────────────────────────────────────────────────────
 
 function CardShell({
@@ -212,53 +213,14 @@ function CardShell({
   );
 }
 
-function AtRiskCard({ items }: { items: AtRiskItem[] }) {
-  return (
-    <CardShell
-      title="At-risk customers"
-      subtitle="Overdue cadence · declining spend · gone silent"
-      count={items.length}
-      hasRows={items.length > 0}
-      emptyText="Everyone is on cadence. Nice."
-      iconColor="text-red-500 dark:text-red-400"
-      icon={
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      }
-    >
-      {items.map((it) => {
-        const tone = REASON_TONE[it.reason];
-        return (
-          <Link
-            key={it.accountName}
-            href={accountLink(it.accountName)}
-            className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{it.detail}</div>
-            </div>
-            <div className="flex flex-col items-end flex-shrink-0">
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${tone.bg} ${tone.fg}`}>
-                {tone.label}
-              </span>
-              <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                LTV {fmtUSD(it.lifetimeValue)}
-              </span>
-            </div>
-          </Link>
-        );
-      })}
-    </CardShell>
-  );
-}
-
+// ──────────────────────────────────────────────────────────────────────
+// 1) Likely to reorder
+// ──────────────────────────────────────────────────────────────────────
 function ReorderCard({ items }: { items: ReorderItem[] }) {
   return (
     <CardShell
       title="Likely to reorder"
-      subtitle="Predicted next 14 days · based on past cadence"
+      subtitle="Predicted within 14 days · based on past cadence"
       count={items.length}
       hasRows={items.length > 0}
       emptyText="No reliable predictions right now."
@@ -271,8 +233,8 @@ function ReorderCard({ items }: { items: ReorderItem[] }) {
     >
       {items.map((it) => (
         <Link
-          key={it.accountName}
-          href={accountLink(it.accountName)}
+          key={it.accountId || it.accountName}
+          href={acctHref(it.accountId, it.accountName)}
           className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
         >
           <div className="min-w-0 flex-1">
@@ -290,34 +252,41 @@ function ReorderCard({ items }: { items: ReorderItem[] }) {
   );
 }
 
-function WhitespaceCard({ items }: { items: WhitespaceItem[] }) {
+// ──────────────────────────────────────────────────────────────────────
+// 2) Time to call
+// ──────────────────────────────────────────────────────────────────────
+function TimeToCallCard({ items }: { items: TimeToCallItem[] }) {
   return (
     <CardShell
-      title="Cross-sell · whitespace"
-      subtitle="Products peers buy that this customer doesn't"
+      title="Time to call"
+      subtitle="Active accounts that haven't been touched in a while"
       count={items.length}
       hasRows={items.length > 0}
-      emptyText="No clear whitespace gaps right now."
-      iconColor="text-purple-600 dark:text-purple-400"
+      emptyText="You're on top of every account. Take a coffee break."
+      iconColor="text-blue-600 dark:text-blue-400"
       icon={
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
         </svg>
       }
     >
-      {items.map((it, i) => (
+      {items.map((it) => (
         <Link
-          key={`${it.accountName}|${it.product}|${i}`}
-          href={accountLink(it.accountName)}
+          key={it.accountId}
+          href={acctHref(it.accountId, it.accountName)}
           className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
         >
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-              {it.accountName} <span className="text-gray-400 dark:text-gray-500">→</span> {it.product}
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {it.lastActivityType !== 'never'
+                ? `Last ${it.lastActivityType.toLowerCase()} ${it.lastActivityDate}`
+                : 'No activity logged yet'}
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {Math.round(it.peerAdoption * 100)}% of peers buy this · est. {fmtUSD(it.avgPeerSpend)}/yr
-            </div>
+          </div>
+          <div className="flex flex-col items-end flex-shrink-0">
+            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{it.daysSinceActivity}d quiet</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">LTV {fmtUSD(it.lifetimeValue)}</span>
           </div>
         </Link>
       ))}
@@ -325,14 +294,17 @@ function WhitespaceCard({ items }: { items: WhitespaceItem[] }) {
   );
 }
 
-function StuckDealsCard({ items }: { items: StuckDealItem[] }) {
+// ──────────────────────────────────────────────────────────────────────
+// 3) Closing this month
+// ──────────────────────────────────────────────────────────────────────
+function ClosingCard({ items }: { items: ClosingItem[] }) {
   return (
     <CardShell
-      title="Stuck deals"
-      subtitle="Open opps with no activity in 21+ days · top by value"
+      title="Closing this month"
+      subtitle="Opps with close date in the next 30 days · weighted by value × probability"
       count={items.length}
       hasRows={items.length > 0}
-      emptyText="No deals stalling. Pipeline moving."
+      emptyText="No opps scheduled to close in the next 30 days."
       iconColor="text-amber-600 dark:text-amber-400"
       icon={
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -348,11 +320,15 @@ function StuckDealsCard({ items }: { items: StuckDealItem[] }) {
         >
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.name}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{it.accountName} · {it.stage}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {it.accountName} · {it.stage} · {it.probability}%
+            </div>
           </div>
           <div className="flex flex-col items-end flex-shrink-0">
             <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">{fmtUSD(it.amount)}</span>
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">{it.daysSinceActivity}d quiet</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+              {it.daysUntilClose <= 0 ? 'overdue' : `${it.daysUntilClose}d left`}
+            </span>
           </div>
         </Link>
       ))}
@@ -360,50 +336,93 @@ function StuckDealsCard({ items }: { items: StuckDealItem[] }) {
   );
 }
 
-function AnomalyCard({ items }: { items: AnomalyItem[] }) {
+// ──────────────────────────────────────────────────────────────────────
+// 4) Personal touchpoints (birthdays / anniversaries)
+// ──────────────────────────────────────────────────────────────────────
+function TouchpointsCard({ items }: { items: TouchpointItem[] }) {
+  return (
+    <CardShell
+      title="Personal touchpoint"
+      subtitle="Contact birthdays and anniversaries in the next 14 days"
+      count={items.length}
+      hasRows={items.length > 0}
+      emptyText="No birthdays or anniversaries this fortnight."
+      iconColor="text-pink-500 dark:text-pink-400"
+      icon={
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+        </svg>
+      }
+    >
+      {items.map((it) => (
+        <Link
+          key={`${it.contactId}-${it.type}`}
+          href={acctHref(it.accountId, it.accountName)}
+          className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.contactName}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {it.accountName} · {it.type === 'birthday' ? 'Birthday' : 'Anniversary'} {it.date}
+            </div>
+          </div>
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+            it.type === 'birthday'
+              ? 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300'
+              : 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300'
+          }`}>
+            {it.daysUntil === 0 ? 'today' : `in ${it.daysUntil}d`}
+          </span>
+        </Link>
+      ))}
+    </CardShell>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 5) Top spenders waiting — full-width safety net
+// ──────────────────────────────────────────────────────────────────────
+function TopSpendersCard({ items }: { items: TopSpenderItem[] }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-          <span className="text-orange-600 dark:text-orange-400">
+          <span className="text-rose-600 dark:text-rose-400">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.24 17 6.343 18.5 8 18 10 18 10s1.5 1.5 1.657 2.343" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
             </svg>
           </span>
-          Anomaly watch
+          Top spenders waiting
         </div>
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
           {items.length}
         </span>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        Unusual swings worth a look — bigger or smaller than typical for the account
+        Your highest-LTV accounts that have gone 45+ days without contact. Don&apos;t lose these.
       </p>
       <div className="border-t border-gray-100 dark:border-slate-800 -mx-1">
         {items.length === 0 ? (
           <div className="text-xs text-gray-500 dark:text-gray-500 italic px-1 py-3 text-center">
-            No unusual patterns this month.
+            All major accounts have been contacted recently. Great work.
           </div>
         ) : (
-          items.map((it, i) => (
+          items.map((it) => (
             <Link
-              key={`${it.accountName}|${i}`}
-              href={accountLink(it.accountName)}
+              key={it.accountId}
+              href={acctHref(it.accountId, it.accountName)}
               className="flex items-center justify-between gap-2 px-1 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 rounded transition-colors"
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{it.accountName}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  This month {fmtUSD(it.currentMonth)} vs baseline {fmtUSD(it.baseline)} — {it.ratio}× normal
+                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  {it.lastActivityType !== 'never' ? `Last touch: ${it.lastActivityType.toLowerCase()}` : 'No activity logged'}
                 </div>
               </div>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                it.direction === 'spike'
-                  ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300'
-              }`}>
-                {it.direction === 'spike' ? 'Spike' : 'Drop'}
-              </span>
+              <div className="flex flex-col items-end flex-shrink-0">
+                <span className="text-xs font-semibold text-rose-700 dark:text-rose-300">LTV {fmtUSD(it.lifetimeValue)}</span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">{it.daysSinceActivity}d quiet</span>
+              </div>
             </Link>
           ))
         )}

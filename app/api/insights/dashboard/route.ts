@@ -1,25 +1,23 @@
 /**
  * GET /api/insights/dashboard
  *
- * Computes the five Insights modules in one round-trip so the page can
- * paint everything at once. All five share the same source data
- * (sale_records, opportunities, activities, accounts) so batching the
- * Supabase reads here is much cheaper than five separate routes.
+ * "What needs my attention today?" — five modules for a sales rep's
+ * morning planning session. All computed server-side so the page paints
+ * once with no client-side number crunching.
  *
- * Modules returned:
- *   atRisk          — overdue / declining / silent customers
- *   likelyReorder   — predicted to order in next 14 days
- *   whitespace      — products peers buy that this customer doesn't
- *   stuckDeals      — open opportunities with no recent activity
- *   anomalies       — unusual order swings worth a look
- *   summary         — natural-language "your day at a glance" line
+ *   likelyReorder       — accounts predicted to order in next 14 days
+ *   timeToCall          — accounts overdue for a touch, weighted by LTV
+ *   closingThisMonth    — opps with close date in next 30 days, weighted by amount × probability
+ *   personalTouchpoints — contact birthdays / anniversaries in next 14 days
+ *   topSpendersWaiting  — high-LTV accounts that have gone quiet (45+ days)
  *
- * Each module returns a small array (≤ 8 rows) so the UI doesn't have
- * to paginate; the cards show the top hits and link to the underlying
- * record for the full story.
+ * Each row includes accountId / contactId / opportunityId where applicable
+ * so the page can deep-link straight to the detail view instead of the
+ * filtered list view.
  *
- * Pure-rule first pass. The summary blurb uses Claude only when
- * ANTHROPIC_API_KEY is present; otherwise it's templated.
+ * Pure-rule first pass. No LLM calls — keeps the page snappy and the
+ * results deterministic (sales reps need to trust the same input always
+ * produces the same recommendations).
  */
 
 import { auth } from '@/auth';
@@ -29,30 +27,25 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 // ── Tunable thresholds ────────────────────────────────────────────────
-const MIN_ORDERS_FOR_CADENCE  = 3;        // ≥ 3 historic orders before we predict
-const OVERDUE_MULT            = 1.5;      // days since last > mean × this → overdue
-const DECLINING_DROP_PCT      = 25;       // last 90d sum vs prior 90d
-const SILENT_DAYS             = 60;       // no order + no activity
-const REORDER_WINDOW_DAYS     = 14;       // predicted next order within this → flag
-const STUCK_DAYS              = 21;       // opp + no activity for this many days
-const ANOMALY_SPIKE_MULT      = 2.5;      // current month vs trailing baseline
-const ANOMALY_DROP_RATIO      = 0.3;      // current month < this × baseline
-const WHITESPACE_PEER_THRESH  = 0.6;      // ≥ this fraction of peers buy → recommend
+const MIN_ORDERS_FOR_CADENCE  = 3;
+const REORDER_WINDOW_DAYS     = 14;
+const TIME_TO_CALL_MIN_DAYS   = 30;     // hide accounts touched in the past month
+const CLOSING_WINDOW_DAYS     = 30;     // "closing this month" really means "next 30 days"
+const TOP_SPENDER_QUIET_DAYS  = 45;     // big account + this many quiet days = safety net
+const TOP_SPENDER_LTV_FLOOR   = 50_000; // ignore tiny accounts even if they're quiet
+const TOUCHPOINT_WINDOW_DAYS  = 14;     // birthdays / anniversaries lookahead
 const MAX_ROWS_PER_MODULE     = 8;
 
 // ── Types ─────────────────────────────────────────────────────────────
 
 interface SaleRow {
-  date?: string;
-  amount?: number | string;
-  account_name?: string;
-  product_name?: string;
-  category?: string;
+  date?: string; amount?: number | string;
+  account_name?: string; product_name?: string;
 }
 interface OppRow {
   id?: string; name?: string; account_id?: string; stage?: string;
   amount?: number | string; probability?: number | string;
-  close_date?: string; created_date?: string;
+  close_date?: string;
 }
 interface ActivityRow {
   id?: string; account_id?: string; date?: string; type?: string;
@@ -60,41 +53,53 @@ interface ActivityRow {
 interface AccountRow {
   id?: string; name?: string;
 }
-
-// Output shapes — small, JSON-safe.
-interface AtRiskItem {
-  accountName: string;
-  reason: 'overdue' | 'declining' | 'silent';
-  detail: string;        // human-readable, e.g. "38 days overdue"
-  lastOrder: string;     // YYYY-MM-DD or '—'
-  lifetimeValue: number; // total $ ever
+interface ContactRow {
+  id?: string; first_name?: string; last_name?: string;
+  account_id?: string; birthday?: string; anniversary?: string;
 }
+
 interface ReorderItem {
+  accountId: string;
   accountName: string;
-  predictedDate: string;   // YYYY-MM-DD
+  predictedDate: string;
   daysUntil: number;
   expectedAmount: number;
 }
-interface WhitespaceItem {
+interface TimeToCallItem {
+  accountId: string;
   accountName: string;
-  product: string;
-  peerAdoption: number;   // 0..1 — what fraction of peers buy this
-  avgPeerSpend: number;   // $ per month equivalent
+  daysSinceActivity: number;
+  lastActivityType: string;
+  lastActivityDate: string;
+  lifetimeValue: number;
 }
-interface StuckDealItem {
+interface ClosingItem {
   opportunityId: string;
   name: string;
+  accountId: string;
   accountName: string;
   stage: string;
   amount: number;
-  daysSinceActivity: number;
+  probability: number;
+  weightedAmount: number;
+  closeDate: string;
+  daysUntilClose: number;
 }
-interface AnomalyItem {
+interface TouchpointItem {
+  contactId: string;
+  contactName: string;
+  accountId: string;
   accountName: string;
-  direction: 'spike' | 'drop';
-  currentMonth: number;
-  baseline: number;
-  ratio: number;          // current / baseline
+  type: 'birthday' | 'anniversary';
+  date: string;       // MM-DD or YYYY-MM-DD
+  daysUntil: number;
+}
+interface TopSpenderItem {
+  accountId: string;
+  accountName: string;
+  lifetimeValue: number;
+  daysSinceActivity: number;
+  lastActivityType: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -103,7 +108,6 @@ const DAY = 86_400_000;
 
 function parseDate(s?: string): Date | null {
   if (!s) return null;
-  // sale_records.date is "YYYY-MM-DD" or full ISO. Either way Date can handle.
   const d = new Date(s.length === 10 ? s + 'T00:00:00' : s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -121,12 +125,21 @@ function mean(xs: number[]): number {
   return xs.reduce((s, x) => s + x, 0) / xs.length;
 }
 
-/** Sample standard deviation. n-1 denom so a single value yields 0 instead
- *  of NaN, which is what we want for sparse-history accounts. */
 function stddev(xs: number[]): number {
   if (xs.length < 2) return 0;
   const m = mean(xs);
   return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
+}
+
+/** Days from `today` until the next occurrence of MM-DD (this year or next),
+ *  ignoring the year in the stored date. Birthdays repeat annually. */
+function daysUntilAnnual(stored: Date, today: Date): { days: number; nextOccurrence: Date } {
+  const candidate = new Date(today.getFullYear(), stored.getMonth(), stored.getDate());
+  if (candidate.getTime() < today.getTime() - DAY) {
+    candidate.setFullYear(today.getFullYear() + 1);
+  }
+  const days = Math.round((candidate.getTime() - today.getTime()) / DAY);
+  return { days, nextOccurrence: candidate };
 }
 
 export async function GET() {
@@ -142,271 +155,227 @@ export async function GET() {
   }
   const sb = createClient(url, key);
 
-  // 3,000-row safety margin on sale_records mirrors the weekly-report route.
-  const [s1, s2, s3, oppRes, actRes, acctRes] = await Promise.all([
-    sb.from('sale_records').select('date,amount,account_name,product_name,category').range(0, 999),
-    sb.from('sale_records').select('date,amount,account_name,product_name,category').range(1000, 1999),
-    sb.from('sale_records').select('date,amount,account_name,product_name,category').range(2000, 2999),
-    sb.from('opportunities').select('id,name,account_id,stage,amount,probability,close_date,created_date').range(0, 999),
+  const [s1, s2, s3, oppRes, actRes, acctRes, conRes] = await Promise.all([
+    sb.from('sale_records').select('date,amount,account_name,product_name').range(0, 999),
+    sb.from('sale_records').select('date,amount,account_name,product_name').range(1000, 1999),
+    sb.from('sale_records').select('date,amount,account_name,product_name').range(2000, 2999),
+    sb.from('opportunities').select('id,name,account_id,stage,amount,probability,close_date').range(0, 999),
     sb.from('activities').select('id,account_id,date,type').range(0, 1999),
     sb.from('accounts').select('id,name').range(0, 1999),
+    sb.from('contacts').select('id,first_name,last_name,account_id,birthday,anniversary').range(0, 1999),
   ]);
-  const sales       = [...(s1.data || []), ...(s2.data || []), ...(s3.data || [])] as SaleRow[];
-  const opps        = (oppRes.data  || []) as OppRow[];
-  const activities  = (actRes.data  || []) as ActivityRow[];
-  const accounts    = (acctRes.data || []) as AccountRow[];
+  const sales      = [...(s1.data || []), ...(s2.data || []), ...(s3.data || [])] as SaleRow[];
+  const opps       = (oppRes.data  || []) as OppRow[];
+  const activities = (actRes.data  || []) as ActivityRow[];
+  const accounts   = (acctRes.data || []) as AccountRow[];
+  const contacts   = (conRes.data  || []) as ContactRow[];
 
-  const accountNameById = new Map<string, string>(
-    accounts.map((a) => [String(a.id ?? ''), String(a.name ?? '—')]),
-  );
+  const accountIdByName = new Map<string, string>();
+  const accountNameById = new Map<string, string>();
+  for (const a of accounts) {
+    const id = String(a.id ?? '');
+    const name = String(a.name ?? '').trim();
+    if (id && name) {
+      accountIdByName.set(name, id);
+      accountNameById.set(id, name);
+    }
+  }
 
   const today = new Date();
 
-  // ── Per-account aggregation of sales ──────────────────────────────
-  // Group sale rows by account name (the join key throughout this codebase).
-  // For each account compute: ordered list of (date, amount, product, category).
-  const byAccount = new Map<string, Array<{ date: Date; amount: number; product: string; category: string }>>();
+  // ── Per-account sales aggregation ─────────────────────────────────
+  const byAccountName = new Map<string, Array<{ date: Date; amount: number }>>();
   for (const r of sales) {
     const d = parseDate(r.date);
     if (!d) continue;
-    const acct = String(r.account_name || '').trim();
-    if (!acct) continue;
+    const name = String(r.account_name || '').trim();
+    if (!name) continue;
     const amt = Number(r.amount) || 0;
     if (amt <= 0) continue;
-    if (!byAccount.has(acct)) byAccount.set(acct, []);
-    byAccount.get(acct)!.push({
-      date: d, amount: amt,
-      product: String(r.product_name || '').trim(),
-      category: String(r.category || '').trim(),
-    });
+    if (!byAccountName.has(name)) byAccountName.set(name, []);
+    byAccountName.get(name)!.push({ date: d, amount: amt });
   }
-  // Sort each account's orders by date ascending — cadence math needs this.
-  for (const arr of byAccount.values()) arr.sort((a, b) => a.date.getTime() - b.date.getTime());
+  for (const arr of byAccountName.values()) arr.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // Latest activity date per account (for "silent" and stuck-deal modules).
-  const latestActivityByAccountId = new Map<string, Date>();
+  // Lifetime value per account name.
+  const ltvByName = new Map<string, number>();
+  for (const [name, orders] of byAccountName.entries()) {
+    ltvByName.set(name, orders.reduce((s, o) => s + o.amount, 0));
+  }
+
+  // Latest activity per account ID (the join key on activities).
+  const latestActivityByAccountId = new Map<string, { date: Date; type: string }>();
   for (const a of activities) {
     const d = parseDate(a.date);
     if (!d) continue;
     const id = String(a.account_id || '');
     if (!id) continue;
     const prev = latestActivityByAccountId.get(id);
-    if (!prev || d > prev) latestActivityByAccountId.set(id, d);
-  }
-  const latestActivityByName = new Map<string, Date>();
-  for (const [id, d] of latestActivityByAccountId.entries()) {
-    const name = accountNameById.get(id);
-    if (name) latestActivityByName.set(name, d);
-  }
-
-  // ── Module 1: At-risk customers ──────────────────────────────────
-  const atRisk: AtRiskItem[] = [];
-  for (const [acct, orders] of byAccount.entries()) {
-    if (orders.length < MIN_ORDERS_FOR_CADENCE) continue;
-
-    const intervals: number[] = [];
-    for (let i = 1; i < orders.length; i++) {
-      intervals.push(daysBetween(orders[i - 1].date, orders[i].date));
-    }
-    const meanInt = mean(intervals);
-    const lastOrder = orders[orders.length - 1].date;
-    const daysSince = daysBetween(today, lastOrder);
-    const lifetime = orders.reduce((s, o) => s + o.amount, 0);
-
-    // a) Overdue
-    if (meanInt > 7 && daysSince > meanInt * OVERDUE_MULT) {
-      atRisk.push({
-        accountName: acct, reason: 'overdue',
-        detail: `${daysSince - Math.round(meanInt)} days past typical cadence (avg ${Math.round(meanInt)}d)`,
-        lastOrder: fmtISO(lastOrder), lifetimeValue: Math.round(lifetime),
-      });
-      continue;
-    }
-    // b) Declining trend — last 90d vs prior 90d
-    const last90Cutoff = new Date(today.getTime() - 90 * DAY);
-    const prior90Cutoff = new Date(today.getTime() - 180 * DAY);
-    const last90  = orders.filter((o) => o.date >= last90Cutoff).reduce((s, o) => s + o.amount, 0);
-    const prior90 = orders.filter((o) => o.date >= prior90Cutoff && o.date < last90Cutoff).reduce((s, o) => s + o.amount, 0);
-    if (prior90 > 1000 && last90 > 0 && (prior90 - last90) / prior90 >= DECLINING_DROP_PCT / 100) {
-      const dropPct = Math.round(((prior90 - last90) / prior90) * 100);
-      atRisk.push({
-        accountName: acct, reason: 'declining',
-        detail: `Spend down ${dropPct}% vs prior 90 days`,
-        lastOrder: fmtISO(lastOrder), lifetimeValue: Math.round(lifetime),
-      });
-      continue;
-    }
-    // c) Gone silent — no orders + no activities in SILENT_DAYS
-    const latestAct = latestActivityByName.get(acct);
-    const daysSinceAct = latestAct ? daysBetween(today, latestAct) : Number.POSITIVE_INFINITY;
-    if (daysSince >= SILENT_DAYS && daysSinceAct >= SILENT_DAYS) {
-      atRisk.push({
-        accountName: acct, reason: 'silent',
-        detail: `No order or activity in ${Math.min(daysSince, daysSinceAct)} days`,
-        lastOrder: fmtISO(lastOrder), lifetimeValue: Math.round(lifetime),
-      });
+    if (!prev || d > prev.date) {
+      latestActivityByAccountId.set(id, { date: d, type: String(a.type || '—') });
     }
   }
-  // Sort by lifetime value desc — biggest accounts first.
-  atRisk.sort((a, b) => b.lifetimeValue - a.lifetimeValue);
-  atRisk.length = Math.min(atRisk.length, MAX_ROWS_PER_MODULE);
 
-  // ── Module 2: Likely to reorder ──────────────────────────────────
+  // ── Module 1: Likely to reorder ──────────────────────────────────
   const likelyReorder: ReorderItem[] = [];
-  for (const [acct, orders] of byAccount.entries()) {
+  for (const [name, orders] of byAccountName.entries()) {
     if (orders.length < MIN_ORDERS_FOR_CADENCE) continue;
     const intervals: number[] = [];
     for (let i = 1; i < orders.length; i++) intervals.push(daysBetween(orders[i - 1].date, orders[i].date));
     const meanInt = mean(intervals);
     const sd = stddev(intervals);
-    // Only flag accounts with reasonably regular cadence — high std means
-    // their orders are erratic and our prediction is noise.
-    if (meanInt <= 0 || sd > meanInt) continue;
+    if (meanInt <= 0 || sd > meanInt) continue;     // erratic cadence → skip
 
     const lastOrder = orders[orders.length - 1].date;
     const predicted = new Date(lastOrder.getTime() + meanInt * DAY);
     const daysUntil = Math.round((predicted.getTime() - today.getTime()) / DAY);
-    if (daysUntil < -3 || daysUntil > REORDER_WINDOW_DAYS) continue; // -3 = grace for slightly overdue
+    if (daysUntil < -3 || daysUntil > REORDER_WINDOW_DAYS) continue;
 
     const recent = orders.slice(-3);
-    const expectedAmount = Math.round(mean(recent.map((o) => o.amount)));
     likelyReorder.push({
-      accountName: acct, predictedDate: fmtISO(predicted),
-      daysUntil, expectedAmount,
+      accountId: accountIdByName.get(name) || '',
+      accountName: name,
+      predictedDate: fmtISO(predicted),
+      daysUntil,
+      expectedAmount: Math.round(mean(recent.map((o) => o.amount))),
     });
   }
   likelyReorder.sort((a, b) => b.expectedAmount - a.expectedAmount);
   likelyReorder.length = Math.min(likelyReorder.length, MAX_ROWS_PER_MODULE);
 
-  // ── Module 3: Whitespace — products peers buy that this account doesn't ──
-  // Group accounts by category, then within each category find products that
-  // most peers buy but this account doesn't yet.
-  const accountsByCategory = new Map<string, string[]>();
-  const productsByAccount = new Map<string, Set<string>>();
-  const productSpendByAccount = new Map<string, Map<string, number>>(); // product → total spend on it
-  for (const [acct, orders] of byAccount.entries()) {
-    const cat = orders[orders.length - 1].category || 'unknown';
-    if (!accountsByCategory.has(cat)) accountsByCategory.set(cat, []);
-    accountsByCategory.get(cat)!.push(acct);
-    const prodSet = new Set<string>();
-    const spendByProd = new Map<string, number>();
-    for (const o of orders) {
-      if (!o.product) continue;
-      prodSet.add(o.product);
-      spendByProd.set(o.product, (spendByProd.get(o.product) || 0) + o.amount);
-    }
-    productsByAccount.set(acct, prodSet);
-    productSpendByAccount.set(acct, spendByProd);
+  // ── Module 2: Time to call ───────────────────────────────────────
+  // Active accounts (any sales OR any open opp) that the team hasn't
+  // touched in TIME_TO_CALL_MIN_DAYS days. Sorted by LTV so the
+  // biggest "going quiet" accounts surface first.
+  const activeAccountIds = new Set<string>();
+  for (const name of byAccountName.keys()) {
+    const id = accountIdByName.get(name);
+    if (id) activeAccountIds.add(id);
   }
-  const whitespace: WhitespaceItem[] = [];
-  for (const [cat, peerAccounts] of accountsByCategory.entries()) {
-    if (peerAccounts.length < 4) continue;          // need a meaningful peer pool
-    // For each candidate product, compute peer adoption fraction & avg spend.
-    const productPeers = new Map<string, { buyers: string[]; totalSpend: number }>();
-    for (const peer of peerAccounts) {
-      const peerProds = productsByAccount.get(peer) || new Set();
-      const peerSpend = productSpendByAccount.get(peer) || new Map();
-      for (const p of peerProds) {
-        if (!productPeers.has(p)) productPeers.set(p, { buyers: [], totalSpend: 0 });
-        productPeers.get(p)!.buyers.push(peer);
-        productPeers.get(p)!.totalSpend += peerSpend.get(p) || 0;
-      }
-    }
-    for (const acct of peerAccounts) {
-      const myProds = productsByAccount.get(acct) || new Set();
-      for (const [product, info] of productPeers.entries()) {
-        if (myProds.has(product)) continue;
-        const adoption = info.buyers.length / peerAccounts.length;
-        if (adoption < WHITESPACE_PEER_THRESH) continue;
-        // Skip products we already recommended for this account.
-        whitespace.push({
-          accountName: acct, product,
-          peerAdoption: Math.round(adoption * 100) / 100,
-          avgPeerSpend: Math.round(info.totalSpend / Math.max(1, info.buyers.length)),
-        });
-      }
-    }
-    void cat;  // silence unused-var if linter complains
-  }
-  // Sort by impact: peer adoption × avg spend
-  whitespace.sort((a, b) => (b.peerAdoption * b.avgPeerSpend) - (a.peerAdoption * a.avgPeerSpend));
-  whitespace.length = Math.min(whitespace.length, MAX_ROWS_PER_MODULE);
-
-  // ── Module 4: Stuck deals ────────────────────────────────────────
-  const stuckDeals: StuckDealItem[] = [];
   for (const o of opps) {
-    const stage = o.stage || '';
-    if (stage.startsWith('Closed')) continue;   // skip closed-won / closed-lost
-    const accountName = accountNameById.get(String(o.account_id || '')) || '—';
-    const latestAct = latestActivityByAccountId.get(String(o.account_id || ''));
-    const daysSinceAct = latestAct ? daysBetween(today, latestAct) : Number.POSITIVE_INFINITY;
-    if (daysSinceAct < STUCK_DAYS) continue;
-    stuckDeals.push({
-      opportunityId: String(o.id || ''),
-      name: String(o.name || '—'),
-      accountName,
-      stage,
-      amount: Math.round(Number(o.amount) || 0),
-      daysSinceActivity: Number.isFinite(daysSinceAct) ? daysSinceAct : 999,
+    if (!String(o.stage || '').startsWith('Closed')) activeAccountIds.add(String(o.account_id || ''));
+  }
+
+  const timeToCall: TimeToCallItem[] = [];
+  for (const accountId of activeAccountIds) {
+    const name = accountNameById.get(accountId);
+    if (!name) continue;
+    const latest = latestActivityByAccountId.get(accountId);
+    const daysSince = latest ? daysBetween(today, latest.date) : 9999;
+    if (daysSince < TIME_TO_CALL_MIN_DAYS) continue;
+    const ltv = ltvByName.get(name) || 0;
+    timeToCall.push({
+      accountId, accountName: name,
+      daysSinceActivity: daysSince,
+      lastActivityType: latest?.type || 'never',
+      lastActivityDate: latest ? fmtISO(latest.date) : '—',
+      lifetimeValue: Math.round(ltv),
     });
   }
-  stuckDeals.sort((a, b) => b.amount - a.amount);
-  stuckDeals.length = Math.min(stuckDeals.length, MAX_ROWS_PER_MODULE);
+  // Score = LTV × log(days) to surface big quiet accounts before tiny stale ones.
+  timeToCall.sort((a, b) =>
+    (b.lifetimeValue * Math.log(b.daysSinceActivity + 1)) -
+    (a.lifetimeValue * Math.log(a.daysSinceActivity + 1)),
+  );
+  timeToCall.length = Math.min(timeToCall.length, MAX_ROWS_PER_MODULE);
 
-  // ── Module 5: Anomaly watch ──────────────────────────────────────
-  const anomalies: AnomalyItem[] = [];
-  const thisMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  for (const [acct, orders] of byAccount.entries()) {
-    // Need at least 6 months of history.
-    const monthBuckets = new Map<string, number>();
-    for (const o of orders) {
-      const k = `${o.date.getFullYear()}-${String(o.date.getMonth() + 1).padStart(2, '0')}`;
-      monthBuckets.set(k, (monthBuckets.get(k) || 0) + o.amount);
-    }
-    if (monthBuckets.size < 6) continue;
-    const currentMonthAmt = monthBuckets.get(thisMonthKey) || 0;
-    // Baseline = mean of last 6 month buckets excluding current.
-    const sortedKeys = [...monthBuckets.keys()].sort();
-    const tail = sortedKeys.filter((k) => k !== thisMonthKey).slice(-6);
-    const baseline = mean(tail.map((k) => monthBuckets.get(k) || 0));
-    if (baseline < 5000) continue;  // ignore tiny accounts — noisy
-    if (currentMonthAmt >= baseline * ANOMALY_SPIKE_MULT) {
-      anomalies.push({
-        accountName: acct, direction: 'spike',
-        currentMonth: Math.round(currentMonthAmt), baseline: Math.round(baseline),
-        ratio: Math.round((currentMonthAmt / baseline) * 10) / 10,
-      });
-    } else if (currentMonthAmt > 0 && currentMonthAmt <= baseline * ANOMALY_DROP_RATIO) {
-      anomalies.push({
-        accountName: acct, direction: 'drop',
-        currentMonth: Math.round(currentMonthAmt), baseline: Math.round(baseline),
-        ratio: Math.round((currentMonthAmt / baseline) * 10) / 10,
+  // ── Module 3: Closing this month ─────────────────────────────────
+  const closing: ClosingItem[] = [];
+  for (const o of opps) {
+    const stage = String(o.stage || '');
+    if (stage.startsWith('Closed')) continue;
+    const close = parseDate(o.close_date);
+    if (!close) continue;
+    const daysUntilClose = Math.round((close.getTime() - today.getTime()) / DAY);
+    if (daysUntilClose < -7 || daysUntilClose > CLOSING_WINDOW_DAYS) continue; // grace for slightly overdue
+
+    const amount = Number(o.amount) || 0;
+    const prob = Number(o.probability) || 0;
+    const accountId = String(o.account_id || '');
+    closing.push({
+      opportunityId: String(o.id || ''),
+      name: String(o.name || '—'),
+      accountId,
+      accountName: accountNameById.get(accountId) || '—',
+      stage,
+      amount: Math.round(amount),
+      probability: Math.round(prob),
+      weightedAmount: Math.round(amount * (prob / 100)),
+      closeDate: fmtISO(close),
+      daysUntilClose,
+    });
+  }
+  closing.sort((a, b) => b.weightedAmount - a.weightedAmount);
+  closing.length = Math.min(closing.length, MAX_ROWS_PER_MODULE);
+
+  // ── Module 4: Personal touchpoints ───────────────────────────────
+  const personalTouchpoints: TouchpointItem[] = [];
+  for (const c of contacts) {
+    const accountId = String(c.account_id || '');
+    const accountName = accountNameById.get(accountId);
+    if (!accountName) continue;
+    // Skip contacts at accounts with no recent activity AND no orders ever —
+    // sending a card to a dead account is wasted effort.
+    if (!activeAccountIds.has(accountId)) continue;
+
+    const name = `${(c.first_name || '').trim()} ${(c.last_name || '').trim()}`.trim() || '(unnamed)';
+    for (const kind of ['birthday', 'anniversary'] as const) {
+      const stored = parseDate(c[kind]);
+      if (!stored) continue;
+      const { days, nextOccurrence } = daysUntilAnnual(stored, today);
+      if (days < 0 || days > TOUCHPOINT_WINDOW_DAYS) continue;
+      personalTouchpoints.push({
+        contactId: String(c.id || ''),
+        contactName: name,
+        accountId, accountName,
+        type: kind,
+        date: fmtISO(nextOccurrence),
+        daysUntil: days,
       });
     }
   }
-  anomalies.sort((a, b) => Math.abs(b.ratio - 1) - Math.abs(a.ratio - 1));
-  anomalies.length = Math.min(anomalies.length, MAX_ROWS_PER_MODULE);
+  personalTouchpoints.sort((a, b) => a.daysUntil - b.daysUntil);
+  personalTouchpoints.length = Math.min(personalTouchpoints.length, MAX_ROWS_PER_MODULE);
 
-  // ── Summary line ────────────────────────────────────────────────
-  // Templated — small enough that LLM doesn't add value, and the page
-  // stays fast and offline-safe.
-  const summaryParts: string[] = [];
-  if (atRisk.length)        summaryParts.push(`${atRisk.length} customer${atRisk.length === 1 ? '' : 's'} at risk`);
-  if (likelyReorder.length) summaryParts.push(`${likelyReorder.length} likely to reorder soon`);
-  if (stuckDeals.length)    summaryParts.push(`${stuckDeals.length} deal${stuckDeals.length === 1 ? '' : 's'} stuck`);
-  if (whitespace.length)    summaryParts.push(`${whitespace.length} cross-sell opportunit${whitespace.length === 1 ? 'y' : 'ies'}`);
-  if (anomalies.length)     summaryParts.push(`${anomalies.length} unusual pattern${anomalies.length === 1 ? '' : 's'}`);
-  const summary = summaryParts.length === 0
+  // ── Module 5: Top spenders waiting ───────────────────────────────
+  // Big accounts (LTV ≥ floor) that have gone TOP_SPENDER_QUIET_DAYS+
+  // days without an activity. Sorted by LTV so the biggest fish first.
+  const topSpenders: TopSpenderItem[] = [];
+  for (const [name, ltv] of ltvByName.entries()) {
+    if (ltv < TOP_SPENDER_LTV_FLOOR) continue;
+    const accountId = accountIdByName.get(name);
+    if (!accountId) continue;
+    const latest = latestActivityByAccountId.get(accountId);
+    const daysSince = latest ? daysBetween(today, latest.date) : 9999;
+    if (daysSince < TOP_SPENDER_QUIET_DAYS) continue;
+    topSpenders.push({
+      accountId, accountName: name,
+      lifetimeValue: Math.round(ltv),
+      daysSinceActivity: daysSince,
+      lastActivityType: latest?.type || 'never',
+    });
+  }
+  topSpenders.sort((a, b) => b.lifetimeValue - a.lifetimeValue);
+  topSpenders.length = Math.min(topSpenders.length, MAX_ROWS_PER_MODULE);
+
+  // ── Summary line ─────────────────────────────────────────────────
+  const parts: string[] = [];
+  if (likelyReorder.length)        parts.push(`${likelyReorder.length} likely to reorder`);
+  if (timeToCall.length)           parts.push(`${timeToCall.length} need a call`);
+  if (closing.length)              parts.push(`${closing.length} closing soon`);
+  if (personalTouchpoints.length)  parts.push(`${personalTouchpoints.length} birthday${personalTouchpoints.length === 1 ? '' : 's'}/anniv.`);
+  if (topSpenders.length)          parts.push(`${topSpenders.length} top account${topSpenders.length === 1 ? '' : 's'} waiting`);
+  const summary = parts.length === 0
     ? 'Nothing flagged today. Pipeline looks healthy.'
-    : summaryParts.join(' · ');
+    : parts.join(' · ');
 
   return NextResponse.json({
     summary,
-    atRisk,
     likelyReorder,
-    whitespace,
-    stuckDeals,
-    anomalies,
+    timeToCall,
+    closing,
+    personalTouchpoints,
+    topSpenders,
     generatedAt: new Date().toISOString(),
   });
 }
