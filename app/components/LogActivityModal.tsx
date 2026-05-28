@@ -39,6 +39,9 @@ export default function LogActivityModal({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [ownerId, setOwnerId] = useState(userId);
+  // "Logged By" defaults to self. Admins rarely need to log on behalf of
+  // someone else, so the picker stays collapsed unless they ask for it.
+  const [showLoggedBy, setShowLoggedBy] = useState(false);
   const [accountId, setAccountId] = useState(initialAccountId || '');
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
     new Set(contactId ? [contactId] : [])
@@ -317,16 +320,37 @@ export default function LogActivityModal({
 
           {isAdmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Logged By</label>
-              <select
-                value={ownerId}
-                onChange={(e) => setOwnerId(e.target.value)}
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                {allUsers.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
+              {!showLoggedBy ? (
+                <button
+                  type="button"
+                  onClick={() => setShowLoggedBy(true)}
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 underline underline-offset-2"
+                >
+                  Log as someone else?
+                </button>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Logged By</label>
+                    <button
+                      type="button"
+                      onClick={() => { setShowLoggedBy(false); setOwnerId(userId); }}
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    >
+                      Reset to me
+                    </button>
+                  </div>
+                  <select
+                    value={ownerId}
+                    onChange={(e) => setOwnerId(e.target.value)}
+                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    {allUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </>
+              )}
             </div>
           )}
 
