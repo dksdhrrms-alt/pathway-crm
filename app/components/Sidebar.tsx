@@ -238,7 +238,9 @@ export default function Sidebar() {
             >
               <ReportsIcon />
               <span>Reports</span>
-              <span className="ml-auto text-[10px] opacity-70" style={{ transform: reportsOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+              <svg className={`w-4 h-4 ml-auto transition-transform ${reportsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
             {reportsOpen && (
               <div className="ml-4 mt-1 space-y-0.5">
