@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Activity, ActivityType } from '@/lib/data';
 import { useUsers } from '@/lib/UserContext';
 import CommentThread from './CommentThread';
+import ActivityDescription from './ActivityDescription';
 
 interface ActivityTimelineProps {
   activities: Activity[];
@@ -146,7 +147,7 @@ export default function ActivityTimeline({
                       )}
                     </p>
                   ) : null}
-                  <ActivityBody description={activity.description} />
+                  <ActivityDescription description={activity.description} />
                   <div className="mt-1 flex items-center gap-3 flex-wrap">
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       Logged by <span className="font-medium text-gray-600 dark:text-gray-300">{getOwnerName(activity.ownerId)}</span>

@@ -7,6 +7,7 @@ import { Activity, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useSession } from 'next-auth/react';
 import SendEmailModal from '@/app/components/SendEmailModal';
+import ActivityDescription from '@/app/components/ActivityDescription';
 import { useUsers } from '@/lib/UserContext';
 import LogActivityModal from '@/app/components/LogActivityModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
@@ -715,7 +716,10 @@ export default function AccountDetailPage() {
                                     border: '0.5px solid #e5e7eb',
                                   }}
                                 >
-                                  {act.description}
+                                  <ActivityDescription
+                                    description={act.description}
+                                    bodyClassName="whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
+                                  />
                                 </div>
                               )}
                               <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
