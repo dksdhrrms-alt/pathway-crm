@@ -8,6 +8,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useSession } from 'next-auth/react';
 import SendEmailModal from '@/app/components/SendEmailModal';
 import ActivityDescription from '@/app/components/ActivityDescription';
+import CommentThread from '@/app/components/CommentThread';
 import { useUsers } from '@/lib/UserContext';
 import LogActivityModal from '@/app/components/LogActivityModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
@@ -66,6 +67,10 @@ export default function AccountDetailPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
   const [showAllContacts, setShowAllContacts] = useState(false);
+  // Track which activity row currently has its CommentThread expanded.
+  // Single-open semantics match the Contact page / ActivityTimeline component
+  // so the page doesn't balloon if a user clicks through several at once.
+  const [openCommentsFor, setOpenCommentsFor] = useState<string | null>(null);
   const [purchasePeriod, setPurchasePeriod] = useState<'all' | 'q1' | 'q2' | 'q3' | 'q4' | 'ytd' | '6m' | '1y' | '2y' | 'custom'>('all');
   const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
   const [purchaseFrom, setPurchaseFrom] = useState('');
@@ -722,15 +727,30 @@ export default function AccountDetailPage() {
                                   />
                                 </div>
                               )}
-                              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
-                                Logged by <span style={{ color: '#555', fontWeight: 500 }}>{ownerName}</span>
-                                {act.internalParticipants && act.internalParticipants.length > 0 && (
-                                  <>
-                                    {' with '}
-                                    <span style={{ color: '#1e40af', fontWeight: 500 }}>{act.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
-                                  </>
-                                )}
+                              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                <span>
+                                  Logged by <span style={{ color: '#555', fontWeight: 500 }}>{ownerName}</span>
+                                  {act.internalParticipants && act.internalParticipants.length > 0 && (
+                                    <>
+                                      {' with '}
+                                      <span style={{ color: '#1e40af', fontWeight: 500 }}>{act.internalParticipants.map((id) => getOwnerName(id)).join(', ')}</span>
+                                    </>
+                                  )}
+                                </span>
+                                {/* Reply toggle — opens the CommentThread for this activity. */}
+                                <button
+                                  onClick={() => setOpenCommentsFor(openCommentsFor === act.id ? null : act.id)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', fontSize: '11px' }}
+                                  className="hover:text-gray-700 dark:hover:text-gray-300"
+                                >
+                                  {openCommentsFor === act.id ? 'Hide replies' : 'Reply'}
+                                </button>
                               </div>
+                              {openCommentsFor === act.id && (
+                                <div style={{ marginTop: '8px', marginLeft: '4px', paddingLeft: '12px', borderLeft: '2px solid #e5e7eb' }}>
+                                  <CommentThread parentType="activity" parentId={act.id} />
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => deleteActivity(act.id)}

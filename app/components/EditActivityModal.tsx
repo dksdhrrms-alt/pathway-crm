@@ -24,6 +24,7 @@ import { ACTIVITY_PURPOSES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
+import CommentThread from './CommentThread';
 
 const ACTIVITY_TYPES: ActivityType[] = ['Call', 'Meeting', 'Email', 'Note'];
 const TYPE_LABEL: Record<ActivityType, string> = {
@@ -267,6 +268,19 @@ export default function EditActivityModal({ activity, onClose }: Props) {
             </div>
           </div>
         </form>
+
+        {/*
+         * Replies thread — same CommentThread we render on the Contact /
+         * Account pages. Lives below the edit form so the modal becomes a
+         * one-stop spot to both fix details and discuss the activity
+         * (handy from Archive where users come back to triage older logs).
+         */}
+        <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800">
+          <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+            Replies
+          </div>
+          <CommentThread parentType="activity" parentId={activity.id} />
+        </div>
       </div>
     </div>
   );
