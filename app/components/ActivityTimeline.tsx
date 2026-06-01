@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Activity, ActivityType } from '@/lib/data';
 import { useUsers } from '@/lib/UserContext';
 import CommentThread from './CommentThread';
+import { getCommentCounts } from '@/lib/comments';
 import ActivityDescription from './ActivityDescription';
 
 interface ActivityTimelineProps {
@@ -50,6 +51,18 @@ export default function ActivityTimeline({
 }: ActivityTimelineProps) {
   const { users } = useUsers();
   const [showComments, setShowComments] = useState<string | null>(null);
+  // Comment count per activity id, refetched when the inline thread
+  // toggles so add/delete inside CommentThread reflect immediately.
+  const [commentCountById, setCommentCountById] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const ids = activities.map((a) => a.id);
+    if (ids.length === 0) { setCommentCountById({}); return; }
+    getCommentCounts('activity', ids).then((counts) => {
+      if (!cancelled) setCommentCountById(counts);
+    });
+    return () => { cancelled = true; };
+  }, [activities, showComments]);
 
   function getOwnerName(ownerId: string): string {
     const ctxUser = users.find((u) => u.id === ownerId);
@@ -160,7 +173,11 @@ export default function ActivityTimeline({
                     </p>
                     <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
                       className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      {showComments === activity.id ? 'Hide replies' : 'Reply'}
+                      {(() => {
+                        const n = commentCountById[activity.id] ?? 0;
+                        const label = showComments === activity.id ? 'Hide replies' : 'Reply';
+                        return n > 0 ? `${label} (${n})` : label;
+                      })()}
                     </button>
                   </div>
                   {showComments === activity.id && (

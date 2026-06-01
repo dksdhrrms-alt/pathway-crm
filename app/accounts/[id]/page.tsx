@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Activity, generateId } from '@/lib/data';
@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import SendEmailModal from '@/app/components/SendEmailModal';
 import ActivityDescription from '@/app/components/ActivityDescription';
 import CommentThread from '@/app/components/CommentThread';
+import { getCommentCounts } from '@/lib/comments';
 import { useUsers } from '@/lib/UserContext';
 import LogActivityModal from '@/app/components/LogActivityModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
@@ -71,6 +72,9 @@ export default function AccountDetailPage() {
   // Single-open semantics match the Contact page / ActivityTimeline component
   // so the page doesn't balloon if a user clicks through several at once.
   const [openCommentsFor, setOpenCommentsFor] = useState<string | null>(null);
+  // Comment counts per activity id for this account's feed. Refetched when
+  // openCommentsFor changes (covers add/delete inside the inline thread).
+  const [commentCountById, setCommentCountById] = useState<Record<string, number>>({});
   const [purchasePeriod, setPurchasePeriod] = useState<'all' | 'q1' | 'q2' | 'q3' | 'q4' | 'ytd' | '6m' | '1y' | '2y' | 'custom'>('all');
   const [purchaseProduct, setPurchaseProduct] = useState<string>('all');
   const [purchaseFrom, setPurchaseFrom] = useState('');
@@ -152,6 +156,19 @@ export default function AccountDetailPage() {
       map[p] = (map[p] || 0) + (Number(r.amount) || 0);
     });
     return Object.entries(map).sort(([, a], [, b]) => b - a);
+
+  // Fetch comment counts for the visible activities in one round-trip.
+  // Re-runs whenever the inline thread is opened/closed so deletions and
+  // new replies show up without needing a full page refresh.
+  useEffect(() => {
+    let cancelled = false;
+    const ids = accountActivities.map((a) => a.id);
+    if (ids.length === 0) { setCommentCountById({}); return; }
+    getCommentCounts('activity', ids).then((counts) => {
+      if (!cancelled) setCommentCountById(counts);
+    });
+    return () => { cancelled = true; };
+  }, [accountActivities, openCommentsFor]);
   }, [accountSales]);
   const maxProductAmount = productBreakdown.length > 0 ? productBreakdown[0][1] : 0;
 
@@ -743,7 +760,11 @@ export default function AccountDetailPage() {
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', fontSize: '11px' }}
                                   className="hover:text-gray-700 dark:hover:text-gray-300"
                                 >
-                                  {openCommentsFor === act.id ? 'Hide replies' : 'Reply'}
+                                  {(() => {
+                                    const n = commentCountById[act.id] ?? 0;
+                                    const label = openCommentsFor === act.id ? 'Hide replies' : 'Reply';
+                                    return n > 0 ? `${label} (${n})` : label;
+                                  })()}
                                 </button>
                               </div>
                               {openCommentsFor === act.id && (

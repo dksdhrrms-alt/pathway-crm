@@ -26,6 +26,7 @@ import EmptyState from '@/app/components/EmptyState';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 import EditActivityModal from '@/app/components/EditActivityModal';
 import type { Activity } from '@/lib/data';
+import { getCommentCounts } from '@/lib/comments';
 
 const TYPE_BADGE_BG: Record<string, string> = {
   Call:    'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
@@ -178,6 +179,22 @@ export default function ArchivePage() {
     for (const a of filtered) m[a.type] = (m[a.type] ?? 0) + 1;
     return m;
   }, [filtered]);
+
+  // Comment counts per activity id, fetched in a single round-trip after
+  // the filtered list settles. Re-fetches when the user closes the edit
+  // modal so newly-added replies are reflected immediately. Falls back to
+  // an empty map on error (no badge shown).
+  const [commentCountById, setCommentCountById] = useState<Record<string, number>>({});
+  const [reloadCountsToken, setReloadCountsToken] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const ids = filtered.map((a) => a.id);
+    if (ids.length === 0) { setCommentCountById({}); return; }
+    getCommentCounts('activity', ids).then((counts) => {
+      if (!cancelled) setCommentCountById(counts);
+    });
+    return () => { cancelled = true; };
+  }, [filtered, reloadCountsToken]);
 
   // Excel/CSV/PDF columns. Account / contact are joined to human names
   // here so the exported file is self-contained — no IDs the user has to
@@ -381,6 +398,7 @@ export default function ArchivePage() {
                       <th className="text-left px-4 py-3 font-semibold">Type</th>
                       {selectedUserIds.size > 1 && <th className="text-left px-4 py-3 font-semibold">Owner</th>}
                       <th className="text-left px-4 py-3 font-semibold">Subject</th>
+                      <th className="text-center px-2 py-3 font-semibold" title="Reply count">💬</th>
                       <th className="text-left px-4 py-3 font-semibold">Account</th>
                       <th className="text-left px-4 py-3 font-semibold">Contact</th>
                       <th className="text-left px-4 py-3 font-semibold">Description</th>
@@ -408,6 +426,19 @@ export default function ArchivePage() {
                         <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium max-w-xs truncate" title={a.subject}>
                           {a.subject}
                         </td>
+                        <td className="px-2 py-3 text-center whitespace-nowrap">
+                          {(commentCountById[a.id] ?? 0) > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                              title={`${commentCountById[a.id]} repl${commentCountById[a.id] === 1 ? 'y' : 'ies'}`}
+                            >
+                              <span aria-hidden>💬</span>
+                              <span>{commentCountById[a.id]}</span>
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 dark:text-gray-700 text-[11px]">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[14ch] truncate" title={accountById.get(a.accountId ?? '') ?? ''}>
                           {accountById.get(a.accountId ?? '') ?? '—'}
                         </td>
@@ -431,7 +462,12 @@ export default function ArchivePage() {
       {editing && (
         <EditActivityModal
           activity={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            // Force a count re-fetch so reply badges reflect any threads
+            // the user just opened/added inside the modal.
+            setReloadCountsToken((n) => n + 1);
+          }}
         />
       )}
     </div>

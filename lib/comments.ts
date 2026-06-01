@@ -81,6 +81,45 @@ export async function addComment(comment: Omit<Comment, 'createdAt'>): Promise<C
   }
 }
 
+/**
+ * Bulk-fetch comment counts for many parent rows at once.
+ *
+ * Used by list views (Archive table, Account inline activity feed) to
+ * show a "comments: N" badge per row without making one round-trip per
+ * activity. The comments table is small (~few thousand rows max for the
+ * foreseeable future), so we just pull entity_id for the matching rows
+ * and tally client-side — no RPC needed.
+ *
+ * Returns parentId -> count. IDs with zero comments are absent from the
+ * map (use `map[id] ?? 0`).
+ */
+export async function getCommentCounts(
+  parentType: 'activity' | 'task' | 'opportunity',
+  parentIds: string[],
+): Promise<Record<string, number>> {
+  if (!supabaseEnabled || parentIds.length === 0) return {};
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('entity_id')
+      .eq('entity_type', parentType)
+      .in('entity_id', parentIds);
+    if (error) {
+      console.error('[COMMENTS] count fetch error:', error.message);
+      return {};
+    }
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+      const id = (row as { entity_id: string }).entity_id;
+      counts[id] = (counts[id] || 0) + 1;
+    }
+    return counts;
+  } catch (err) {
+    console.error('[COMMENTS] count exception:', err);
+    return {};
+  }
+}
+
 export async function deleteComment(id: string): Promise<boolean> {
   if (!supabaseEnabled) return true;
   try {
