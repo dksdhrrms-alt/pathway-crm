@@ -46,13 +46,15 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
 
     setSubmitting(true);
     try {
-      const selectedUser = activeUsers.find((u) => u.id === ownerId);
+      // ownerName is a UI-only convenience derived from owner_id at read
+      // time — the opportunities table doesn't carry a `owner_name`
+      // column, and Supabase 400s (PGRST204) if we try to write one.
       const updates: Partial<Opportunity> = {
         name: name.trim(), accountId, stage,
         amount: parseInt(String(amount).replace(/,/g, '')) || 0,
         expectedStartDate: expectedStartDate || undefined,
         closeDate, probability, nextStep: nextStep.trim(), competitor: competitor.trim(),
-        ownerId, ownerName: selectedUser?.name,
+        ownerId,
       };
 
       // Use updateOpportunityStage for stage changes, and direct db update for everything else
