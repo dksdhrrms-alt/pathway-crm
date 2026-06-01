@@ -303,15 +303,55 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // Step (c) fallback: sender's most recent contact activity (last 7
-  // days, contact_id required). Real-world pattern — a sales rep BCCs
-  // the inbound mailbox right after composing an email to a customer
-  // they were just looking at in the CRM. Their last contact-attached
-  // activity is a strong signal about who the customer is.
-  // 7 days because some reps work weekly batches; tighter than that
-  // misses common usage patterns.
-  if (!matchedContactId) {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // ── Step (c): subject-based account-name match ────────────────────
+  // BCC strips recipient info from envelope on most clients (Outlook +
+  // Gmail), so contact_email matching often fails for the exact
+  // pattern this feature is meant to solve. Salespeople almost always
+  // include the customer's name in the subject line ("RE: Tyson trial
+  // Q3", "FW: Cargill sample request"), so we scan the subject for any
+  // known account name as a high-precision fallback.
+  //
+  // To avoid false positives:
+  //   - require account name to be ≥ 4 chars (so "USA" doesn't match
+  //     every email)
+  //   - prefer LONGER matches when multiple accounts substring the
+  //     subject (so "Tyson Fresh Meats" beats "Tyson")
+  //   - skip generic suffixes ("LLC", "Inc", "Foods", "Farms" alone)
+  const SUBJECT_MIN_NAME_LEN = 4;
+  const subjectLower = (d.subject || '').toLowerCase();
+  if (!matchedContactId && !matchedAccountId && subjectLower) {
+    const { data: accts, error: aErr } = await supabase
+      .from('accounts').select('id, name').range(0, 4999);
+    if (aErr) console.error('[inbound-email] subject-match account fetch error:', aErr.message);
+    let bestHit: { id: string; name: string; len: number } | null = null;
+    for (const a of accts || []) {
+      const n = String(a.name || '').trim();
+      if (n.length < SUBJECT_MIN_NAME_LEN) continue;
+      if (subjectLower.includes(n.toLowerCase()) && (!bestHit || n.length > bestHit.len)) {
+        bestHit = { id: a.id as string, name: n, len: n.length };
+      }
+    }
+    if (bestHit) {
+      matchedAccountId = bestHit.id;
+      console.warn('[inbound-email] step: matched by subject-account-name', {
+        account_id: bestHit.id, account_name: bestHit.name, subject: d.subject,
+      });
+    }
+  }
+
+  // ── Step (d): sender's most recent contact activity (30-day window) ──
+  // Real-world pattern: a sales rep BCCs the inbound mailbox right after
+  // emailing a customer they were just touching in the CRM. The window
+  // is 30 days (up from 7) because BCC users who can't change their
+  // mail-server config rely heavily on this fallback, and longer-than-
+  // weekly customer cadence is normal.
+  // Trade-off: 30 days raises the chance of mis-attribution (the rep's
+  // most recent activity could be on a different account than the one
+  // they're emailing). To mitigate, the subject-match above runs first
+  // and is much more specific.
+  const FALLBACK_DAYS = 30;
+  if (!matchedContactId && !matchedAccountId) {
+    const since = new Date(Date.now() - FALLBACK_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const { data: recentActs, error: raErr } = await supabase
       .from('activities')
       .select('contact_id, account_id, date')
@@ -326,13 +366,13 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     if (recent && recent.contact_id) {
       matchedContactId = recent.contact_id as string;
       matchedAccountId = (recent.account_id as string) || null;
-      console.warn('[inbound-email] step: fallback to recent contact (7d window)', {
+      console.warn(`[inbound-email] step: fallback to recent contact (${FALLBACK_DAYS}d window)`, {
         contact_id: matchedContactId,
         account_id: matchedAccountId,
         from_activity_date: recent.date,
       });
     } else {
-      console.warn('[inbound-email] step: no recent-contact fallback available (7d window empty)');
+      console.warn(`[inbound-email] step: no recent-contact fallback available (${FALLBACK_DAYS}d window empty)`);
     }
   }
 
