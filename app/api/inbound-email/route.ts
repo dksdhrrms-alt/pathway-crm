@@ -376,21 +376,55 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // ── 4. Get body — webhook first, Resend API fallback ──────────────
-  // Resend's `email.received` payload usually carries `text` / `html`
-  // inline, but for some clients (notably Outlook when the inbound
-  // message is a forwarded original) the body fields are empty. In
-  // that case we hit the Resend Inbound API for the rendered content.
+  // ── 4. Get body — payload first, Resend API fallback ──────────────
+  // Resend's `email.received` payload SHOULD carry text/html inline,
+  // but in practice some forwarded / BCC'd messages arrive with both
+  // fields empty (or under different keys depending on the customer's
+  // webhook config). Try every reasonable field name before giving up.
   const emailId = d.email_id || '';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dAny = d as any;
+  // One-time payload-shape dump so we can see what Resend actually sent
+  // in production when something goes missing. Truncated to keep logs
+  // readable; full payload is in Vercel's `Functions` tab anyway.
+  console.warn('[inbound-email] payload shape:', {
+    data_keys: Object.keys(d),
+    has_text: !!dAny.text,         text_len: (dAny.text || '').length,
+    has_html: !!dAny.html,         html_len: (dAny.html || '').length,
+    has_body: !!dAny.body,         body_len: (dAny.body || '').length,
+    has_body_text: !!dAny.body_text, body_text_len: (dAny.body_text || '').length,
+    has_body_html: !!dAny.body_html, body_html_len: (dAny.body_html || '').length,
+    has_content: !!dAny.content,   content_len: (dAny.content || '').length,
+    has_message: !!dAny.message,   message_len: (typeof dAny.message === 'string' ? dAny.message : '').length,
+    attachment_count: (dAny.attachments || []).length,
+    attachment_keys: dAny.attachments?.[0] ? Object.keys(dAny.attachments[0]) : [],
+  });
+
   let bodyText = bodyForParse;
+  // Try alternative field names Resend may use for body content.
+  if (!bodyText) {
+    const alt =
+      (dAny.body_text || '').trim() ||
+      htmlToPlain(dAny.body_html || '').trim() ||
+      (typeof dAny.body === 'string' ? dAny.body : '').trim() ||
+      (typeof dAny.content === 'string' ? dAny.content : '').trim() ||
+      (typeof dAny.message === 'string' ? dAny.message : '').trim();
+    if (alt) {
+      bodyText = alt;
+      console.warn('[inbound-email] step: body found under alternate key, length=', bodyText.length);
+    }
+  }
+  // Last-resort API fallback (only if RESEND_API_KEY is set).
   if (!bodyText && emailId && process.env.RESEND_API_KEY) {
     const fetched = await fetchInboundBodyFromResend(emailId);
     if (fetched) {
       bodyText = fetched;
       console.warn('[inbound-email] step: body fetched via Resend API, length=', bodyText.length);
     }
-  } else {
+  } else if (bodyText) {
     console.warn('[inbound-email] step: body inline, length=', bodyText.length);
+  } else {
+    console.warn('[inbound-email] step: body NOT FOUND anywhere — check Resend webhook config (Include message body?)');
   }
 
   // ── 4b. Pull attachments down + upload to Supabase Storage ─────────
@@ -652,79 +686,6 @@ function logEventSummary(rawBody: string, opts: { verified: boolean }): void {
     attachments: d?.attachments?.length ?? 0,
   });
 }
- * "----- Forwarded message -----" followed by lines like
- *   From: Original Sender <orig@x.com>
- *   To: Customer Name <customer@x.com>
- *   Cc: Other Person <other@x.com>
- *   Subject: ...
- *
- * That `To:` line is what makes BCC matching robust when the upstream
- * SMTP envelope has been scrubbed.  We accept several common marker
- * styles (Gmail, Outlook, Apple Mail).
- */
-function extractForwardedRecipients(body: string): string[] {
-  if (!body) return [];
-  const out: string[] = [];
-  // Common forwarded-message markers, case-insensitive.
-  const markers = [
-    /-{2,}\s*Forwarded message\s*-{2,}/i,
-    /-{2,}\s*Original Message\s*-{2,}/i,
-    /^From:\s.+\nSent:.+\nTo:/im,   // Outlook-style header block w/ no marker line
-  ];
-  let start = -1;
-  for (const re of markers) {
-    const m = body.match(re);
-    if (m && typeof m.index === 'number') { start = m.index; break; }
-  }
-  // If we can't find a marker, fall back to scanning the whole body for
-  // "To:" lines — better to over-collect candidates than miss them, since
-  // they're checked against the contacts table anyway.
-  const region = start >= 0 ? body.slice(start) : body;
-  // Extract every `To:` / `Cc:` line in the region (up to next blank line).
-  const lineRe = /^(?:To|Cc)\s*:\s*([^\r\n]+)/gim;
-  let m: RegExpExecArray | null;
-  while ((m = lineRe.exec(region)) !== null) {
-    const list = m[1] || '';
-    // Split on commas / semicolons, then pull the email out of each piece.
-    for (const piece of list.split(/[,;]/)) {
-      const email = extractEmail(piece);
-      if (email) out.push(email);
-    }
-  }
-  return uniqueLower(out);
-}
-
-/** Strip HTML to a plain-ish string suitable for body parsing. */
-function htmlToPlain(html: string): string {
-  if (!html) return '';
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<\/(p|div|br|tr|li|h\d)>/gi, '\n')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-/** Lowercase + dedupe an array of strings, preserving first-seen order. */
-function uniqueLower(xs: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const x of xs) {
-    const l = (x || '').toLowerCase().trim();
-    if (!l || seen.has(l)) continue;
-    seen.add(l);
-    out.push(l);
-  }
-  return out;
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 //  Resend Inbound API helpers — body fallback + attachment download
@@ -732,9 +693,9 @@ function uniqueLower(xs: string[]): string[] {
 
 /**
  * Try to fetch the rendered body for an inbound email via Resend's API.
- * Used as a fallback when the webhook payload's `text` / `html` are
- * empty (happens on some forwarded messages from Outlook).  Returns
- * empty string on any failure — caller must handle "no body" gracefully.
+ * Used as a fallback when the webhook payload's text / html are empty
+ * (happens on some forwarded messages from Outlook). Returns empty
+ * string on any failure — caller must handle "no body" gracefully.
  */
 async function fetchInboundBodyFromResend(emailId: string): Promise<string> {
   const apiKey = process.env.RESEND_API_KEY;
@@ -757,14 +718,12 @@ async function fetchInboundBodyFromResend(emailId: string): Promise<string> {
 }
 
 /**
- * Pull one attachment's bytes from Resend, push to the
- * `email-attachments` Supabase Storage bucket, and return a record
- * suitable for stitching into the activity description.
+ * Pull one attachment's bytes from Resend, push to the `email-attachments`
+ * Supabase Storage bucket, and return a record suitable for stitching
+ * into the activity description.
  *
  * Path layout: `<emailId>/<filename>` — flat, easy to browse in the
- * Supabase dashboard.  We slug the filename to keep URLs clean.
- *
- * eslint-disable-next-line @typescript-eslint/no-explicit-any
+ * Supabase dashboard. Filename is slugged to keep URLs clean.
  */
 async function fetchAndStoreAttachment(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
