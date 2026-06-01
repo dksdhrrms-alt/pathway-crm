@@ -68,8 +68,18 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
       onSaved();
       onClose();
     } catch (err) {
-      console.error('Edit opportunity failed:', err);
-      alert('Failed to save changes. Please try again.');
+      // Surface the real reason — Supabase errors are objects `{ message,
+      // details, hint, code }`, not Error instances. Without this they
+      // stringify as "[object Object]" or get swallowed by a generic alert.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const e = err as any;
+      const msg =
+        (e?.message ? String(e.message) : '') +
+        (e?.details ? ` — ${e.details}` : '') +
+        (e?.hint    ? ` — hint: ${e.hint}` : '') +
+        (e?.code    ? ` (code ${e.code})` : '');
+      console.error('Edit opportunity failed — full error:', err);
+      setError(msg || 'Failed to save changes. Please try again.');
       setSubmitting(false);
     }
   }
