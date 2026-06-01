@@ -1,9 +1,12 @@
 /**
- * POST /api/_dev/upload-screenshot
+ * POST /api/dev-tools/upload-screenshot
  *
  * TEMPORARY route — used once to embed User Guide screenshots.
  * Delete this file (and the _temp_screenshots table) once the
  * guide is finalized.
+ *
+ * NOTE: folder is "dev-tools" not "_dev" — Next.js App Router treats
+ * underscore-prefixed folders as private and excludes them from routing.
  *
  * Body: { filename: string, dataUrl: string }
  *   dataUrl is the full "data:image/jpeg;base64,..." string from
