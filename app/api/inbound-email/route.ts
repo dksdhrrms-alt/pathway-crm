@@ -434,7 +434,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   // Activity Timeline). The whole step is non-fatal — if anything
   // breaks (bucket missing, network blip), the activity still gets
   // created without the attachments. They're auditable in Resend.
-  const attachmentLinks: { filename: string; url: string; sizeKb: number }[] = [];
+  const attachmentLinks: { filename: string; url: string; sizeKb: number; sizeLabel: string }[] = [];
   const attachments = (d as { attachments?: Array<{ id: string; filename: string; content_type: string }> }).attachments || [];
   if (attachments.length && emailId && process.env.RESEND_API_KEY) {
     console.warn(`[inbound-email] step: fetching ${attachments.length} attachment(s)`);
@@ -455,7 +455,7 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   let description = truncated || `(Body unavailable)\nFrom: ${fromEmail}\nSubject: ${d.subject || ''}`;
   if (attachmentLinks.length) {
     description += '\n\n📎 Attachments:\n' + attachmentLinks
-      .map((a) => `• ${a.filename} (${a.sizeKb} KB) — ${a.url}`)
+      .map((a) => `• ${a.filename} (${a.sizeLabel}) — ${a.url}`)
       .join('\n');
   }
 
@@ -733,17 +733,43 @@ async function fetchAndStoreAttachment(
 ): Promise<{ filename: string; url: string; sizeKb: number } | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
-  const res = await fetch(
+  // Resend's inbound attachment endpoint returns a JSON metadata object
+  // (object/id/filename/.../download_url/expires_at), NOT the file
+  // bytes. The actual content lives at `download_url`. We had been
+  // mis-storing the JSON metadata blob as the "file", which is why
+  // every attachment was ~1KB and unopenable.
+  const metaRes = await fetch(
     `https://api.resend.com/emails/inbound/${emailId}/attachments/${att.id}`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
   );
-  if (!res.ok) {
-    console.warn(`[inbound-email] attachment fetch non-OK ${res.status} for`, att.filename);
+  if (!metaRes.ok) {
+    console.warn(`[inbound-email] attachment metadata fetch non-OK ${metaRes.status} for`, att.filename);
     return null;
   }
-  const buf = Buffer.from(await res.arrayBuffer());
+  let meta: { download_url?: string; size?: number; content_type?: string } = {};
+  try { meta = await metaRes.json(); }
+  catch { console.error('[inbound-email] could not parse attachment metadata JSON'); return null; }
+  if (!meta.download_url) {
+    console.error('[inbound-email] attachment metadata missing download_url:', Object.keys(meta));
+    return null;
+  }
+  const dlRes = await fetch(meta.download_url);
+  if (!dlRes.ok) {
+    console.warn(`[inbound-email] attachment download non-OK ${dlRes.status} for`, att.filename);
+    return null;
+  }
+  const buf = Buffer.from(await dlRes.arrayBuffer());
+  const contentType = dlRes.headers.get('content-type') || meta.content_type || '';
+  console.warn(`[inbound-email] attachment "${att.filename}" — ${buf.length} bytes, content-type=${contentType}`);
+  if (buf.length === 0) {
+    console.error('[inbound-email] attachment download returned zero bytes — skipping');
+    return null;
+  }
+  // Preserve unicode (Korean, emoji, etc.) in storage filenames. The `u`
+  // flag plus a wider whitelist means "창고 사업성 검토.xlsx" no longer
+  // collapses to "___.xlsx".
   const safeName = (att.filename || `attachment-${att.id}`)
-    .replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(0, 120);
+    .replace(/[^\p{L}\p{N}.\-_ ]+/gu, '_').replace(/_+/g, '_').slice(0, 120);
   const objectPath = `${emailId}/${safeName}`;
   const { error: upErr } = await supabase
     .storage.from('email-attachments')
@@ -776,5 +802,13 @@ async function fetchAndStoreAttachment(
     filename: att.filename || safeName,
     url: signed?.signedUrl || '',
     sizeKb: Math.max(1, Math.round(buf.length / 1024)),
+    sizeLabel: formatBytes(buf.length),
   };
+}
+
+/** Human-friendly byte size: 916 B / 245 KB / 1.2 MB. */
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
