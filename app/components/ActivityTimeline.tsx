@@ -195,21 +195,34 @@ function ActivityBody({ description }: { description?: string | null }) {
   const text = String(description || '');
   if (!text) return null;
 
-  // Split body text from the attachment block, if present.
-  const ATT_MARKER = '📎 Attachments:';
-  const idx = text.indexOf(ATT_MARKER);
+  // Detect the start of the attachment block.  We match every reasonable
+  // variant the description might use:
+  //   "📎 Attachments:"  (current writer)
+  //   "Attachments:"     (no emoji — emoji can disappear on certain
+  //                       editors / clipboards / DB tooling)
+  //   "📎Attachments:"   (missing space)
+  // The match is case-insensitive too because admins sometimes hand-edit.
+  const markerMatch = text.match(/(?:📎\s*)?attachments\s*:/i);
+  const idx = markerMatch ? markerMatch.index ?? -1 : -1;
   const bodyPart = idx >= 0 ? text.slice(0, idx).trim() : text;
-  const attPart = idx >= 0 ? text.slice(idx + ATT_MARKER.length).trim() : '';
+  const attPart  = idx >= 0 ? text.slice(idx + (markerMatch?.[0]?.length ?? 0)) : '';
 
-  // Each line: "• Filename.ext (NN KB) — https://..."
   const attachments: { name: string; size: string; url: string }[] = [];
   if (attPart) {
-    const lines = attPart.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    for (const line of lines) {
-      // Pattern is permissive: handles bullet variants, em-dash vs hyphen,
-      // and missing size in older logs.
-      const m = line.match(/^[•\-*]\s*(.+?)\s*\(([^)]+)\)\s*[—–-]\s*(https?:\/\/\S+)/);
-      if (m) attachments.push({ name: m[1], size: m[2], url: m[3] });
+    // Normalize: collapse any line-wrapping inside URLs the textarea
+    // / Word / Slack may have injected.  We rebuild the block from the
+    // raw character stream and split on bullets.
+    const compact = attPart.replace(/\s*\n\s*/g, ' ').trim();
+    // Each item starts with a bullet (• - *) and runs until the next
+    // bullet or end of string.
+    const items = compact.split(/\s+(?=[•\-*]\s)/).map((s) => s.trim()).filter(Boolean);
+    for (const raw of items) {
+      const m = raw.match(/^[•\-*]\s*(.+?)\s*\(([^)]+)\)\s*[—–\-]\s*(https?:\/\/\S+)/);
+      if (m) {
+        // URL may have trailing punctuation from the rebuilt string.
+        const cleanUrl = m[3].replace(/[)\]>.,;]+$/, '');
+        attachments.push({ name: m[1], size: m[2], url: cleanUrl });
+      }
     }
   }
 
