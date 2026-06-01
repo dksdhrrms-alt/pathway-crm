@@ -109,12 +109,37 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
     let imported = 0, skipped = 0, errors = 0;
     const userId = session?.user?.id ?? '';
 
+    // Normalize a string for case-insensitive dedup comparisons.
+    const norm = (s: string | undefined | null) => (s || '').trim().toLowerCase();
+    // True when the contact already exists. Matches by:
+    //   1. email (case-insensitive) if email is present, OR
+    //   2. first+last name at the same account if email is missing.
+    // (Email is unreliable in practice — 78% of imported contacts have
+    //  no email — so the name+account fallback catches the rest.)
+    const isContactDuplicate = (
+      first: string, last: string, em: string, accountId: string,
+    ): boolean => {
+      const nf = norm(first), nl = norm(last), ne = norm(em);
+      if (ne && contacts.some((c) => c.email && norm(c.email) === ne)) return true;
+      if (!ne && nf && contacts.some((c) =>
+        norm(c.firstName) === nf &&
+        norm(c.lastName) === nl &&
+        (c.accountId || '') === (accountId || '')
+      )) return true;
+      return false;
+    };
+    // Case-insensitive account name dedup, ignoring leading/trailing
+    // whitespace that frequently sneaks in from Excel pastes.
+    const isAccountDuplicate = (nm: string): boolean => {
+      const n = norm(nm);
+      return n.length > 0 && accounts.some((a) => norm(a.name) === n);
+    };
+
     if (isMondayMode) {
       // Monday.com dedicated import
       if (type === 'accounts') {
         for (const ma of mondayAccounts) {
-          const existing = accounts.find((a) => a.name.toLowerCase() === ma.name.toLowerCase());
-          if (existing && dupMode === 'skip') { skipped++; continue; }
+          if (isAccountDuplicate(ma.name) && dupMode === 'skip') { skipped++; continue; }
           const matched = resolveOwner(ma.ownerName, ma.ownerNameFromDate);
           addAccount({
             id: generateId(), name: ma.name,
@@ -133,10 +158,9 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
       } else {
         for (const mc of mondayContacts) {
           if (!mc.firstName) { errors++; continue; }
-          if (mc.email && contacts.find((c) => c.email.toLowerCase() === mc.email.toLowerCase())) {
-            if (dupMode === 'skip') { skipped++; continue; }
-          }
           const matchedAccount = accounts.find((a) => a.name.toLowerCase() === mc.accountName.toLowerCase());
+          if (isContactDuplicate(mc.firstName, mc.lastName, mc.email, matchedAccount?.id ?? '')
+              && dupMode === 'skip') { skipped++; continue; }
           const matched = resolveOwner(mc.ownerName, mc.ownerNameFromDate);
           addContact({
             id: generateId(), firstName: mc.firstName, lastName: mc.lastName,
@@ -159,8 +183,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
         for (const row of rows) {
           const name = getMapped(row, 'name');
           if (!name) { errors++; continue; }
-          const existing = accounts.find((a) => a.name.toLowerCase() === name.toLowerCase());
-          if (existing && dupMode === 'skip') { skipped++; continue; }
+          if (isAccountDuplicate(name) && dupMode === 'skip') { skipped++; continue; }
           const ownerNameRaw = getMapped(row, 'ownerName');
           const matched = fuzzyMatchUser(ownerNameRaw, activeUsers);
           addAccount({
@@ -188,11 +211,10 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
           }
           if (!firstName) { errors++; continue; }
           const email = getMapped(row, 'email');
-          if (email && contacts.find((c) => c.email.toLowerCase() === email.toLowerCase())) {
-            if (dupMode === 'skip') { skipped++; continue; }
-          }
           const accountName = getMapped(row, 'accountName');
           const matchedAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase());
+          if (isContactDuplicate(firstName, lastName, email, matchedAccount?.id ?? '')
+              && dupMode === 'skip') { skipped++; continue; }
           const ownerNameRaw = getMapped(row, 'ownerName');
           const matched = fuzzyMatchUser(ownerNameRaw, activeUsers);
           addContact({
@@ -363,6 +385,11 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                   </label>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                {type === 'accounts'
+                  ? 'A duplicate is any account with the same name (case-insensitive).'
+                  : 'A duplicate is any contact with the same email, or the same first + last name at the same account.'}
+              </p>
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setStep(isMondayMode ? 'upload' : 'mapping')} disabled={submitting} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed">Back</button>
