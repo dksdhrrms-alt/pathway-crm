@@ -376,18 +376,54 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // ── 4. Get body — straight from webhook payload ────────────────────
-  // Reuse `bodyForParse` from above (already computed for forwarded-
-  // recipient extraction). No separate fetch needed because Resend
-  // includes `text` / `html` inline in email.received payloads.
+  // ── 4. Get body — webhook first, Resend API fallback ──────────────
+  // Resend's `email.received` payload usually carries `text` / `html`
+  // inline, but for some clients (notably Outlook when the inbound
+  // message is a forwarded original) the body fields are empty. In
+  // that case we hit the Resend Inbound API for the rendered content.
   const emailId = d.email_id || '';
-  const bodyText = bodyForParse;
-  console.warn('[inbound-email] step: body length=', bodyText.length);
+  let bodyText = bodyForParse;
+  if (!bodyText && emailId && process.env.RESEND_API_KEY) {
+    const fetched = await fetchInboundBodyFromResend(emailId);
+    if (fetched) {
+      bodyText = fetched;
+      console.warn('[inbound-email] step: body fetched via Resend API, length=', bodyText.length);
+    }
+  } else {
+    console.warn('[inbound-email] step: body inline, length=', bodyText.length);
+  }
+
+  // ── 4b. Pull attachments down + upload to Supabase Storage ─────────
+  // We fetch each attachment from Resend's Inbound API as binary, push
+  // it into the `email-attachments` bucket, and remember the public URL
+  // so we can stitch links into the description (rendered by the
+  // Activity Timeline). The whole step is non-fatal — if anything
+  // breaks (bucket missing, network blip), the activity still gets
+  // created without the attachments. They're auditable in Resend.
+  const attachmentLinks: { filename: string; url: string; sizeKb: number }[] = [];
+  const attachments = (d as { attachments?: Array<{ id: string; filename: string; content_type: string }> }).attachments || [];
+  if (attachments.length && emailId && process.env.RESEND_API_KEY) {
+    console.warn(`[inbound-email] step: fetching ${attachments.length} attachment(s)`);
+    for (const att of attachments) {
+      try {
+        const link = await fetchAndStoreAttachment(supabase, emailId, att);
+        if (link) attachmentLinks.push(link);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[inbound-email] attachment "${att.filename}" failed:`, msg);
+      }
+    }
+  }
 
   // Cap to keep activities table sensible. Full text isn't free.
   const MAX_DESC = 8000;
   const truncated = bodyText.length > MAX_DESC ? bodyText.slice(0, MAX_DESC) + '\n\n[...truncated]' : bodyText;
-  const description = truncated || `(Body unavailable)\nFrom: ${fromEmail}\nSubject: ${d.subject || ''}`;
+  let description = truncated || `(Body unavailable)\nFrom: ${fromEmail}\nSubject: ${d.subject || ''}`;
+  if (attachmentLinks.length) {
+    description += '\n\n📎 Attachments:\n' + attachmentLinks
+      .map((a) => `• ${a.filename} (${a.sizeKb} KB) — ${a.url}`)
+      .join('\n');
+  }
 
   // ── 5. Insert activity (deterministic id for retry-dedup) ─────────
   // Activity id derived from email_id collapses Resend's "at-least-once"
@@ -615,4 +651,155 @@ function logEventSummary(rawBody: string, opts: { verified: boolean }): void {
     subject: d?.subject?.slice(0, 80),
     attachments: d?.attachments?.length ?? 0,
   });
+}
+ * "----- Forwarded message -----" followed by lines like
+ *   From: Original Sender <orig@x.com>
+ *   To: Customer Name <customer@x.com>
+ *   Cc: Other Person <other@x.com>
+ *   Subject: ...
+ *
+ * That `To:` line is what makes BCC matching robust when the upstream
+ * SMTP envelope has been scrubbed.  We accept several common marker
+ * styles (Gmail, Outlook, Apple Mail).
+ */
+function extractForwardedRecipients(body: string): string[] {
+  if (!body) return [];
+  const out: string[] = [];
+  // Common forwarded-message markers, case-insensitive.
+  const markers = [
+    /-{2,}\s*Forwarded message\s*-{2,}/i,
+    /-{2,}\s*Original Message\s*-{2,}/i,
+    /^From:\s.+\nSent:.+\nTo:/im,   // Outlook-style header block w/ no marker line
+  ];
+  let start = -1;
+  for (const re of markers) {
+    const m = body.match(re);
+    if (m && typeof m.index === 'number') { start = m.index; break; }
+  }
+  // If we can't find a marker, fall back to scanning the whole body for
+  // "To:" lines — better to over-collect candidates than miss them, since
+  // they're checked against the contacts table anyway.
+  const region = start >= 0 ? body.slice(start) : body;
+  // Extract every `To:` / `Cc:` line in the region (up to next blank line).
+  const lineRe = /^(?:To|Cc)\s*:\s*([^\r\n]+)/gim;
+  let m: RegExpExecArray | null;
+  while ((m = lineRe.exec(region)) !== null) {
+    const list = m[1] || '';
+    // Split on commas / semicolons, then pull the email out of each piece.
+    for (const piece of list.split(/[,;]/)) {
+      const email = extractEmail(piece);
+      if (email) out.push(email);
+    }
+  }
+  return uniqueLower(out);
+}
+
+/** Strip HTML to a plain-ish string suitable for body parsing. */
+function htmlToPlain(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<\/(p|div|br|tr|li|h\d)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/** Lowercase + dedupe an array of strings, preserving first-seen order. */
+function uniqueLower(xs: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of xs) {
+    const l = (x || '').toLowerCase().trim();
+    if (!l || seen.has(l)) continue;
+    seen.add(l);
+    out.push(l);
+  }
+  return out;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Resend Inbound API helpers — body fallback + attachment download
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Try to fetch the rendered body for an inbound email via Resend's API.
+ * Used as a fallback when the webhook payload's `text` / `html` are
+ * empty (happens on some forwarded messages from Outlook).  Returns
+ * empty string on any failure — caller must handle "no body" gracefully.
+ */
+async function fetchInboundBodyFromResend(emailId: string): Promise<string> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey || !emailId) return '';
+  try {
+    const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    if (!res.ok) {
+      console.warn('[inbound-email] body fetch non-OK:', res.status);
+      return '';
+    }
+    const j = await res.json() as { text?: string; html?: string };
+    const txt = j.text || (j.html ? htmlToPlain(j.html) : '');
+    return (txt || '').trim();
+  } catch (err) {
+    console.warn('[inbound-email] body fetch error:', err instanceof Error ? err.message : String(err));
+    return '';
+  }
+}
+
+/**
+ * Pull one attachment's bytes from Resend, push to the
+ * `email-attachments` Supabase Storage bucket, and return a record
+ * suitable for stitching into the activity description.
+ *
+ * Path layout: `<emailId>/<filename>` — flat, easy to browse in the
+ * Supabase dashboard.  We slug the filename to keep URLs clean.
+ *
+ * eslint-disable-next-line @typescript-eslint/no-explicit-any
+ */
+async function fetchAndStoreAttachment(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  emailId: string,
+  att: { id: string; filename: string; content_type: string },
+): Promise<{ filename: string; url: string; sizeKb: number } | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  const res = await fetch(
+    `https://api.resend.com/emails/inbound/${emailId}/attachments/${att.id}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  );
+  if (!res.ok) {
+    console.warn(`[inbound-email] attachment fetch non-OK ${res.status} for`, att.filename);
+    return null;
+  }
+  const buf = Buffer.from(await res.arrayBuffer());
+  const safeName = (att.filename || `attachment-${att.id}`)
+    .replace(/[^\w.\-]+/g, '_').replace(/_+/g, '_').slice(0, 120);
+  const objectPath = `${emailId}/${safeName}`;
+  const { error: upErr } = await supabase
+    .storage.from('email-attachments')
+    .upload(objectPath, buf, {
+      contentType: att.content_type || 'application/octet-stream',
+      upsert: true,
+    });
+  if (upErr) {
+    console.error('[inbound-email] storage upload error:', upErr.message);
+    return null;
+  }
+  const { data: pub } = supabase.storage.from('email-attachments').getPublicUrl(objectPath);
+  return {
+    filename: att.filename || safeName,
+    url: pub?.publicUrl || '',
+    sizeKb: Math.max(1, Math.round(buf.length / 1024)),
+  };
 }
