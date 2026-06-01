@@ -16,7 +16,7 @@
  * so opening this page is essentially zero-cost — no extra fetch.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -48,12 +48,60 @@ export default function ArchivePage() {
 
   const sessionUserId = session?.user?.id ?? '';
   const role = ((session?.user as { role?: string })?.role ?? '').toLowerCase();
-  // Admin-style roles can view anyone's archive via the user picker.
-  // Everyone else is locked to their own — selectedUserId state is
-  // initialized to their session id and the picker is hidden.
-  const isAdminLike = ['admin', 'administrative_manager', 'ceo'].includes(role);
+  const me = users.find((u) => u.id === sessionUserId);
+  // Admin-style roles: see anyone in the company.
+  const isAdminLike = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
+  // Sales directors: see their own team only. `team` field on the user
+  // matches against teammates' team field. Directors without a team set
+  // are treated as having no extra access (fall back to "just me").
+  const isSalesDirector = role === 'sales_director';
+  const myTeam = (me as { team?: string } | undefined)?.team ?? '';
+  const canPickOthers = isAdminLike || (isSalesDirector && !!myTeam);
 
-  const [selectedUserId, setSelectedUserId] = useState<string>(sessionUserId);
+  // Which users this viewer is *allowed* to inspect. Always includes
+  // themselves so they can include their own activities in the multi-select.
+  const allowedUsers = useMemo(() => {
+    if (isAdminLike) return users;
+    if (isSalesDirector && myTeam) {
+      return users.filter((u) => (u as { team?: string }).team === myTeam || u.id === sessionUserId);
+    }
+    return users.filter((u) => u.id === sessionUserId);
+  }, [users, isAdminLike, isSalesDirector, myTeam, sessionUserId]);
+
+  // Multi-select: a Set of user IDs whose archives we're merging into
+  // the table. Default is "just me" — opens to a familiar view.
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set([sessionUserId]));
+  // Picker dropdown open state.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  // Close the dropdown when clicking outside.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false);
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  function toggleUser(id: string) {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // Don't allow zero selections — fall back to just-me.
+        if (next.size === 1) return prev;
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+  function selectAllUsers() {
+    setSelectedUserIds(new Set(allowedUsers.map((u) => u.id)));
+  }
+  function selectJustMe() {
+    setSelectedUserIds(new Set([sessionUserId]));
+  }
   // Activity that's currently being edited. null = no modal open. Click a
   // row in the table to set this; the modal handles save/delete via
   // CRMContext.updateActivity / deleteActivity (both optimistic).
@@ -62,20 +110,33 @@ export default function ArchivePage() {
   const [toDate, setToDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
 
-  // The actual user we're showing the archive for.
-  const targetUser = useMemo(
-    () => users.find((u) => u.id === (isAdminLike ? selectedUserId : sessionUserId)) ?? null,
-    [users, selectedUserId, sessionUserId, isAdminLike],
-  );
-  const targetUserName = targetUser?.name ?? '(unknown user)';
-  const targetUserEmail = targetUser?.email ?? '';
-
-  // Sort active users for the picker. We hide inactive ones to keep the
-  // dropdown focused on real teammates.
+  // Pickable users — allowedUsers filtered to active and sorted by name.
+  // (Inactive users would still match historical activities, but they
+  // clutter the picker.)
   const pickableUsers = useMemo(
-    () => users.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name)),
-    [users],
+    () => allowedUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name)),
+    [allowedUsers],
   );
+
+  // Header / export labelling. When one user is selected, name them.
+  // When many, give a count.
+  const selectedNames = useMemo(() => {
+    return pickableUsers.filter((u) => selectedUserIds.has(u.id)).map((u) => u.name);
+  }, [pickableUsers, selectedUserIds]);
+  const targetUserName = selectedNames.length === 1
+    ? selectedNames[0]
+    : selectedNames.length === 0
+      ? '(nobody)'
+      : `${selectedNames.length} users`;
+  const targetUserEmail = selectedNames.length === 1
+    ? (pickableUsers.find((u) => selectedUserIds.has(u.id))?.email ?? '')
+    : '';
+  // For per-row "Owner" labels in the table when multiple users are picked.
+  const userNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const u of users) m.set(u.id, u.name);
+    return m;
+  }, [users]);
 
   // Account / contact lookup maps for label rendering (and Excel columns).
   const accountById = useMemo(() => {
@@ -90,12 +151,14 @@ export default function ArchivePage() {
     return m;
   }, [contacts]);
 
-  // Filter pipeline: owner → date range → keyword. Sorted newest first.
+  // Filter pipeline: owner (multi) → date range → keyword. Sorted newest first.
+  // When the viewer isn't allowed to pick others, force-filter to their own
+  // id so they can't see other users' rows even if state somehow includes them.
   const filtered = useMemo(() => {
-    const ownerId = isAdminLike ? selectedUserId : sessionUserId;
+    const ownerSet = canPickOthers ? selectedUserIds : new Set([sessionUserId]);
     const needle = search.trim().toLowerCase();
     return activities
-      .filter((a) => a.ownerId === ownerId)
+      .filter((a) => ownerSet.has(a.ownerId))
       .filter((a) => {
         if (fromDate && a.date < fromDate) return false;
         if (toDate && a.date > toDate) return false;
@@ -106,7 +169,7 @@ export default function ArchivePage() {
         return true;
       })
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [activities, isAdminLike, selectedUserId, sessionUserId, fromDate, toDate, search]);
+  }, [activities, canPickOthers, selectedUserIds, sessionUserId, fromDate, toDate, search]);
 
   // Type tally chips above the table. Keeps the user oriented when filters
   // are applied — they can see at a glance how many of each kind survived.
@@ -127,7 +190,7 @@ export default function ArchivePage() {
     { id: 'purpose',     label: 'Purpose',     getValue: (r) => r.purpose ?? '' },
     { id: 'account',     label: 'Account',     getValue: (r) => accountById.get(r.accountId ?? '') ?? '' },
     { id: 'contact',     label: 'Contact',     getValue: (r) => contactById.get(r.contactId ?? '') ?? '' },
-    { id: 'owner',       label: 'Logged By',   getValue: () => targetUserName },
+    { id: 'owner',       label: 'Logged By',   getValue: (r) => userNameById.get(r.ownerId) ?? '—' },
   ];
 
   const exportFilename = `archive-activities-${(targetUserName || 'user').replace(/\s+/g, '_')}-${new Date().toISOString().split('T')[0]}`;
@@ -151,9 +214,12 @@ export default function ArchivePage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📂 Archive</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Every activity logged in the CRM by {isAdminLike ? 'the selected user' : 'you'}.
+                Every activity logged in the CRM by {canPickOthers ? (selectedUserIds.size === 1 ? 'the selected user' : `${selectedUserIds.size} selected users`) : 'you'}.
                 {isAdminLike && (
                   <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(Admin view — you can browse any user&apos;s archive)</span>
+                )}
+                {isSalesDirector && !isAdminLike && (
+                  <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(Director view — you can browse your team&apos;s archives)</span>
                 )}
               </p>
             </div>
@@ -168,23 +234,63 @@ export default function ArchivePage() {
           {/* Filter bar */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm p-4 mb-5">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              {/* User picker (admin only) */}
-              {isAdminLike && (
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">User</label>
-                  <select
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              {/* User multi-select picker (admin-likes + sales directors
+                  who have a team). Built as a custom dropdown because the
+                  native <select multiple> behaves clunkily on touch and
+                  doesn't show selected names. */}
+              {canPickOthers && (
+                <div className="md:col-span-3 relative" ref={pickerRef}>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Users ({selectedUserIds.size} selected)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen((o) => !o)}
+                    className="w-full flex items-center justify-between gap-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    {pickableUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}{u.id === sessionUserId ? ' (me)' : ''}</option>
-                    ))}
-                  </select>
+                    <span className="truncate text-left">
+                      {selectedNames.length === 0 ? '— Pick users —'
+                        : selectedNames.length === 1 ? selectedNames[0]
+                        : selectedNames.length <= 3 ? selectedNames.join(', ')
+                        : `${selectedNames.length} users selected`}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${pickerOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {pickerOpen && (
+                    <div className="absolute z-30 mt-1 w-72 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-slate-800 text-xs">
+                        <button type="button" onClick={selectAllUsers} className="text-green-700 dark:text-green-400 hover:underline">Select all</button>
+                        <button type="button" onClick={selectJustMe} className="text-gray-500 dark:text-gray-400 hover:underline">Just me</button>
+                      </div>
+                      {pickableUsers.map((u) => {
+                        const checked = selectedUserIds.has(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleUser(u.id)}
+                              className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-green-600 focus:ring-green-500"
+                            />
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
+                              {u.name}{u.id === sessionUserId ? ' (me)' : ''}
+                            </span>
+                          </label>
+                        );
+                      })}
+                      {pickableUsers.length === 0 && (
+                        <div className="px-3 py-3 text-xs italic text-gray-500 dark:text-gray-400">
+                          No team members to show.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className={isAdminLike ? 'md:col-span-2' : 'md:col-span-3'}>
+              <div className={canPickOthers ? 'md:col-span-2' : 'md:col-span-3'}>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">From</label>
                 <input
                   type="date"
@@ -194,7 +300,7 @@ export default function ArchivePage() {
                 />
               </div>
 
-              <div className={isAdminLike ? 'md:col-span-2' : 'md:col-span-3'}>
+              <div className={canPickOthers ? 'md:col-span-2' : 'md:col-span-3'}>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">To</label>
                 <input
                   type="date"
@@ -204,7 +310,7 @@ export default function ArchivePage() {
                 />
               </div>
 
-              <div className={isAdminLike ? 'md:col-span-4' : 'md:col-span-5'}>
+              <div className={canPickOthers ? 'md:col-span-4' : 'md:col-span-5'}>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Search subject / description</label>
                 <input
                   type="text"
@@ -215,7 +321,7 @@ export default function ArchivePage() {
                 />
               </div>
 
-              <div className={(isAdminLike ? 'md:col-span-1' : 'md:col-span-1') + ' flex items-end'}>
+              <div className={(canPickOthers ? 'md:col-span-1' : 'md:col-span-1') + ' flex items-end'}>
                 <button
                   type="button"
                   onClick={resetFilters}
@@ -233,8 +339,18 @@ export default function ArchivePage() {
             <span className="text-gray-700 dark:text-gray-200 font-medium">
               {filtered.length} record{filtered.length === 1 ? '' : 's'}
             </span>
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-            <span className="text-gray-500 dark:text-gray-400 truncate">{targetUserEmail}</span>
+            {targetUserEmail && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600">·</span>
+                <span className="text-gray-500 dark:text-gray-400 truncate">{targetUserEmail}</span>
+              </>
+            )}
+            {selectedNames.length > 1 && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600">·</span>
+                <span className="text-gray-500 dark:text-gray-400 truncate" title={selectedNames.join(', ')}>{selectedNames.length} users</span>
+              </>
+            )}
             <span className="text-gray-300 dark:text-gray-600">·</span>
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Call}`}>📞 {typeCounts.Call}</span>
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Meeting}`}>🤝 {typeCounts.Meeting}</span>
@@ -263,6 +379,7 @@ export default function ArchivePage() {
                     <tr>
                       <th className="text-left px-4 py-3 font-semibold">Date</th>
                       <th className="text-left px-4 py-3 font-semibold">Type</th>
+                      {selectedUserIds.size > 1 && <th className="text-left px-4 py-3 font-semibold">Owner</th>}
                       <th className="text-left px-4 py-3 font-semibold">Subject</th>
                       <th className="text-left px-4 py-3 font-semibold">Account</th>
                       <th className="text-left px-4 py-3 font-semibold">Contact</th>
@@ -283,6 +400,11 @@ export default function ArchivePage() {
                             {a.type}
                           </span>
                         </td>
+                        {selectedUserIds.size > 1 && (
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-200 max-w-[14ch] truncate" title={userNameById.get(a.ownerId) ?? '—'}>
+                            {userNameById.get(a.ownerId) ?? '—'}
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium max-w-xs truncate" title={a.subject}>
                           {a.subject}
                         </td>
