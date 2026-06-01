@@ -730,7 +730,7 @@ async function fetchAndStoreAttachment(
   supabase: any,
   emailId: string,
   att: { id: string; filename: string; content_type: string },
-): Promise<{ filename: string; url: string; sizeKb: number } | null> {
+): Promise<{ filename: string; url: string; sizeKb: number; sizeLabel: string } | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
   // Resend's inbound attachment endpoint returns a JSON metadata object
@@ -774,7 +774,7 @@ async function fetchAndStoreAttachment(
   const { error: upErr } = await supabase
     .storage.from('email-attachments')
     .upload(objectPath, buf, {
-      contentType: att.content_type || 'application/octet-stream',
+      contentType: contentType || 'application/octet-stream',
       upsert: true,
     });
   if (upErr) {
@@ -796,6 +796,7 @@ async function fetchAndStoreAttachment(
       filename: att.filename || safeName,
       url: pub?.publicUrl || '',
       sizeKb: Math.max(1, Math.round(buf.length / 1024)),
+      sizeLabel: formatBytes(buf.length),
     };
   }
   return {
