@@ -755,10 +755,26 @@ async function fetchAndStoreAttachment(
     console.error('[inbound-email] storage upload error:', upErr.message);
     return null;
   }
-  const { data: pub } = supabase.storage.from('email-attachments').getPublicUrl(objectPath);
+  // Signed URLs work whether or not the bucket is public AND whether or
+  // not RLS policies are set. 1-year expiry is long enough for any
+  // reasonable email-archive use; we can regenerate later via a script
+  // if anything older is ever needed.
+  const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+  const { data: signed, error: sErr } = await supabase.storage
+    .from('email-attachments').createSignedUrl(objectPath, ONE_YEAR_SECONDS);
+  if (sErr) {
+    console.error('[inbound-email] signed-URL error:', sErr.message);
+    // Fall back to publicUrl — works only if bucket is fully public.
+    const { data: pub } = supabase.storage.from('email-attachments').getPublicUrl(objectPath);
+    return {
+      filename: att.filename || safeName,
+      url: pub?.publicUrl || '',
+      sizeKb: Math.max(1, Math.round(buf.length / 1024)),
+    };
+  }
   return {
     filename: att.filename || safeName,
-    url: pub?.publicUrl || '',
+    url: signed?.signedUrl || '',
     sizeKb: Math.max(1, Math.round(buf.length / 1024)),
   };
 }

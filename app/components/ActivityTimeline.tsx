@@ -146,9 +146,7 @@ export default function ActivityTimeline({
                       )}
                     </p>
                   ) : null}
-                  <p className="mt-1 text-sm text-gray-600 leading-relaxed dark:text-gray-300">
-                    {activity.description}
-                  </p>
+                  <ActivityBody description={activity.description} />
                   <div className="mt-1 flex items-center gap-3 flex-wrap">
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       Logged by <span className="font-medium text-gray-600 dark:text-gray-300">{getOwnerName(activity.ownerId)}</span>
@@ -176,5 +174,72 @@ export default function ActivityTimeline({
         ))}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Render an activity's description text + parse out the "📎 Attachments:"
+ * block that the inbound-email route appends. Each attachment shows as
+ * a small clickable chip with filename + size; clicking opens the
+ * signed Supabase Storage URL in a new tab.
+ *
+ * The description format (set in /api/inbound-email/route.ts) looks like:
+ *
+ *   <body text>
+ *
+ *   📎 Attachments:
+ *   • Report.pdf (245 KB) — https://....supabase.co/.../Report.pdf
+ *   • Quote.xlsx (32 KB) — https://....supabase.co/.../Quote.xlsx
+ */
+function ActivityBody({ description }: { description?: string | null }) {
+  const text = String(description || '');
+  if (!text) return null;
+
+  // Split body text from the attachment block, if present.
+  const ATT_MARKER = '📎 Attachments:';
+  const idx = text.indexOf(ATT_MARKER);
+  const bodyPart = idx >= 0 ? text.slice(0, idx).trim() : text;
+  const attPart = idx >= 0 ? text.slice(idx + ATT_MARKER.length).trim() : '';
+
+  // Each line: "• Filename.ext (NN KB) — https://..."
+  const attachments: { name: string; size: string; url: string }[] = [];
+  if (attPart) {
+    const lines = attPart.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    for (const line of lines) {
+      // Pattern is permissive: handles bullet variants, em-dash vs hyphen,
+      // and missing size in older logs.
+      const m = line.match(/^[•\-*]\s*(.+?)\s*\(([^)]+)\)\s*[—–-]\s*(https?:\/\/\S+)/);
+      if (m) attachments.push({ name: m[1], size: m[2], url: m[3] });
+    }
+  }
+
+  return (
+    <>
+      {bodyPart && (
+        <p className="mt-1 text-sm text-gray-600 leading-relaxed dark:text-gray-300 whitespace-pre-wrap">
+          {bodyPart}
+        </p>
+      )}
+      {attachments.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {attachments.map((a, i) => (
+            <a
+              key={`${a.name}-${i}`}
+              href={a.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Open ${a.name}`}
+              className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 10-5.656-5.656L4.93 12.343a6 6 0 108.486 8.486L20.5 13.5" />
+              </svg>
+              <span className="font-medium truncate max-w-[14rem]">{a.name}</span>
+              <span className="text-gray-400 dark:text-gray-500">{a.size}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
