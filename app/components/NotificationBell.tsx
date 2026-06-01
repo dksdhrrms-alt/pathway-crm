@@ -4,10 +4,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/lib/CRMContext';
+import { getRecentCommentsOnActivities, type Comment } from '@/lib/comments';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect' | 'new_comment';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -17,7 +18,7 @@ interface Notification {
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
 const PRIORITY_BG_DARK: Record<string, string> = { high: 'rgba(220, 38, 38, 0.15)', medium: 'rgba(245, 158, 11, 0.15)', low: 'rgba(37, 99, 235, 0.15)' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6', new_comment: '\uD83D\uDCAC' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -25,6 +26,10 @@ export default function NotificationBell() {
   const { tasks, opportunities, activities, accounts, contacts } = useCRM();
 
   const [isOpen, setIsOpen] = useState(false);
+  // Recent comments on activities I own (other people's replies). Fetched
+  // in an effect because the bell needs to refresh independently of the
+  // tasks/opps/activities context already in memory.
+  const [recentComments, setRecentComments] = useState<Comment[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('dismissed_notifications') || '[]'));
@@ -39,6 +44,23 @@ export default function NotificationBell() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Pull comments newer than 7 days ago that landed on activities I own.
+  // We refetch on bell-open so the badge stays fresh without setting up
+  // a Supabase realtime subscription on this client. 7 days is enough
+  // window for back-and-forth threads while still naturally fading.
+  const userIdForEffect = session?.user?.id ?? '';
+  useEffect(() => {
+    if (!userIdForEffect) return;
+    const sinceIso = new Date(Date.now() - 7 * 86400000).toISOString();
+    const myActIds = activities.filter((a) => a.ownerId === userIdForEffect).map((a) => a.id);
+    if (myActIds.length === 0) { setRecentComments([]); return; }
+    let cancelled = false;
+    getRecentCommentsOnActivities(myActIds, sinceIso).then((cs) => {
+      if (!cancelled) setRecentComments(cs);
+    });
+    return () => { cancelled = true; };
+  }, [activities, userIdForEffect, isOpen]);
 
   const userId = session?.user?.id ?? '';
   const role = (session?.user as { role?: string })?.role ?? '';
@@ -181,11 +203,38 @@ export default function NotificationBell() {
       });
     });
 
+    // 6. New comments on my activities — other people's replies in the last
+    //    7 days. Pinned medium priority so they don't outrank true emergencies
+    //    like overdue tasks, but still surface above no-contact warnings.
+    recentComments
+      .filter((c) => c.authorId !== userId)
+      .slice(0, 10)
+      .forEach((c) => {
+        const id = `new_comment_${c.id}`;
+        if (dismissed.has(id)) return;
+        const act = activities.find((a) => a.id === c.parentId);
+        if (!act) return;
+        // Prefer a contact link, then account, then the archive page so the
+        // user always lands somewhere the thread is visible.
+        const link = act.contactId
+          ? `/contacts/${act.contactId}`
+          : act.accountId
+            ? `/accounts/${act.accountId}`
+            : '/archive';
+        const preview = c.body.length > 70 ? c.body.slice(0, 70) + '…' : c.body;
+        result.push({
+          id, type: 'new_comment', priority: 'medium',
+          title: `${c.authorName} replied`,
+          body: `"${act.subject}" — ${preview}`,
+          link,
+        });
+      });
+
     return result.sort((a, b) => {
       const order = { high: 0, medium: 1, low: 2 };
       return order[a.priority] - order[b.priority];
     });
-  }, [tasks, opportunities, activities, accounts, contacts, userId, isAdmin, dismissed]);
+  }, [tasks, opportunities, activities, accounts, contacts, userId, isAdmin, dismissed, recentComments]);
 
   const count = notifications.length;
 

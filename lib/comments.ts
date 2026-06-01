@@ -131,3 +131,45 @@ export async function deleteComment(id: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Pull recent comments (newer than `sinceIso`) attached to any of the
+ * given activity IDs. Used by NotificationBell to surface "someone
+ * replied to your activity" alerts on the bell icon.
+ *
+ * Returns full Comment rows so the caller can filter by authorId (to
+ * exclude your own replies) and build the alert body from c.authorName
+ * and c.body. Sorted newest-first.
+ */
+export async function getRecentCommentsOnActivities(
+  activityIds: string[],
+  sinceIso: string,
+): Promise<Comment[]> {
+  if (!supabaseEnabled || activityIds.length === 0) return [];
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('entity_type', 'activity')
+      .in('entity_id', activityIds)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) {
+      console.error('[COMMENTS] recent fetch error:', error.message);
+      return [];
+    }
+    return (data || []).map((r) => ({
+      id: r.id,
+      parentType: r.entity_type,
+      parentId: r.entity_id,
+      body: r.body,
+      authorId: r.author_id || '',
+      authorName: r.author_name || 'Unknown',
+      createdAt: r.created_at,
+    }));
+  } catch (err) {
+    console.error('[COMMENTS] recent exception:', err);
+    return [];
+  }
+}

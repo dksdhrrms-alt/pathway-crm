@@ -171,16 +171,16 @@ export default function ActivityTimeline({
                         </>
                       )}
                     </p>
-                    <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
-                      className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                      {(() => {
-                        const n = commentCountById[activity.id] ?? 0;
-                        const label = showComments === activity.id ? 'Hide replies' : 'Reply';
-                        return n > 0 ? `${label} (${n})` : label;
-                      })()}
-                    </button>
+                    {/* Reply button is hidden when comments already exist — the
+                        thread auto-expands below and its own input handles new replies. */}
+                    {(commentCountById[activity.id] ?? 0) === 0 && (
+                      <button onClick={() => setShowComments(showComments === activity.id ? null : activity.id)}
+                        className="text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        {showComments === activity.id ? 'Hide replies' : 'Reply'}
+                      </button>
+                    )}
                   </div>
-                  {showComments === activity.id && (
+                  {((commentCountById[activity.id] ?? 0) > 0 || showComments === activity.id) && (
                     <div className="mt-2 ml-1 pl-3 dark:border-slate-700" style={{ borderLeft: '2px solid #e5e7eb' }}>
                       <CommentThread parentType="activity" parentId={activity.id} />
                     </div>

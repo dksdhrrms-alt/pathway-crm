@@ -754,20 +754,20 @@ export default function AccountDetailPage() {
                                     </>
                                   )}
                                 </span>
-                                {/* Reply toggle — opens the CommentThread for this activity. */}
-                                <button
-                                  onClick={() => setOpenCommentsFor(openCommentsFor === act.id ? null : act.id)}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', fontSize: '11px' }}
-                                  className="hover:text-gray-700 dark:hover:text-gray-300"
-                                >
-                                  {(() => {
-                                    const n = commentCountById[act.id] ?? 0;
-                                    const label = openCommentsFor === act.id ? 'Hide replies' : 'Reply';
-                                    return n > 0 ? `${label} (${n})` : label;
-                                  })()}
-                                </button>
+                                {/* Reply toggle — only visible when there are NO comments yet.
+                                    When at least one comment exists, the thread auto-expands and the
+                                    button becomes redundant (the CommentThread itself has an input). */}
+                                {(commentCountById[act.id] ?? 0) === 0 && (
+                                  <button
+                                    onClick={() => setOpenCommentsFor(openCommentsFor === act.id ? null : act.id)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', fontSize: '11px' }}
+                                    className="hover:text-gray-700 dark:hover:text-gray-300"
+                                  >
+                                    {openCommentsFor === act.id ? 'Hide replies' : 'Reply'}
+                                  </button>
+                                )}
                               </div>
-                              {openCommentsFor === act.id && (
+                              {((commentCountById[act.id] ?? 0) > 0 || openCommentsFor === act.id) && (
                                 <div style={{ marginTop: '8px', marginLeft: '4px', paddingLeft: '12px', borderLeft: '2px solid #e5e7eb' }}>
                                   <CommentThread parentType="activity" parentId={act.id} />
                                 </div>
