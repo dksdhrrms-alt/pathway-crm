@@ -7,7 +7,7 @@ import {
   dbGetContacts, dbCreateContact, dbUpdateContact, dbDeleteContacts,
   dbGetOpportunities, dbCreateOpportunity, dbUpdateOpportunity, dbDeleteOpportunity,
   dbGetTasks, dbCreateTask, dbUpdateTask, dbDeleteTask,
-  dbGetActivities, dbCreateActivity, dbDeleteActivity,
+  dbGetActivities, dbCreateActivity, dbDeleteActivity, dbUpdateActivity,
   dbGetSaleRecords, dbGetUploadHistory, dbGetAccountBudgets,
   toCamel,
 } from './db';
@@ -70,6 +70,7 @@ interface CRMContextType {
   deleteOpportunity: (id: string) => void;
   deleteTask: (id: string) => void;
   deleteActivity: (id: string) => void;
+  updateActivity: (id: string, updates: Partial<Activity>) => void;
   getActivitiesForAccount: (accountId: string) => Activity[];
   getActivitiesForContact: (contactId: string) => Activity[];
   getLastActivityDate: (accountId: string) => string | null;
@@ -452,6 +453,23 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  /** Edit any field on an existing activity. Optimistic update — local
+   *  state flips immediately so the UI never feels laggy; on DB failure
+   *  we revert and surface a toast (same pattern as deleteActivity, but
+   *  with a snapshot to roll back to). */
+  const updateActivity = (id: string, updates: Partial<Activity>) => {
+    const snapshot = activities.find((a) => a.id === id);
+    setActivities((prev) => prev.map((a) => a.id === id ? { ...a, ...updates } : a));
+    dbUpdateActivity(id, updates).catch((e) => {
+      console.error('updateActivity error:', e);
+      if (snapshot) {
+        // Roll back optimistic edit.
+        setActivities((prev) => prev.map((a) => a.id === id ? snapshot : a));
+      }
+      notifyCrmError('Failed to update activity. Your edit was reverted.');
+    });
+  };
+
   const getActivitiesForAccount = (accountId: string) =>
     activities.filter((a) => a.accountId === accountId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -471,7 +489,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       addOpportunity, addActivity, addTask,
       updateOpportunityStage, updateOpportunityOwner, updateTask, toggleTask,
       deleteAccount, deleteAccountsBulk, deleteContact, deleteContactsBulk,
-      deleteOpportunity, deleteTask, deleteActivity,
+      deleteOpportunity, deleteTask, deleteActivity, updateActivity,
       getActivitiesForAccount, getActivitiesForContact, getLastActivityDate,
       setSaleRecords, setUploadHistory, refreshData: loadAll,
     }}>

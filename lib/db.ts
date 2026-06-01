@@ -268,6 +268,12 @@ export async function dbDeleteActivity(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function dbUpdateActivity(id: string, updates: Partial<Activity>): Promise<void> {
+  if (!supabaseEnabled) return;
+  const { error } = await supabase.from('activities').update(toSnake(updates)).eq('id', id);
+  if (error) throw error;
+}
+
 // ── Sale Records ────────────────────────────────────────────────────────────
 
 export async function dbGetSaleRecords(): Promise<SaleRecord[]> {

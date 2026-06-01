@@ -24,6 +24,7 @@ import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EmptyState from '@/app/components/EmptyState';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
+import EditActivityModal from '@/app/components/EditActivityModal';
 import type { Activity } from '@/lib/data';
 
 const TYPE_BADGE_BG: Record<string, string> = {
@@ -53,6 +54,10 @@ export default function ArchivePage() {
   const isAdminLike = ['admin', 'administrative_manager', 'ceo'].includes(role);
 
   const [selectedUserId, setSelectedUserId] = useState<string>(sessionUserId);
+  // Activity that's currently being edited. null = no modal open. Click a
+  // row in the table to set this; the modal handles save/delete via
+  // CRMContext.updateActivity / deleteActivity (both optimistic).
+  const [editing, setEditing] = useState<Activity | null>(null);
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
@@ -224,7 +229,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Summary chips */}
-          <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
             <span className="text-gray-700 dark:text-gray-200 font-medium">
               {filtered.length} record{filtered.length === 1 ? '' : 's'}
             </span>
@@ -236,6 +241,9 @@ export default function ArchivePage() {
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Email}`}>📧 {typeCounts.Email}</span>
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Note}`}>📝 {typeCounts.Note}</span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Click any row to edit the activity.
+          </p>
 
           {/* Table */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -263,7 +271,12 @@ export default function ArchivePage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                     {filtered.map((a) => (
-                      <tr key={a.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <tr
+                        key={a.id}
+                        onClick={() => setEditing(a)}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                        title="Click to edit"
+                      >
                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-200">{formatDate(a.date)}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${TYPE_BADGE_BG[a.type] ?? 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300'}`}>
@@ -292,6 +305,13 @@ export default function ArchivePage() {
 
         </div>
       </main>
+
+      {editing && (
+        <EditActivityModal
+          activity={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
