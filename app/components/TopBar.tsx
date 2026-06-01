@@ -76,19 +76,37 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
     <div
       className="fixed top-0 right-0 z-20 flex items-center justify-between px-4 md:px-6 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm left-0 md:left-60 transition-colors"
     >
-      {/* Search — visible on mobile for list pages */}
-      <div className={`relative ${showMobileSearch ? 'flex-1 max-w-xs mr-2 md:max-w-none md:w-72 md:flex-none md:mr-0' : 'w-72 hidden md:block'}`}>
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white dark:focus:bg-slate-800 transition"
-        />
-      </div>
+      {/* Search — visible on mobile for list pages.
+          Two modes:
+          (1) Page passes searchValue + onSearchChange → input filters
+              that page's local list (e.g. /accounts, /contacts).
+          (2) Page passes nothing → input becomes a global-search trigger.
+              Focus or first keystroke opens the GlobalSearch overlay
+              (the same one Ctrl/Cmd+K opens) so the box is never a
+              dead input. */}
+      {(() => {
+        const isLocalSearch = searchValue !== undefined;
+        const openGlobalSearch = (seedQuery?: string) => {
+          window.dispatchEvent(new CustomEvent('open-global-search', { detail: { query: seedQuery || '' } }));
+        };
+        return (
+          <div className={`relative ${showMobileSearch ? 'flex-1 max-w-xs mr-2 md:max-w-none md:w-72 md:flex-none md:mr-0' : 'w-72 hidden md:block'}`}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={value}
+              readOnly={!isLocalSearch}
+              onFocus={isLocalSearch ? undefined : (e) => { openGlobalSearch(value); e.currentTarget.blur(); }}
+              onClick={isLocalSearch ? undefined : () => openGlobalSearch(value)}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={isLocalSearch ? placeholder : 'Search CRM... (Ctrl + K)'}
+              className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white dark:focus:bg-slate-800 transition cursor-pointer"
+            />
+          </div>
+        );
+      })()}
 
       {/* Notifications + Theme toggle + User avatar.
           ml-auto pins this group to the right edge even when the search

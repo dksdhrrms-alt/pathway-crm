@@ -36,17 +36,36 @@ export default function GlobalSearch() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); setOpen(true); }
       if (e.key === 'Escape') setOpen(false);
     }
+    // The TopBar's text input dispatches `open-global-search` whenever
+    // the user clicks/focuses/types in it, so the bar becomes a real
+    // search trigger on every page (not just /accounts /contacts etc.
+    // that wire searchValue/onSearchChange through). The dispatched
+    // event may include an initial query in detail.query — we seed it.
+    function onOpenEvent(e: Event) {
+      const detail = (e as CustomEvent<{ query?: string }>).detail;
+      setOpen(true);
+      if (detail?.query) setQuery(detail.query);
+    }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('open-global-search', onOpenEvent as EventListener);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('open-global-search', onOpenEvent as EventListener);
+    };
   }, []);
 
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      setQuery('');
-      setDebouncedQuery('');
-      setSelectedIdx(0);
+      // Only clear the input when we opened with no seed query.
+      // (Seeded opens come from the TopBar handing over what the user
+      //  already typed; clearing would discard their keystrokes.)
+      if (!query) {
+        setDebouncedQuery('');
+        setSelectedIdx(0);
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Debounce: `query` updates instantly (so the input stays responsive),
