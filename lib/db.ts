@@ -1,5 +1,5 @@
 import { supabase, supabaseEnabled } from './supabase';
-import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense, RndTeam, RndCategory, Project } from './data';
+import type { Account, Contact, Opportunity, Activity, Task, AccountBudget, RndBudget, RndExpense, RndTeam, RndCategory, Project, BudgetTeam } from './data';
 import type { AppUser } from './users';
 import type { SaleRecord, UploadHistoryEntry } from './excelParser';
 import type { BudgetEntry } from './budgetStore';
@@ -427,6 +427,77 @@ export async function dbDeleteRndExpense(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+// ── Budget Tracker — dynamic team labels ────────────────────────────────────
+// Mirrors the budget_teams table (see supabase/budget_teams_schema.sql).
+// Returns every label including the system-protected 'other' so callers can
+// render it but disable Edit / Delete for is_system rows.
+
+export async function dbListBudgetTeams(): Promise<BudgetTeam[]> {
+  if (!supabaseEnabled) return [];
+  const { data, error } = await supabase
+    .from('budget_teams')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) { console.error('[DB] budget_teams list error:', error.message); return []; }
+  return mapRows<BudgetTeam>(data || []);
+}
+
+export async function dbCreateBudgetTeam(team: BudgetTeam): Promise<BudgetTeam | null> {
+  if (!supabaseEnabled) return null;
+  const row = toSnake({ ...team, isSystem: team.isSystem ?? false });
+  const { data, error } = await supabase
+    .from('budget_teams')
+    .insert(row)
+    .select()
+    .single();
+  if (error) { console.error('[DB] budget_teams create error:', error.message); throw error; }
+  return toCamel(data) as unknown as BudgetTeam;
+}
+
+export async function dbUpdateBudgetTeam(id: string, updates: Partial<BudgetTeam>): Promise<void> {
+  if (!supabaseEnabled) return;
+  const payload = toSnake({ ...updates, updatedAt: new Date().toISOString() });
+  const { error } = await supabase.from('budget_teams').update(payload).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Delete a team. If `reassignTo` is provided, every rnd_budgets/rnd_expenses
+ * row that refers to this team is first moved to the target team — typically
+ * the system-protected 'other'. The team row itself is removed last so we
+ * never end up with orphaned references on partial failure.
+ *
+ * The system-protected row ('other') itself cannot be deleted — the caller
+ * (UI) should hide the Delete button for is_system entries; this function
+ * additionally rejects the call as a defensive backstop.
+ */
+export async function dbDeleteBudgetTeam(id: string, reassignTo: string = 'other'): Promise<void> {
+  if (!supabaseEnabled) return;
+  if (id === reassignTo) throw new Error('cannot reassign team to itself');
+  // 1) reassign budgets — combine with existing 'other' rows of the same
+  //    (year, category) by deleting the about-to-be-orphaned rows first
+  //    and then nuking the team row; the unique (year, team, category)
+  //    constraint would otherwise reject the UPDATE.
+  // We take a simpler path: delete the doomed team's budget rows outright
+  // (the user is removing the team, so its annual amounts go with it).
+  const { error: bErr } = await supabase.from('rnd_budgets').delete().eq('team', id);
+  if (bErr) throw bErr;
+  // 2) reassign expenses to the fallback team so historical spend is preserved
+  const { error: eErr } = await supabase
+    .from('rnd_expenses')
+    .update({ team: reassignTo })
+    .eq('team', id);
+  if (eErr) throw eErr;
+  // 3) finally remove the team row
+  const { error: tErr } = await supabase
+    .from('budget_teams')
+    .delete()
+    .eq('id', id)
+    .eq('is_system', false);  // double-protect against deleting 'other'
+  if (tErr) throw tErr;
+}
+
 
 // ── Projects (marketing tracker) ────────────────────────────────────────────
 

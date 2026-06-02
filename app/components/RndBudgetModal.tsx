@@ -16,12 +16,13 @@
 import { useEffect, useState } from 'react';
 import { dbUpsertRndBudget } from '@/lib/db';
 import type { RndTeam, RndCategory } from '@/lib/data';
-import { RND_TEAMS, RND_CATEGORIES } from '@/lib/data';
+import { RND_CATEGORIES } from '@/lib/data';
 import SubmitButton from './SubmitButton';
 
 interface Props {
   year: number;
   team: RndTeam;
+  teamLabel: string;
   category: RndCategory;
   currentAmount: number;
   currentNotes?: string;
@@ -29,8 +30,7 @@ interface Props {
   onSaved: () => void;
 }
 
-export default function RndBudgetModal({ year, team, category, currentAmount, currentNotes, onClose, onSaved }: Props) {
-  const teamLabel = RND_TEAMS.find((t) => t.id === team)?.label ?? team;
+export default function RndBudgetModal({ year, team, teamLabel, category, currentAmount, currentNotes, onClose, onSaved }: Props) {
   const categoryLabel = RND_CATEGORIES.find((c) => c.id === category)?.label ?? category;
   const [amount, setAmount] = useState<string>(currentAmount > 0 ? String(currentAmount) : '');
   const [notes, setNotes] = useState<string>(currentNotes ?? '');

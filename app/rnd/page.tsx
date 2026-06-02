@@ -27,12 +27,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { RndBudget, RndExpense, RndTeam, RndCategory } from '@/lib/data';
-import { RND_TEAMS, RND_CATEGORIES } from '@/lib/data';
-import { dbGetRndBudgets, dbGetRndExpenses } from '@/lib/db';
+import { RND_CATEGORIES } from '@/lib/data';
+import type { BudgetTeam } from '@/lib/data';
+import { dbGetRndBudgets, dbGetRndExpenses, dbListBudgetTeams } from '@/lib/db';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import RndExpenseModal from '@/app/components/RndExpenseModal';
 import RndBudgetModal from '@/app/components/RndBudgetModal';
+import BudgetTeamsModal from '@/app/components/BudgetTeamsModal';
 
 const MONTH_LABELS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -44,14 +46,23 @@ function fmtUSD(n: number): string {
   }).format(n || 0);
 }
 
-// Tailwind class snippets per team — small pill / badge style.
-const TEAM_BADGE: Record<RndTeam, string> = {
-  ruminant: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
-  poultry:  'bg-blue-100  text-blue-800  dark:bg-blue-950/40  dark:text-blue-300',
-  swine:    'bg-pink-100  text-pink-800  dark:bg-pink-950/40  dark:text-pink-300',
-  latam:    'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300',
-  other:    'bg-gray-100  text-gray-700  dark:bg-slate-800    dark:text-gray-300',
-};
+// Inline-style helper for the colored team pill — pulls fill from the
+// per-team color (chosen by the user in BudgetTeamsModal) and chooses a
+// matching text color via simple luminance check. Avoids dragging the
+// dark-mode palette decisions in this file.
+function teamBadgeStyle(color: string): React.CSSProperties {
+  // Approximate luminance — values >0.6 get dark text, otherwise white.
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return {
+    background: color + '33',   // 20% opacity tint as the fill
+    color: lum > 0.6 ? '#1f2937' : color,
+    border: `1px solid ${color}55`,
+  };
+}
 
 export default function RndPage() {
   // No role gate: every authenticated user can view, add, edit, delete
@@ -70,6 +81,9 @@ export default function RndPage() {
   const [selectedTeam, setSelectedTeam] = useState<RndTeam | null>(null);
   const [budgets, setBudgets] = useState<RndBudget[]>([]);
   const [expenses, setExpenses] = useState<RndExpense[]>([]);
+  // Dynamic team list — sourced from the budget_teams table.
+  const [teams, setTeams] = useState<BudgetTeam[]>([]);
+  const [showManageTeams, setShowManageTeams] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,9 +98,10 @@ export default function RndPage() {
     setLoading(true);
     setError(null);
     try {
-      const [b, e] = await Promise.all([dbGetRndBudgets(), dbGetRndExpenses()]);
+      const [b, e, t] = await Promise.all([dbGetRndBudgets(), dbGetRndExpenses(), dbListBudgetTeams()]);
       setBudgets(b);
       setExpenses(e);
+      setTeams(t);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('R&D load error:', msg);
@@ -120,6 +135,7 @@ export default function RndPage() {
   interface TeamStat {
     team: RndTeam;
     label: string;
+    color: string;
     budget: number;
     spent: number;
     remaining: number;
@@ -127,15 +143,15 @@ export default function RndPage() {
     budgetRow?: RndBudget;
   }
   const teamStats: TeamStat[] = useMemo(() => {
-    return RND_TEAMS.map(({ id, label }) => {
-      const budgetRow = yearBudgets.find((b) => b.team === id);
+    return teams.map((t) => {
+      const budgetRow = yearBudgets.find((b) => b.team === t.id);
       const budget = budgetRow?.annualAmount ?? 0;
-      const spent = yearExpenses.filter((e) => e.team === id).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const spent = yearExpenses.filter((e) => e.team === t.id).reduce((s, e) => s + (Number(e.amount) || 0), 0);
       const remaining = budget - spent;
       const usedPct = budget > 0 ? (spent / budget) * 100 : 0;
-      return { team: id, label, budget, spent, remaining, usedPct, budgetRow };
+      return { team: t.id, label: t.label, color: t.color, budget, spent, remaining, usedPct, budgetRow };
     });
-  }, [yearBudgets, yearExpenses]);
+  }, [teams, yearBudgets, yearExpenses]);
 
   // Aggregate (sum of all teams)
   const totals = useMemo(() => {
@@ -295,7 +311,7 @@ export default function RndPage() {
                   {teamStats.map((t) => (
                     <tr key={t.team} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${TEAM_BADGE[t.team]}`}>{t.label}</span>
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium" style={teamBadgeStyle(t.color)}>{t.label}</span>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{fmtUSD(t.budget)}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-gray-200">{fmtUSD(t.spent)}</td>
@@ -341,19 +357,27 @@ export default function RndPage() {
             >
               All teams
             </button>
-            {RND_TEAMS.map((t) => (
+            {teams.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setSelectedTeam(t.id)}
-                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                className="px-2.5 py-1 rounded text-xs font-medium border transition-colors"
+                style={
                   selectedTeam === t.id
-                    ? `${TEAM_BADGE[t.id]} border-transparent`
-                    : 'border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
-                }`}
+                    ? teamBadgeStyle(t.color)
+                    : undefined
+                }
               >
                 {t.label}
               </button>
             ))}
+            <button
+              onClick={() => setShowManageTeams(true)}
+              className="ml-2 px-2.5 py-1 rounded text-xs font-medium border border-dashed border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800"
+              title="Add, rename, recolor, or remove teams"
+            >
+              + Manage teams
+            </button>
           </div>
 
           {error && (
@@ -411,11 +435,17 @@ export default function RndPage() {
                             <span className="tabular-nums text-gray-600 dark:text-gray-300 flex-shrink-0">{fmtUSD(e.amount)}</span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-1">
-                            {selectedTeam === null && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${TEAM_BADGE[e.team]}`}>
-                                {RND_TEAMS.find((t) => t.id === e.team)?.label ?? e.team}
-                              </span>
-                            )}
+                            {selectedTeam === null && (() => {
+                              const tm = teams.find((tt) => tt.id === e.team);
+                              return (
+                                <span
+                                  className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                  style={teamBadgeStyle(tm?.color ?? '#6B7280')}
+                                >
+                                  {tm?.label ?? e.team}
+                                </span>
+                              );
+                            })()}
                             {e.description && (
                               <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex-1">{e.description}</p>
                             )}
@@ -449,6 +479,7 @@ export default function RndPage() {
           <RndBudgetModal
             year={selectedYear}
             team={budgetModal.team}
+            teamLabel={teams.find((tm) => tm.id === budgetModal.team)?.label ?? budgetModal.team}
             category={selectedCategory}
             currentAmount={t?.budget ?? 0}
             currentNotes={t?.budgetRow?.notes}
@@ -465,7 +496,14 @@ export default function RndPage() {
           defaultTeam={expenseModal.mode === 'add' ? expenseModal.team : undefined}
           category={selectedCategory}
           yearOptions={yearOptions}
+          teams={teams}
           onClose={() => setExpenseModal(null)}
+          onChanged={reload}
+        />
+      )}
+      {showManageTeams && (
+        <BudgetTeamsModal
+          onClose={() => setShowManageTeams(false)}
           onChanged={reload}
         />
       )}

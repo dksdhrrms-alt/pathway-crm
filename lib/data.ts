@@ -181,9 +181,15 @@ export interface AccountBudget {
 // the underlying tables (rnd_budgets / rnd_expenses) hold both kinds
 // distinguished by the `category` column.
 // See app/rnd/page.tsx and supabase/rnd_schema.sql.
-export type RndTeam = 'ruminant' | 'poultry' | 'swine' | 'latam' | 'other';
+// RndTeam is now a free-form string ID — the master list lives in the
+// `budget_teams` Supabase table (see supabase/budget_teams_schema.sql).
+// The five legacy slugs (ruminant/poultry/swine/latam/other) are seeded
+// for backwards compatibility, but additional slugs can be created by
+// users from the Budget Tracker UI.
+export type RndTeam = string;
 export type RndCategory = 'rnd' | 'event';
 
+/** @deprecated default fallback only — live list comes from listBudgetTeams() */
 export const RND_TEAMS: { id: RndTeam; label: string }[] = [
   { id: 'ruminant', label: 'Ruminant' },
   { id: 'poultry',  label: 'Poultry'  },
@@ -230,7 +236,7 @@ export interface RndExpense {
 // bottom of the page.
 // See app/projects/page.tsx and supabase/projects_schema.sql.
 // ─────────────────────────────────────────────────────────────────────
-export type ProjectTeam = RndTeam | 'npd';
+export type ProjectTeam = 'ruminant' | 'poultry' | 'swine' | 'latam' | 'other' | 'npd';
 export type ProjectStage = 'planning' | 'in_progress' | 'review' | 'completed';
 
 export const PROJECT_TEAMS: { id: ProjectTeam; label: string; color: string; textColor: string }[] = [
@@ -642,4 +648,21 @@ export function getActivitiesForContact(contactId: string): Activity[] {
 export function getLastActivityDate(accountId: string): string | null {
   const acts = getActivitiesForAccount(accountId);
   return acts.length > 0 ? acts[0].date : null;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// Budget Tracker — dynamic team labels.
+//
+// Mirrors the `budget_teams` table. id is the slug used in
+// rnd_budgets.team / rnd_expenses.team. label is the display name.
+// color is a #RRGGBB chosen by the user. is_system is true only for
+// the protected 'other' fallback row.
+// ─────────────────────────────────────────────────────────────────────
+export interface BudgetTeam {
+  id: string;
+  label: string;
+  color: string;
+  sortOrder?: number;
+  isSystem?: boolean;
 }

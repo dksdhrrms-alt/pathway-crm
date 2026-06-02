@@ -18,13 +18,15 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import type { RndExpense, RndTeam, RndCategory } from '@/lib/data';
-import { generateId, RND_TEAMS } from '@/lib/data';
+import { generateId } from '@/lib/data';
+import type { BudgetTeam } from '@/lib/data';
 import { dbCreateRndExpense, dbUpdateRndExpense, dbDeleteRndExpense } from '@/lib/db';
 import SubmitButton from './SubmitButton';
 
 const MONTH_LABELS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 interface Props {
+  teams: BudgetTeam[];
   /** When set, edit that expense. When null/undefined and `defaultYear`/`defaultMonth` are set, create new. */
   editing?: RndExpense | null;
   defaultYear: number;
@@ -42,7 +44,7 @@ interface Props {
   onChanged: () => void;
 }
 
-export default function RndExpenseModal({ editing, defaultYear, defaultMonth, defaultTeam, category, yearOptions, onClose, onChanged }: Props) {
+export default function RndExpenseModal({ editing, defaultYear, defaultMonth, defaultTeam, category, yearOptions, teams, onClose, onChanged }: Props) {
   const { data: session } = useSession();
   const [name, setName] = useState(editing?.name ?? '');
   const [description, setDescription] = useState(editing?.description ?? '');
@@ -179,7 +181,7 @@ export default function RndExpenseModal({ editing, defaultYear, defaultMonth, de
               onChange={(e) => setTeam(e.target.value as RndTeam)}
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              {RND_TEAMS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              {teams.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">This expense counts against the selected team&apos;s annual budget.</p>
           </div>
