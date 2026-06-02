@@ -544,7 +544,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h2>
-                <span className="text-xs text-gray-400 dark:text-gray-500">Click to open account</span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">Click to open</span>
               </div>
               {recentActivities.length === 0 ? (
                 <EmptyState
@@ -575,10 +575,19 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     );
+                    // Prefer the account link (most actionable — the account page
+                    // shows everything: contacts, opps, activities). Fall back to
+                    // the contact link when the activity only carries a contact
+                    // (e.g. BCC emails to a person whose Contact lacks an Account).
+                    const linkHref = act.accountId
+                      ? `/accounts/${act.accountId}`
+                      : act.contactId
+                        ? `/contacts/${act.contactId}`
+                        : null;
                     return (
                       <li key={act.id} className="border-b border-gray-50 dark:border-slate-800 last:border-0">
-                        {act.accountId ? (
-                          <Link href={`/accounts/${act.accountId}`} className="block">{row}</Link>
+                        {linkHref ? (
+                          <Link href={linkHref} className="block">{row}</Link>
                         ) : row}
                       </li>
                     );
