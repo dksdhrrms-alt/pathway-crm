@@ -321,6 +321,13 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
         { id: 'marketing', teamFilter: 'marketing', label: 'Marketing' },
         { id: 'management', teamFilter: 'management', label: 'Management' },
       ];
+      // "Next week" column should only show tasks the user still needs to do
+      // — open tasks with a due date strictly after toIso (today). Tasks due
+      // on/before toIso are either already overdue or "this week", not
+      // "next week", and were noisily polluting the column before this fix.
+      const isNextWeekTask = (t: { status: string; dueDate?: string }) =>
+        t.status !== 'Completed' && (!t.dueDate || t.dueDate > toIso);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const weekSummaries: Record<string, { teamName: string; activities: any[]; tasks: any[]; opportunities: any[] }> = {};
       teamDefs.forEach(({ id, teamFilter: tf, label }) => {
@@ -333,7 +340,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
         weekSummaries[id] = {
           teamName: label,
           activities: allActivities.filter((a) => memberIds.has(a.ownerId)).filter((a) => a.date >= fromIso && a.date <= toIso).map(enrichA),
-          tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && t.status !== 'Completed').map(enrichT),
+          tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && isNextWeekTask(t)).map(enrichT),
           opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost').map(enrichO),
         };
       });
@@ -350,7 +357,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           .filter((a) => a.date >= fromIso && a.date <= toIso)
           .map(enrichA),
         tasks: allTasks
-          .filter((t) => t.relatedAccountId && distributorAccountIds.has(t.relatedAccountId) && t.status !== 'Completed')
+          .filter((t) => t.relatedAccountId && distributorAccountIds.has(t.relatedAccountId) && isNextWeekTask(t))
           .map(enrichT),
         opportunities: [],
       };
