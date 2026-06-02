@@ -514,7 +514,7 @@ export default function AccountsPage() {
                                   ) : (
                                     <span className="text-blue-300 text-xs" title="Complex">↳</span>
                                   )}
-                                  <Link href={`/accounts/${acct.id}`} className="font-medium hover:underline" style={{ color: depth > 0 ? '#2d6a4f' : '#1a4731' }}>{acct.name}</Link>
+                                  <Link href={`/accounts/${acct.id}`} className={`font-medium hover:underline ${depth > 0 ? 'text-[#2d6a4f] dark:text-emerald-300' : 'text-[#1a4731] dark:text-white'}`}>{acct.name}</Link>
                                   {childCount > 0 && (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium" title={`${childCount} child account${childCount > 1 ? 's' : ''}`}>
                                       +{childCount}
