@@ -815,6 +815,25 @@ export async function POST(request: Request) {
 
   try {
     const { teamSummaries, reportType } = await request.json();
+    // Server-side safety net for the "Next week" task column: drop tasks
+    // whose dueDate already passed (or is today). Mirrors the client-side
+    // filter in app/reports/page.tsx — re-applied here so a stale client
+    // bundle can't leak overdue tasks into the Word doc.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _todayIso = new Date().toISOString().split('T')[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _isNextWeekTask = (t: any) => t && (t.status !== 'Completed') && (!t.dueDate || String(t.dueDate) > _todayIso);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _filteredTeamSummaries: any = (() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const out: any = {};
+      for (const [k, v] of Object.entries(teamSummaries || {})) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const t = v as any;
+        out[k] = { ...t, tasks: (t?.tasks || []).filter(_isNextWeekTask) };
+      }
+      return out;
+    })();
 
     // ── Fetch sales + budgets from Supabase ──
     const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -841,13 +860,13 @@ export async function POST(request: Request) {
 
     // ── Team-specific reports ──
     if (reportType === 'monogastrics') {
-      return generateMonogastricReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+      return generateMonogastricReport(records, budgets, _filteredTeamSummaries, now, months, curMonth, curYear);
     }
     if (reportType === 'ruminants') {
-      return generateRuminantReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+      return generateRuminantReport(records, budgets, _filteredTeamSummaries, now, months, curMonth, curYear);
     }
     if (reportType === 'latam') {
-      return generateLATAMReport(records, budgets, teamSummaries, now, months, curMonth, curYear);
+      return generateLATAMReport(records, budgets, _filteredTeamSummaries, now, months, curMonth, curYear);
     }
 
     // ── Sales helpers ──
