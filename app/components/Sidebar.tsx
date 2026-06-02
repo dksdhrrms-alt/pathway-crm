@@ -195,26 +195,14 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <div className="flex flex-col h-screen" style={{ backgroundColor: PRIMARY_COLOR }}>
-      {/* Logo / Brand — clicking returns to the dashboard. The whole row
-          is a single Link target (logo + wordmark) so it's a generous
-          click area at the top-left without any visible "Home" label. */}
+      {/* Logo / Brand — clicking the wordmark returns to the dashboard. */}
       <Link
         href="/dashboard"
         onClick={() => setMobileOpen(false)}
-        className="px-4 py-5 border-b border-white/10 flex items-center justify-center gap-3 hover:bg-white/5 transition-colors"
+        className="px-4 py-5 border-b border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors"
         aria-label="Pathway Intermediates USA — go to Home"
         title="Go to Home"
       >
-        {/* P + i mark from public/pathway-logo.svg. */}
-        <img
-          src="/pathway-logo.svg"
-          alt=""
-          aria-hidden="true"
-          width={36}
-          height={48}
-          className="flex-shrink-0 object-contain"
-          style={{ objectPosition: 'left center', height: 48, width: 36 }}
-        />
         <div className="text-center">
           <span className="text-white font-bold text-base block" style={{ letterSpacing: '-0.3px', lineHeight: '1.2' }}>Pathway</span>
           <span className="text-white font-bold text-base block" style={{ letterSpacing: '-0.3px', lineHeight: '1.2' }}>Intermediates</span>
