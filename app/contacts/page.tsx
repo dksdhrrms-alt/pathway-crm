@@ -422,7 +422,7 @@ function ContactsPageInner() {
                           switch (col.id) {
                             case 'name': return (
                               <td key={col.id} className="px-4 py-3">
-                                <Link href={`/contacts/${contact.id}`} className="font-semibold hover:underline" style={{ color: '#1a4731' }}>
+                                <Link href={`/contacts/${contact.id}`} className="font-semibold hover:underline text-[#1a4731] dark:text-white">
                                   {contact.firstName} {contact.lastName}
                                 </Link>
                               </td>
@@ -443,7 +443,7 @@ function ContactsPageInner() {
                             case 'company': return (
                               <td key={col.id} className="px-4 py-3">
                                 {account ? (
-                                  <Link href={`/accounts/${account.id}`} className="text-sm hover:underline dark:text-green-400" style={{ color: '#2d6a4f' }}>{account.name}</Link>
+                                  <Link href={`/accounts/${account.id}`} className="text-sm hover:underline text-[#2d6a4f] dark:text-emerald-300">{account.name}</Link>
                                 ) : contact.accountName ? (
                                   <span className="text-gray-500 dark:text-gray-400 text-sm">{contact.accountName}</span>
                                 ) : <span className="text-gray-400 dark:text-gray-500">—</span>}

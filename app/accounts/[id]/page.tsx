@@ -181,7 +181,7 @@ export default function AccountDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">Account not found.</p>
-          <Link href="/accounts" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
+          <Link href="/accounts" className="mt-4 inline-block text-sm underline text-[#1a4731] dark:text-white">
             Back to Accounts
           </Link>
         </div>
@@ -204,7 +204,7 @@ export default function AccountDetailPage() {
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-3">
-            <Link href="/accounts" className="text-sm hover:underline" style={{ color: '#2d6a4f' }}>
+            <Link href="/accounts" className="text-sm hover:underline text-[#2d6a4f] dark:text-emerald-300">
               ← Accounts
             </Link>
           </div>
@@ -562,7 +562,7 @@ export default function AccountDetailPage() {
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px' }}>
-                              <Link href={`/accounts/${c.id}`} style={{ color: '#1a4731', fontWeight: 500, textDecoration: 'none' }}>{c.name}</Link>
+                              <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-[#1a4731] dark:text-white">{c.name}</Link>
                               <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
                                 {c.industry || '—'}
                                 {c.country ? ` · ${c.country}` : ''}

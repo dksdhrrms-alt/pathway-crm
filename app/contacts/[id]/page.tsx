@@ -71,7 +71,7 @@ export default function ContactDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 text-lg">Contact not found.</p>
-          <Link href="/contacts" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
+          <Link href="/contacts" className="mt-4 inline-block text-sm underline text-[#1a4731] dark:text-white">
             Back to Contacts
           </Link>
         </div>
@@ -90,7 +90,7 @@ export default function ContactDetailPage() {
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-1">
-            <Link href="/contacts" className="text-sm hover:underline" style={{ color: '#2d6a4f' }}>
+            <Link href="/contacts" className="text-sm hover:underline text-[#2d6a4f] dark:text-emerald-300">
               ← Contacts
             </Link>
           </div>
@@ -126,7 +126,7 @@ export default function ContactDetailPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mt-2">
                     {account && (
-                      <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline" style={{ color: '#2d6a4f' }}>
+                      <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline text-[#2d6a4f] dark:text-emerald-300">
                         {account.name}
                       </Link>
                     )}
