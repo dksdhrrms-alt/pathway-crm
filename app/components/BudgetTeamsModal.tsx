@@ -32,6 +32,29 @@ function slugify(label: string): string {
     .slice(0, 40) || 'team';
 }
 
+/**
+ * Pull a readable message out of whatever the supabase-js client throws.
+ * Supabase errors are plain objects ({ message, code, details, hint }),
+ * not Error instances, so `err.message` is reachable but `instanceof
+ * Error` is false and `String(err)` collapses to "[object Object]".
+ */
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const e = err as any;
+    const parts = [
+      e.message ? String(e.message) : '',
+      e.details ? ` — ${e.details}` : '',
+      e.hint    ? ` (hint: ${e.hint})` : '',
+      e.code    ? ` [${e.code}]` : '',
+    ];
+    const msg = parts.join('').trim();
+    if (msg) return msg;
+  }
+  return String(err);
+}
+
 export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
   const [teams, setTeams] = useState<BudgetTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +76,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
       const list = await dbListBudgetTeams();
       setTeams(list);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
     } finally {
       setLoading(false);
     }
@@ -84,7 +107,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
       await load();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +129,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
       await load();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +151,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
       await load();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
     } finally {
       setSubmitting(false);
     }

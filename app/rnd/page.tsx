@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { RndBudget, RndExpense, RndTeam, RndCategory } from '@/lib/data';
 import { RND_CATEGORIES } from '@/lib/data';
 import type { BudgetTeam } from '@/lib/data';
-import { dbGetRndBudgets, dbGetRndExpenses, dbListBudgetTeams } from '@/lib/db';
+import { dbGetRndBudgets, dbGetRndExpenses, dbListBudgetTeams, dbCreateBudgetTeam, dbDeleteBudgetTeam } from '@/lib/db';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import RndExpenseModal from '@/app/components/RndExpenseModal';
@@ -187,6 +187,75 @@ export default function RndPage() {
     });
   }
 
+  // Inline "Add team" form state on the breakdown table.
+  const [inlineLabel, setInlineLabel] = useState('');
+  const [inlineColor, setInlineColor] = useState('#3B82F6');
+  const [inlineBusy, setInlineBusy] = useState(false);
+
+  function describeErr(err: unknown): string {
+    if (err instanceof Error) return err.message;
+    if (err && typeof err === 'object') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const e = err as any;
+      const msg = [
+        e.message ? String(e.message) : '',
+        e.details ? ` — ${e.details}` : '',
+        e.hint    ? ` (hint: ${e.hint})` : '',
+        e.code    ? ` [${e.code}]` : '',
+      ].join('').trim();
+      if (msg) return msg;
+    }
+    return String(err);
+  }
+
+  function slugifyTeam(label: string): string {
+    return label.trim().toLowerCase()
+      .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'team';
+  }
+
+  async function inlineAddTeam(ev: React.FormEvent) {
+    ev.preventDefault();
+    if (!inlineLabel.trim() || inlineBusy) return;
+    setInlineBusy(true);
+    setError(null);
+    try {
+      const base = slugifyTeam(inlineLabel);
+      let id = base; let i = 2;
+      while (teams.some((t) => t.id === id)) { id = `${base}-${i}`; i++; }
+      const nextSort = Math.max(0, ...teams.filter((t) => !t.isSystem).map((t) => t.sortOrder ?? 0)) + 10;
+      await dbCreateBudgetTeam({ id, label: inlineLabel.trim(), color: inlineColor, sortOrder: nextSort, isSystem: false });
+      setInlineLabel(''); setInlineColor('#3B82F6');
+      await reload();
+    } catch (err) {
+      setError(describeErr(err));
+    } finally {
+      setInlineBusy(false);
+    }
+  }
+
+  async function inlineDeleteTeam(t: TeamStat) {
+    const tm = teams.find((x) => x.id === t.team);
+    if (!tm || tm.isSystem) return;
+    const ok = confirm(
+      `Delete team "${t.label}"?\n\n` +
+      `• Budgets set for this team will be removed.\n` +
+      `• Expenses logged under this team will be moved to "Other" so the spend isn't lost.\n\n` +
+      `This cannot be undone.`,
+    );
+    if (!ok) return;
+    setError(null);
+    try {
+      await dbDeleteBudgetTeam(t.team, 'other');
+      // If this team was the active filter, drop back to "All teams".
+      if (selectedTeam === t.team) setSelectedTeam(null);
+      await reload();
+    } catch (err) {
+      setError(describeErr(err));
+    }
+  }
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -329,16 +398,59 @@ export default function RndPage() {
                           <span className="text-xs tabular-nums text-gray-600 dark:text-gray-300 w-10 text-right">{t.budget > 0 ? `${t.usedPct.toFixed(0)}%` : '—'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button
                           onClick={() => setBudgetModal({ team: t.team })}
                           className="text-xs px-2 py-0.5 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
                           {t.budget > 0 ? 'Edit' : 'Set'}
                         </button>
+                        {(() => {
+                          const tm = teams.find((x) => x.id === t.team);
+                          if (!tm || tm.isSystem) return null;
+                          return (
+                            <button
+                              onClick={() => inlineDeleteTeam(t)}
+                              className="ml-1 text-xs p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                              title={`Delete team "${t.label}"`}
+                              aria-label={`Delete team ${t.label}`}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}
+                  <tr className="bg-gray-50/60 dark:bg-slate-800/30">
+                    <td className="px-4 py-2" colSpan={6}>
+                      <form onSubmit={inlineAddTeam} className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={inlineColor}
+                          onChange={(e) => setInlineColor(e.target.value)}
+                          className="w-7 h-7 rounded border border-gray-300 dark:border-slate-600 bg-transparent cursor-pointer flex-shrink-0"
+                          title="Pick a color"
+                        />
+                        <input
+                          type="text"
+                          value={inlineLabel}
+                          onChange={(e) => setInlineLabel(e.target.value)}
+                          placeholder="Add a new team (e.g. Aquaculture)"
+                          className="flex-1 text-sm border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!inlineLabel.trim() || inlineBusy}
+                          className="text-xs px-3 py-1 bg-green-700 hover:bg-green-800 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {inlineBusy ? 'Adding…' : '+ Add team'}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>

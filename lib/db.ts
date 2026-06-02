@@ -35,6 +35,11 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // R&D expense column — same reason. (Already silently broken for the
   // rnd table soft-delete; explicit mapping makes it deterministic.)
   annualAmount: 'annual_amount', updatedAt: 'updated_at',
+  // Budget Tracker dynamic teams (budget_teams). Without is_system mapping
+  // toSnake() leaves the key camelCase and the insert errors with column
+  // not found — surfaced as [object Object] before the BudgetTeamsModal
+  // unwrapped the Supabase error shape.
+  isSystem: 'is_system',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};
