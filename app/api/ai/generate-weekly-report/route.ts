@@ -166,7 +166,7 @@ async function generateMonogastricReport(
   });
   // Include accounts with budget OR sales, sort by budget first then revenue
   const acctList = Object.values(byAccount)
-    .filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt > 0)
+    .filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt + a.cum > 0)
     .sort((a, b) => { if (b.annBgt !== a.annBgt) return b.annBgt - a.annBgt; return (b.cum || b.prev) - (a.cum || a.prev); });
   const totBudget = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const annBudget = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
@@ -420,7 +420,7 @@ async function generateRuminantReport(
       .reduce((s, b) => s + (Number(b.budget_amount || b.budgetAmount) || 0), 0);
   });
 
-  const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt > 0)
+  const acctList = Object.values(byAccount).filter((a) => a.prev + a.v1 + a.v2 + a.v3 + a.annBgt + a.cum > 0)
     .sort((a, b) => { if (b.annBgt !== a.annBgt) return b.annBgt - a.annBgt; return (b.cum || b.prev) - (a.cum || a.prev); });
   const totBudget = acctList.reduce((s, a) => s + a.bgt, 0) || budgets.filter((b: { year?: number; month?: number; category?: string }) => Number(b.year) === curYear && Number(b.month) === curMonth && b.category === 'ruminants').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const annBdg = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && b.category === 'ruminants').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
