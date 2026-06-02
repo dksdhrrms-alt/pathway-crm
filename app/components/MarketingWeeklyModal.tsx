@@ -1,53 +1,98 @@
 'use client';
 
 /**
- * AI Marketing Report — Week-ending picker + Focus/Activities inputs.
+ * AI Marketing Report — Week-ending picker + Activities inputs.
  *
  * Generates the "R&D Weekly Report" Word document that mirrors the legacy
- * template (R&D Weekly Report_<date>.docx) used by the Marketing team
- * for their Friday sync. The Spending table inside the report is auto-
- * populated by the server from rnd_budgets/rnd_expenses — the user only
- * fills in Focus + Activities here.
+ * template used by the Marketing team for their Friday sync.
  *
- * Posts to /api/reports/marketing-weekly which streams back a docx blob.
+ * What this modal asks the user for:
+ *   - Week-ending date  → defaults to upcoming Friday
+ *   - Activities table  → 6 fixed rows × 3 columns
+ *                         (auto-prefilled from the previous report stored
+ *                          in localStorage so the user mostly edits)
+ *
+ * What's automatic (no user input):
+ *   - Spending table   → server fetches rnd_budgets/rnd_expenses
+ *   - Author name      → from next-auth session
+ *   - This-Month-Focus → left blank in the Word doc (user fills by hand)
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import SubmitButton from './SubmitButton';
 
 interface Props {
   onClose: () => void;
 }
 
-// Section labels are fixed to match the source template — the dynamic
-// budget_teams list only drives the Spending table.
-const FOCUS_TEAMS = ['Poultry', 'Ruminant', 'LATAM', 'R&D (New Product Development)'];
+// Section labels are fixed to match the source template.
 const ACTIVITY_TEAMS = ['Poultry', 'Ruminant', 'LATAM', 'R&D', 'Others', 'Travel'];
 
+type ActivitiesMap = Record<string, { completed: string; ongoing: string; plan: string }>;
+
+const STORAGE_KEY = 'marketing-weekly-activities-v1';
+
+function emptyActivities(): ActivitiesMap {
+  const o: ActivitiesMap = {};
+  for (const t of ACTIVITY_TEAMS) o[t] = { completed: '', ongoing: '', plan: '' };
+  return o;
+}
+
+function loadSavedActivities(): ActivitiesMap {
+  if (typeof window === 'undefined') return emptyActivities();
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return emptyActivities();
+    const parsed = JSON.parse(raw) as ActivitiesMap;
+    // Merge so newly-added teams (or schema bumps) don't crash.
+    const merged = emptyActivities();
+    for (const t of ACTIVITY_TEAMS) {
+      if (parsed[t]) merged[t] = { ...merged[t], ...parsed[t] };
+    }
+    return merged;
+  } catch {
+    return emptyActivities();
+  }
+}
+
 function nextFriday(today = new Date()): string {
-  // Default to upcoming Friday so the modal opens with a sensible date.
   const d = new Date(today);
-  const day = d.getDay();                       // 0=Sun..6=Sat
+  const day = d.getDay();
   const delta = (5 - day + 7) % 7 || 7;
   d.setDate(d.getDate() + delta);
   return d.toISOString().slice(0, 10);
 }
 
 export default function MarketingWeeklyModal({ onClose }: Props) {
+  const { data: session } = useSession();
+  const authorName = session?.user?.name ?? '';
+
   const [weekEnding, setWeekEnding] = useState<string>(nextFriday());
-  const [focusByTeam, setFocusByTeam] = useState<Record<string, string>>({});
-  const [activitiesByTeam, setActivitiesByTeam] = useState<Record<string, { completed: string; ongoing: string; plan: string }>>({});
+  // Lazy init pulls the previous activity content from localStorage so
+  // the user opens the modal already prefilled with last week's text.
+  const [activitiesByTeam, setActivitiesByTeam] = useState<ActivitiesMap>(() => loadSavedActivities());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function setFocus(team: string, text: string) {
-    setFocusByTeam((prev) => ({ ...prev, [team]: text }));
-  }
+  // Detect whether we actually prefilled anything so we can show a small
+  // banner — "Pulled in from your previous report" — and a Reset button.
+  const hasPrefill = useMemo(() => {
+    return Object.values(activitiesByTeam).some((row) =>
+      (row.completed || row.ongoing || row.plan || '').trim().length > 0,
+    );
+  }, [activitiesByTeam]);
+
   function setActivity(team: string, col: 'completed' | 'ongoing' | 'plan', text: string) {
     setActivitiesByTeam((prev) => ({
       ...prev,
       [team]: { ...(prev[team] || { completed: '', ongoing: '', plan: '' }), [col]: text },
     }));
+  }
+
+  function resetActivities() {
+    if (!confirm('Clear all activity fields? You will lose the prefilled content.')) return;
+    setActivitiesByTeam(emptyActivities());
   }
 
   const filename = useMemo(
@@ -63,7 +108,13 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
       const res = await fetch('/api/reports/marketing-weekly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weekEndingDate: weekEnding, focusByTeam, activitiesByTeam }),
+        body: JSON.stringify({
+          weekEndingDate: weekEnding,
+          authorName,
+          // Focus section is intentionally NOT sent — the server leaves
+          // that table's content cell blank for the user to fill in.
+          activitiesByTeam,
+        }),
       });
       if (!res.ok) {
         const text = await res.text().catch(() => res.statusText);
@@ -78,6 +129,10 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      // Save the just-submitted activities as the new "previous report"
+      // — the next time the modal opens it will prefill from here.
+      try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(activitiesByTeam)); }
+      catch { /* private mode etc. — fine */ }
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -86,6 +141,13 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
       setSubmitting(false);
     }
   }
+
+  // Save on every keystroke too (debounced via React's batching) so the
+  // user doesn't lose work if they close the modal without generating.
+  useEffect(() => {
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(activitiesByTeam)); }
+    catch { /* */ }
+  }, [activitiesByTeam]);
 
   return (
     <div
@@ -117,33 +179,30 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
               onChange={(e) => setWeekEnding(e.target.value)}
               className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
             />
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Defaults to upcoming Friday. The Spending table pulls the year from this date.</p>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+              Defaults to upcoming Friday. The Spending table pulls the year/quarter from this date.
+              {authorName && <span className="ml-1">Author header will read: <strong>{authorName}</strong>.</span>}
+            </p>
           </div>
-
-          {/* This Month's Focus */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">This Month&apos;s Focus Activities, Goals and Progress</h3>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">One bullet per line. Each team becomes a top-level bullet in the report.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {FOCUS_TEAMS.map((team) => (
-                <div key={team}>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{team}</label>
-                  <textarea
-                    value={focusByTeam[team] || ''}
-                    onChange={(e) => setFocus(team, e.target.value)}
-                    rows={4}
-                    placeholder={`e.g. ISU layer trial (Lipidol Prime, Endo-Power, NuFex)\nUGA broiler trial (Lipidol Prime)`}
-                    className="w-full text-sm border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
 
           {/* Activities grid */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Activities</h3>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">One bullet per line in each cell. Empty cells stay empty in the Word doc.</p>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Activities</h3>
+              {hasPrefill && (
+                <button
+                  type="button"
+                  onClick={resetActivities}
+                  className="text-[11px] text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 underline"
+                >
+                  Reset all
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+              One bullet per line in each cell. Empty cells stay empty in the Word doc.
+              {hasPrefill && <span className="ml-1 text-green-700 dark:text-green-400">Prefilled from your previous report — edit in place.</span>}
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-xs">
                 <thead className="bg-gray-50 dark:bg-slate-800/50">
@@ -165,7 +224,7 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
                             <textarea
                               value={row[col]}
                               onChange={(e) => setActivity(team, col, e.target.value)}
-                              rows={3}
+                              rows={4}
                               className="w-full text-xs border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-green-500 resize-y"
                             />
                           </td>
