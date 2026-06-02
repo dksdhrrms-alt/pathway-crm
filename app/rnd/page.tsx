@@ -35,6 +35,7 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import RndExpenseModal from '@/app/components/RndExpenseModal';
 import RndBudgetModal from '@/app/components/RndBudgetModal';
 import BudgetTeamsModal from '@/app/components/BudgetTeamsModal';
+import MarketingWeeklyModal from '@/app/components/MarketingWeeklyModal';
 
 const MONTH_LABELS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -84,6 +85,7 @@ export default function RndPage() {
   // Dynamic team list — sourced from the budget_teams table.
   const [teams, setTeams] = useState<BudgetTeam[]>([]);
   const [showManageTeams, setShowManageTeams] = useState(false);
+  const [showMarketingReport, setShowMarketingReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -292,13 +294,27 @@ export default function RndPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Annual budget tracker — per team</p>
               </div>
             </div>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <div className="flex items-center gap-2">
+              {selectedCategory === 'rnd' && (
+                <button
+                  onClick={() => setShowMarketingReport(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+                  title="Generate R&D Weekly Report (.docx)"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  AI Marketing Report
+                </button>
+              )}
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
           </div>
 
           {/* R&D / Event toggle.
@@ -617,6 +633,11 @@ export default function RndPage() {
         <BudgetTeamsModal
           onClose={() => setShowManageTeams(false)}
           onChanged={reload}
+        />
+      )}
+      {showMarketingReport && (
+        <MarketingWeeklyModal
+          onClose={() => setShowMarketingReport(false)}
         />
       )}
     </div>
