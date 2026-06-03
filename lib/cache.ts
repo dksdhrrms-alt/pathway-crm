@@ -84,6 +84,8 @@ export const CACHE_KEYS = {
   activities: 'activities',
   saleRecords: 'sale-records',
   uploadHistory: 'upload-history',
-  users: 'users',
+  // Bumped to v2 when lastLoginAt was added — invalidates pre-existing
+  // localStorage caches that lack the field.
+  users: 'users-v2',
   accountBudgets: 'account-budgets',
 } as const;
