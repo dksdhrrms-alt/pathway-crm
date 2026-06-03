@@ -16,6 +16,10 @@ const ROLE_DEFAULTS: Record<string, Set<string>> = {
   sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard']),
   sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects']),
   marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights']),
+  // Technical Manager — same surface as marketing (R&D + Reports +
+  // Insights) plus full CRM access. Not granted /admin or sales_dashboard
+  // by default; can still be unlocked per-user via user_permissions.
+  technical_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights']),
 };
 
 const FULL_ACCESS = ['admin', 'administrative_manager', 'ceo'];
