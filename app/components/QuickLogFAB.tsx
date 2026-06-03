@@ -143,11 +143,15 @@ export default function QuickLogFAB() {
 
   return (
     <>
-      {/* FAB Button */}
+      {/* FAB Button — z-index intentionally BELOW modal backdrops (z-50)
+          so opening any other modal (ProjectModal, RndExpenseModal, …)
+          auto-hides this FAB instead of layering it on top of the modal's
+          Cancel/Save buttons. On mobile this was the cause of the green
+          "+" pill overlapping modal action rows. */}
       <button
         onClick={() => setIsOpen(true)}
         style={{
-          position: 'fixed', bottom: '28px', right: '28px', zIndex: 9999,
+          position: 'fixed', bottom: '28px', right: '28px', zIndex: 40,
           width: '56px', height: '56px', borderRadius: '50%',
           background: '#1a4731', color: 'white', border: 'none',
           cursor: 'pointer', fontSize: '30px', fontWeight: 300,
