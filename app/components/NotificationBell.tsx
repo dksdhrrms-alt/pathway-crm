@@ -8,7 +8,7 @@ import { getRecentCommentsOnActivities, type Comment } from '@/lib/comments';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect' | 'new_comment';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect' | 'new_comment' | 'stalled_deal';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -18,7 +18,7 @@ interface Notification {
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
 const PRIORITY_BG_DARK: Record<string, string> = { high: 'rgba(220, 38, 38, 0.15)', medium: 'rgba(245, 158, 11, 0.15)', low: 'rgba(37, 99, 235, 0.15)' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6', new_comment: '\uD83D\uDCAC' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6', new_comment: '\uD83D\uDCAC', stalled_deal: '\uD83D\uDEA9' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -106,6 +106,30 @@ export default function NotificationBell() {
           priority: days <= 2 ? 'high' : 'medium',
           title: 'Deal Closing Soon',
           body: `"${o.name}" closes ${days === 0 ? 'today' : `in ${days}d`} · $${Number(o.amount).toLocaleString()}`,
+          link: `/opportunities/${o.id}`,
+        });
+      });
+
+    // 2b. Stalled deals — past their closeDate, still open. Surfaces opps
+    //     the user forgot to either re-quote, push to Won, or close-Lost.
+    //     Owner-scoped for non-admins; admins see everyone's so they can
+    //     coach. We cap at 5 to keep the bell list focused.
+    opps
+      .filter((o) => o.closeDate && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost')
+      .filter((o) => {
+        const days = Math.floor((todayMs - new Date(o.closeDate + 'T00:00:00').getTime()) / 86400000);
+        return days >= 14;  // 14+ days past closeDate
+      })
+      .slice(0, 5)
+      .forEach((o) => {
+        const id = `stalled_deal_${o.id}`;
+        if (dismissed.has(id)) return;
+        const days = Math.floor((todayMs - new Date(o.closeDate + 'T00:00:00').getTime()) / 86400000);
+        result.push({
+          id, type: 'stalled_deal',
+          priority: days >= 60 ? 'high' : 'medium',
+          title: 'Stalled Deal',
+          body: `"${o.name}" — ${days}d past close · stage: ${o.stage}`,
           link: `/opportunities/${o.id}`,
         });
       });

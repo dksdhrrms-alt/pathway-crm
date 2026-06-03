@@ -378,8 +378,7 @@ export default function OpportunitiesPage() {
                                       </div>
                                       <Link
                                         href={`/opportunities/${opp.id}`}
-                                        className="text-xs font-medium hover:underline line-clamp-2 leading-tight"
-                                        style={{ color: '#1a4731' }}
+                                        className="text-xs font-medium hover:underline line-clamp-2 leading-tight text-[#1a4731] dark:text-white"
                                         onClick={(e) => dragSnapshot.isDragging && e.preventDefault()}
                                       >
                                         {opp.name}
@@ -468,8 +467,7 @@ export default function OpportunitiesPage() {
                         <td className="px-5 py-3.5">
                           <Link
                             href={`/opportunities/${opp.id}`}
-                            className="font-medium hover:underline"
-                            style={{ color: '#1a4731' }}
+                            className="font-medium hover:underline text-[#1a4731] dark:text-white"
                           >
                             {opp.name}
                           </Link>
@@ -477,8 +475,7 @@ export default function OpportunitiesPage() {
                         <td className="px-5 py-3.5">
                           <Link
                             href={`/accounts/${opp.accountId}`}
-                            className="text-gray-600 hover:underline"
-                            style={{ color: '#2d6a4f' }}
+                            className="text-gray-600 hover:underline text-[#2d6a4f] dark:text-emerald-300"
                           >
                             {accountName}
                           </Link>

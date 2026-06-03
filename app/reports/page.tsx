@@ -890,7 +890,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                     <span className="text-xs ml-4 text-gray-600">Activities: {t.total}</span>
                     <span className="text-xs ml-3 text-gray-600">Tasks: {t.taskCount}</span>
                     <span className="text-xs ml-3 text-gray-600">Opps: {t.oppCount}</span>
-                    <span className="text-xs ml-3 font-medium" style={{ color: '#1a4731' }}>Pipeline: ${(t.openPipeline / 1000).toFixed(0)}K</span>
+                    <span className="text-xs ml-3 font-medium text-[#1a4731] dark:text-emerald-300">Pipeline: ${(t.openPipeline / 1000).toFixed(0)}K</span>
                   </div>
 
                   {/* Members */}

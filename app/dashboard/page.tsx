@@ -264,7 +264,7 @@ export default function DashboardPage() {
               <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-1">{currentTimeLabel.date}</p>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 {currentTimeLabel.greeting},{' '}
-                <span style={{ color: '#1a4731' }}>{userName.split(' ')[0] || 'there'}</span>
+                <span className="text-[#1a4731] dark:text-emerald-300">{userName.split(' ')[0] || 'there'}</span>
                 <span className="text-gray-400">.</span>
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -430,7 +430,7 @@ export default function DashboardPage() {
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">💼 My Deals</h2>
                   <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Pipeline snapshot</p>
                 </div>
-                <Link href="/opportunities" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
+                <Link href="/opportunities" className="text-xs font-medium hover:underline text-[#1a4731] dark:text-emerald-300">View all →</Link>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-gray-50 dark:divide-slate-800">
                 <div className="p-5">
@@ -440,7 +440,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-5">
                   <p className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pipeline Value</p>
-                  <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCompact(pipelineValue)}</p>
+                  <p className="text-2xl font-bold mt-1 text-[#1a4731] dark:text-white">{formatCompact(pipelineValue)}</p>
                   <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">Sum of open</p>
                 </div>
                 <div className="p-5">
@@ -522,7 +522,7 @@ export default function DashboardPage() {
                         <td className="text-center px-2 py-3 text-gray-500 dark:text-gray-400">{entry.notes || '-'}</td>
                         <td className="text-center px-2 py-3 text-amber-600 dark:text-amber-400 font-medium">{entry.tasksCompleted || '-'}</td>
                         <td className="text-center px-2 py-3 text-teal-600 dark:text-teal-400 font-medium">{entry.oppsWon || '-'}</td>
-                        <td className="text-right px-3 py-3 font-bold" style={{ color: '#1a4731' }}>{entry.points}</td>
+                        <td className="text-right px-3 py-3 font-bold text-[#1a4731] dark:text-white">{entry.points}</td>
                         <td className="text-right px-3 py-3">
                           {trend !== null ? (
                             <span className={`text-xs font-medium ${trend >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{trend >= 0 ? '↑' : '↓'}{Math.abs(trend)}%</span>
@@ -569,7 +569,7 @@ export default function DashboardPage() {
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             {contactName && <span>{contactName}</span>}
                             {contactName && accountName && <span className="text-gray-300 dark:text-gray-600"> · </span>}
-                            {accountName && <span style={{ color: '#1a4731' }} className="font-medium">{accountName}</span>}
+                            {accountName && <span className="font-medium text-[#1a4731] dark:text-emerald-300">{accountName}</span>}
                           </p>
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{act.description}</p>
                         </div>
@@ -600,7 +600,7 @@ export default function DashboardPage() {
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">My Tasks</h2>
-                <Link href="/tasks" className="text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>View all →</Link>
+                <Link href="/tasks" className="text-xs font-medium hover:underline text-[#1a4731] dark:text-emerald-300">View all →</Link>
               </div>
               {taskList.length === 0 ? (
                 <EmptyState
