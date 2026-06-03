@@ -27,6 +27,32 @@ export default function QuickLogFAB() {
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
   const [isOpen, setIsOpen] = useState(false);
+  // When ANY other modal opens (anything with `.fixed.inset-0` that isn't
+  // our own FAB modal), hide the FAB entirely. Pure z-index demotion
+  // wasn't enough in practice — on mobile some modals render their action
+  // row in a way that still visually overlaps the green "+" pill, and on
+  // Safari the inline zIndex sometimes loses to the body-stacking-context
+  // of the modal's parent. Observing the DOM is the unambiguous fix.
+  const [hiddenByOther, setHiddenByOther] = useState(false);
+  useEffect(() => {
+    function check() {
+      // Any element that is positioned fixed inset-0 with z-index ≥ 40 is
+      // assumed to be a modal backdrop. We ignore our own (set below).
+      const candidates = document.querySelectorAll<HTMLElement>('div.fixed.inset-0');
+      let hasOther = false;
+      for (const el of candidates) {
+        if (el.dataset.quicklogFab === '1') continue;
+        // Visible test: an element with `display:none` doesn't count.
+        if (el.offsetParent === null && el.getClientRects().length === 0) continue;
+        hasOther = true; break;
+      }
+      setHiddenByOther(hasOther);
+    }
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+    return () => obs.disconnect();
+  }, []);
   const [type, setType] = useState<ActivityType>('Call');
   const [purpose, setPurpose] = useState('');
   const [subject, setSubject] = useState('');
@@ -143,11 +169,11 @@ export default function QuickLogFAB() {
 
   return (
     <>
-      {/* FAB Button — z-index intentionally BELOW modal backdrops (z-50)
-          so opening any other modal (ProjectModal, RndExpenseModal, …)
-          auto-hides this FAB instead of layering it on top of the modal's
-          Cancel/Save buttons. On mobile this was the cause of the green
-          "+" pill overlapping modal action rows. */}
+      {/* FAB Button — hidden entirely when another modal is open.
+          We watch the DOM via MutationObserver (see useEffect above) and
+          flip a state flag rather than fighting z-index — the latter
+          turned out to be platform-dependent on mobile Safari. */}
+      {!hiddenByOther && (
       <button
         onClick={() => setIsOpen(true)}
         style={{
@@ -162,13 +188,16 @@ export default function QuickLogFAB() {
       >
         +
       </button>
+      )}
 
       {/* Modal */}
       {isOpen && (
         <div
+          data-quicklog-fab="1"
+          className="fixed inset-0"
           onClick={(e) => e.target === e.currentTarget && setIsOpen(false)}
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.4)',
             zIndex: 10000, display: 'flex', alignItems: 'center',
             justifyContent: 'center', padding: '16px',
           }}
