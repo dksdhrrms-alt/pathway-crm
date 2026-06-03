@@ -56,6 +56,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
           if (!pwOk) return null;
 
+          // Stamp last_login_at on every successful sign-in. Fire-and-forget
+          // so a transient DB hiccup doesn't break login itself.
+          sb.from('users')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('id', user.id)
+            .then(({ error: upErr }) => {
+              if (upErr) console.error('[AUTH] last_login_at update failed:', upErr.message);
+            });
+
           return {
             id: user.id,
             name: user.name,

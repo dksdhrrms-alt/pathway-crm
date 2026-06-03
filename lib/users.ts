@@ -21,6 +21,8 @@ export interface AppUser {
   status: UserStatus;
   profilePhoto?: string | null;
   team?: UserTeam;
+  /** ISO timestamp of last successful sign-in. */
+  lastLoginAt?: string | null;
 }
 
 /**

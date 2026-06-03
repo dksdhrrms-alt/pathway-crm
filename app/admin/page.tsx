@@ -82,7 +82,11 @@ export default function AdminPage() {
         const overdueTaskCount = userTasks.filter((t) => t.status === 'Open' && t.dueDate < TODAY).length;
         const sortedActs = [...userActs].sort((a, b) => b.date.localeCompare(a.date));
         const lastActivity = sortedActs.length > 0 ? sortedActs[0].date : null;
-        return { user, openDeals, pipelineValue, openTaskCount, overdueTaskCount, lastActivity };
+        // lastLoginAt: ISO timestamp from users.last_login_at, stamped by auth.ts
+        // on every successful sign-in. May be null for users who haven't logged
+        // in since the column was introduced.
+        const lastLoginAt = (user as { lastLoginAt?: string | null }).lastLoginAt ?? null;
+        return { user, openDeals, pipelineValue, openTaskCount, overdueTaskCount, lastActivity, lastLoginAt };
       }),
     [allUsers, opportunities, tasks, activities]
   );
@@ -368,10 +372,11 @@ export default function AdminPage() {
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Open Tasks</th>
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Overdue</th>
                       <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Activity</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Login</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {repStats.map(({ user, openDeals, pipelineValue, overdueTaskCount, openTaskCount, lastActivity }) => {
+                    {repStats.map(({ user, openDeals, pipelineValue, overdueTaskCount, openTaskCount, lastActivity, lastLoginAt }) => {
                       const isCurrentUser = user.id === currentUserId;
                       return (
                         <tr key={user.id} className={`border-b border-gray-50 dark:border-slate-800 transition-colors ${isCurrentUser ? 'bg-green-50/40 dark:bg-green-900/20' : 'hover:bg-gray-50/60 dark:hover:bg-slate-800/60'}`}>
@@ -416,6 +421,22 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-gray-500 dark:text-gray-400">{formatDate(lastActivity)}</td>
+                          <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                            {lastLoginAt ? (() => {
+                              const d = new Date(lastLoginAt);
+                              const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+                              const dateLabel = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                              const ago = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days}d ago`;
+                              return (
+                                <span title={d.toISOString()}>
+                                  <span className={days >= 30 ? 'text-amber-600 dark:text-amber-400 font-medium' : ''}>{dateLabel}</span>
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-1">({ago})</span>
+                                </span>
+                              );
+                            })() : (
+                              <span className="text-gray-400 dark:text-gray-500 italic">never</span>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
