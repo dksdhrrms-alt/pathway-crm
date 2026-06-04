@@ -278,8 +278,15 @@ export async function GET(request: NextRequest) {
     const topAccounts = [...acctCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id, n]) => `${acctById.get(id) || id} (${n})`);
 
     const filename = `Pathway-${plan.reportType}-Weekly-${toDate}.docx`;
+    const testBanner = testMode
+      ? `
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px;color:#78350f;">
+          <strong>TEST MODE</strong> — This is a dry-run preview. In production this email would have been sent to:
+          <div style="margin-top:6px;font-family:monospace;">${realRecipients.length > 0 ? realRecipients.join(', ') : '<em>(no matching recipients yet)</em>'}</div>
+        </div>` : '';
     const summaryHtml = `
       <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;line-height:1.5;">
+        ${testBanner}
         <h2 style="color:#1a4731;margin-bottom:8px;">${plan.label}</h2>
         <p style="color:#666;margin-top:0;font-size:13px;">Week of ${fromDate} → ${toDate}</p>
         <h3 style="color:#1a4731;margin-bottom:6px;font-size:15px;">This Week at a Glance</h3>
@@ -307,10 +314,11 @@ export async function GET(request: NextRequest) {
 
     // ── Send via Resend ─────────────────────────────────────────────
     if (!apiKey || apiKey.includes('placeholder')) {
-      results.push({ plan: plan.label, ok: true, recipients, bcc: adminEmails, skipped: 'no-resend-api-key (mock)' });
+      results.push({ plan: plan.label, ok: true, recipients, bcc: bccForSend, skipped: 'no-resend-api-key (mock)' });
       continue;
     }
     const base64Docx = Buffer.from(docxBuffer).toString('base64');
+    const subjectLine = `${testMode ? '[TEST] ' : ''}${plan.label} — Week of ${fromDate}`;
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -318,8 +326,8 @@ export async function GET(request: NextRequest) {
         body: JSON.stringify({
           from: `Pathway CRM <${fromOverride}>`,
           to: recipients,
-          bcc: adminEmails.length > 0 ? adminEmails : undefined,
-          subject: `${plan.label} — Week of ${fromDate}`,
+          bcc: bccForSend.length > 0 ? bccForSend : undefined,
+          subject: subjectLine,
           html: summaryHtml,
           text: summaryText,
           attachments: [{ filename, content: base64Docx }],
@@ -327,22 +335,24 @@ export async function GET(request: NextRequest) {
             { name: 'app', value: 'crm' },
             { name: 'type', value: 'weekly-report' },
             { name: 'report', value: plan.reportType },
+            { name: 'mode', value: testMode ? 'test' : 'live' },
           ],
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        results.push({ plan: plan.label, ok: false, recipients, bcc: adminEmails, error: (data as { message?: string }).message || `resend-${res.status}` });
+        results.push({ plan: plan.label, ok: false, recipients, bcc: bccForSend, error: (data as { message?: string }).message || `resend-${res.status}` });
       } else {
-        results.push({ plan: plan.label, ok: true, recipients, bcc: adminEmails, resendId: (data as { id?: string }).id || null });
+        results.push({ plan: plan.label, ok: true, recipients, bcc: bccForSend, resendId: (data as { id?: string }).id || null });
       }
     } catch (err) {
-      results.push({ plan: plan.label, ok: false, recipients, bcc: adminEmails, error: err instanceof Error ? err.message : String(err) });
+      results.push({ plan: plan.label, ok: false, recipients, bcc: bccForSend, error: err instanceof Error ? err.message : String(err) });
     }
   }
 
   return Response.json({
     ok: results.every((r) => r.ok),
+    mode: testMode ? 'test' : 'live',
     week: { from: fromDate, to: toDate },
     adminBcc: adminEmails,
     results,
