@@ -271,6 +271,21 @@ export default function AccountDetailPage() {
                   + Log Activity
                 </button>
                 <button
+                  onClick={() => setShowEmailModal(true)}
+                  disabled={emailRecipients.length === 0}
+                  title={emailRecipients.length === 0 ? 'No contacts with an email address on this account' : 'Send email to a contact on this account'}
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'transparent', color: 'white',
+                    cursor: emailRecipients.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: emailRecipients.length === 0 ? 0.5 : 1,
+                    fontSize: '13px',
+                  }}
+                >
+                  ✉️ Email
+                </button>
+                <button
                   onClick={() => setShowEditModal(true)}
                   style={{
                     padding: '8px 16px', borderRadius: '8px',

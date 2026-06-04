@@ -150,6 +150,15 @@ export default function ContactDetailPage() {
               {/* Quick actions */}
               <div className="flex gap-2">
                 <button
+                  onClick={() => setShowEmailModal(true)}
+                  disabled={!contact.email}
+                  title={!contact.email ? 'This contact has no email address on file' : 'Send email to this contact'}
+                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  Email
+                </button>
+                <button
                   onClick={() => setShowEditModal(true)}
                   className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
                 >
