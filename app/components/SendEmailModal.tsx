@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import SubmitButton from './SubmitButton';
 
 interface Recipient {
@@ -14,17 +15,27 @@ interface SendEmailModalProps {
   onClose: () => void;
   onSent: (subject: string, body: string, recipients: Recipient[]) => void;
   singleRecipient?: boolean;
+  /** Optional account context — attached to the auto-created Activity. */
+  accountId?: string;
 }
 
-export default function SendEmailModal({ recipients, onClose, onSent, singleRecipient = true }: SendEmailModalProps) {
+export default function SendEmailModal({ recipients, onClose, onSent, singleRecipient = true, accountId }: SendEmailModalProps) {
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? '';
+  const userEmail = session?.user?.email ?? '';
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [cc, setCc] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [warning, setWarning] = useState('');
 
   const toLabel = singleRecipient
     ? recipients[0]?.email ?? ''
     : `${recipients.length} contacts selected`;
+  const fromLabel = userEmail ? `${userName} <${userEmail}>` : userName;
+  // Parse CC textarea: split on comma/newline/space, drop blanks.
+  const ccList = cc.split(/[,\n;]/).map((s) => s.trim()).filter(Boolean);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -40,10 +51,13 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: recipients.map((r) => r.email),
+          cc: ccList.length > 0 ? ccList : undefined,
           subject: subject.trim(),
           body: body.trim(),
-          fromName: 'Pathway CRM',
+          fromName: userName || 'Pathway CRM',
           contactName: singleRecipient ? recipients[0]?.name : `${recipients.length} contacts`,
+          contactId: singleRecipient ? recipients[0]?.contactId : undefined,
+          accountId,
         }),
       });
       const data = await res.json();
@@ -52,6 +66,9 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
         setSending(false);
         return;
       }
+      // Surface non-fatal warnings (e.g. "activity log failed") so the
+      // user knows the email went out but the timeline row didn't.
+      if (data.warning) setWarning(String(data.warning));
       onSent(subject.trim(), body.trim(), recipients);
       onClose();
     } catch {
@@ -77,12 +94,36 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
 
         <form onSubmit={handleSend} className="space-y-4">
           <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
+            <input
+              type="text"
+              value={fromLabel}
+              readOnly
+              className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+              Sent as you — recipients reply directly to your inbox.
+            </p>
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
             <input
               type="text"
               value={toLabel}
               readOnly
               className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CC</label>
+            <input
+              type="text"
+              value={cc}
+              onChange={(e) => setCc(e.target.value)}
+              placeholder="comma-separated emails (optional)"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-600"
             />
           </div>
 
@@ -111,6 +152,9 @@ export default function SendEmailModal({ recipients, onClose, onSent, singleReci
 
           {error && (
             <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+          )}
+          {warning && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">Heads up: {warning}</p>
           )}
 
           <div className="flex justify-end gap-3 pt-2">
