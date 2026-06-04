@@ -372,7 +372,7 @@ export default function AdminPage() {
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Open Tasks</th>
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Overdue</th>
                       <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Activity</th>
-                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Login</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide" title="Timestamp of the user's last sign-in event. Active sessions do NOT update this — only a fresh login does. Empty until that user logs in for the first time after this column was added.">Last Login</th>
                     </tr>
                   </thead>
                   <tbody>
