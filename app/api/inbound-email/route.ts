@@ -604,12 +604,32 @@ function extractForwardedRecipients(body: string): string[] {
   // Find every place the body looks like a forwarded-message header
   // block. Multiple forwards can be nested (forward of a forward), so
   // we accept all matches and union their recipients.
-  const markerRegex = /(?:-+\s*(?:Original Message|Forwarded message|Original)\s*-+|^Begin forwarded message:)/gim;
+  //
+  // Marker variants we recognize:
+  //   - Outlook desktop / old Outlook: "----- Original Message -----"
+  //   - Gmail web:                    "----- Forwarded message -----"
+  //   - Apple Mail:                   "Begin forwarded message:"
+  //   - Outlook web / new Outlook:    a line of 10+ underscores (this
+  //     was the missing case that mis-routed Jeff/Poulin Grain into
+  //     Land-O-Lakes via the 30-day fallback)
+  const markerRegex = /(?:-+\s*(?:Original Message|Forwarded message|Original)\s*-+|^Begin forwarded message:|_{10,})/gim;
   const markers: number[] = [];
   let m: RegExpExecArray | null;
   while ((m = markerRegex.exec(body)) !== null) {
     markers.push(m.index);
   }
+
+  // Defense in depth: some clients (Outlook autoforward rules in
+  // particular) drop every separator and just dump the quoted header
+  // block raw. If we see a "From: …\n[Sent|Date]: …" pair anywhere in
+  // the body, treat that position as an implicit marker. The "From +
+  // Sent|Date" combo is specific enough that false positives from
+  // ordinary prose are vanishingly rare.
+  const bareHeaderRegex = /^From:\s+.+\n(?:^Sent:\s+.+\n|^Date:\s+.+\n)/gim;
+  while ((m = bareHeaderRegex.exec(body)) !== null) {
+    markers.push(m.index);
+  }
+
   if (markers.length === 0) return [];
 
   for (const start of markers) {
@@ -786,12 +806,13 @@ async function fetchAndStoreAttachment(
   // reasonable email-archive use; we can regenerate later via a script
   // if anything older is ever needed.
   const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
-  const { data: signed, error: sErr } = await supabase.storage
-    .from('email-attachments').createSignedUrl(objectPath, ONE_YEAR_SECONDS);
-  if (sErr) {
-    console.error('[inbound-email] signed-URL error:', sErr.message);
-    // Fall back to publicUrl — works only if bucket is fully public.
-    const { data: pub } = supabase.storage.from('email-attachments').getPublicUrl(objectPath);
+  const { data: signed, error: signErr } = await supabase
+    .storage
+    .from('email-attachments')
+    .createSignedUrl(safeName, ONE_YEAR_SECONDS);
+  if (signErr) console.error('[inbound-email] signed-url error:', signErr.message);
+  if (!signed?.signedUrl) {
+    const { data: pub } = supabase.storage.from('email-attachments').getPublicUrl(safeName);
     return {
       filename: att.filename || safeName,
       url: pub?.publicUrl || '',
