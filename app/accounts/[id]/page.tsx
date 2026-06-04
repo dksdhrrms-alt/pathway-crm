@@ -731,11 +731,11 @@ export default function AccountDetailPage() {
                               </div>
                               {act.description && (
                                 <div
+                                  className="bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-700"
                                   style={{
-                                    fontSize: '12px', color: '#666', marginTop: '4px',
-                                    lineHeight: '1.6', background: '#fafafa',
+                                    fontSize: '12px', marginTop: '4px',
+                                    lineHeight: '1.6',
                                     padding: '8px 10px', borderRadius: '6px',
-                                    border: '0.5px solid #e5e7eb',
                                   }}
                                 >
                                   <ActivityDescription
