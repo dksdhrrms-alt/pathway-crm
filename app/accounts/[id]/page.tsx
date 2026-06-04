@@ -499,7 +499,7 @@ export default function AccountDetailPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Complexes ({totalChildren})</h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#888' }}>Sorted by pipeline contribution · highest first</p>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#94a3b8' }}>Sorted by pipeline contribution · highest first</p>
                   </div>
                 </div>
 
@@ -508,17 +508,17 @@ export default function AccountDetailPage() {
                   <div style={{ background: '#f0f7ee', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 12px' }}>
                     <div style={{ fontSize: '10px', color: '#047857', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coverage</div>
                     <div style={{ fontSize: '17px', fontWeight: 600, color: '#0F6E56', marginTop: '2px' }}>{coveragePct}%</div>
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>{activeComplexes}/{totalChildren} active in 30d</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>{activeComplexes}/{totalChildren} active in 30d</div>
                   </div>
                   <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pipeline</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pipeline</div>
                     <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</div>
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>{totalOpenDeals} open deal{totalOpenDeals !== 1 ? 's' : ''}</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>{totalOpenDeals} open deal{totalOpenDeals !== 1 ? 's' : ''}</div>
                   </div>
                   <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
-                    <div style={{ fontSize: '10px', color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sales</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sales</div>
                     <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</div>
-                    <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>lifetime · all complexes</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>lifetime · all complexes</div>
                   </div>
                   {topContributor && (
                     <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px' }}>
@@ -531,7 +531,7 @@ export default function AccountDetailPage() {
                     <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 12px' }}>
                       <div style={{ fontSize: '10px', color: '#991b1b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Need Attention</div>
                       <div style={{ fontSize: '17px', fontWeight: 600, color: '#dc2626', marginTop: '2px' }}>{staleCount}</div>
-                      <div style={{ fontSize: '10px', color: '#888', marginTop: '1px' }}>no contact 90d+</div>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>no contact 90d+</div>
                     </div>
                   )}
                 </div>
@@ -540,15 +540,15 @@ export default function AccountDetailPage() {
                   <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Complex</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Owner</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Last Contact</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>30d Acts</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Open Deals</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pipeline</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>% of Pipe</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Sales</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Complex</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Owner</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Last Contact</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>30d Acts</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Open Deals</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pipeline</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>% of Pipe</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Sales</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -563,12 +563,12 @@ export default function AccountDetailPage() {
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px' }}>
                               <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-[#1a4731] dark:text-white">{c.name}</Link>
-                              <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
                                 {c.industry || '—'}
                                 {c.country ? ` · ${c.country}` : ''}
                               </div>
                             </td>
-                            <td style={{ padding: '10px', fontSize: '12px', color: '#444' }}>{c.ownerName || getOwnerName(c.ownerId) || '—'}</td>
+                            <td style={{ padding: '10px', fontSize: '12px', color: '#94a3b8' }}>{c.ownerName || getOwnerName(c.ownerId) || '—'}</td>
                             <td style={{ padding: '10px', fontSize: '12px', color: daysSince > 30 ? '#dc2626' : '#444' }}>{relativeDate(daysSince, lastDateStr)}</td>
                             <td style={{ padding: '10px' }}>
                               <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color }}>{sb.label}</span>
@@ -611,7 +611,7 @@ export default function AccountDetailPage() {
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#0F6E56' }}>{rows.reduce((s, r) => s + r.recentActivityCount, 0) || '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalOpenDeals || '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#888' }}>100%</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>100%</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#374151' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</td>
                       </tr>
                     </tfoot>
@@ -652,7 +652,7 @@ export default function AccountDetailPage() {
                 </div>
 
                 {accountActivities.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px', color: '#888', fontSize: '13px' }}>
+                  <div style={{ textAlign: 'center', padding: '32px', color: '#94a3b8', fontSize: '13px' }}>
                     No activities yet. Log the first one!
                   </div>
                 ) : (
@@ -725,7 +725,7 @@ export default function AccountDetailPage() {
                                     </span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#888', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                                <div style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'nowrap', marginLeft: '8px' }}>
                                   {formatDate(act.date)}
                                 </div>
                               </div>
@@ -744,7 +744,7 @@ export default function AccountDetailPage() {
                                   />
                                 </div>
                               )}
-                              <div style={{ fontSize: '11px', color: '#888', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                 <span>
                                   Logged by <span style={{ color: '#555', fontWeight: 500 }}>{ownerName}</span>
                                   {act.internalParticipants && act.internalParticipants.length > 0 && (
@@ -760,7 +760,7 @@ export default function AccountDetailPage() {
                                 {(commentCountById[act.id] ?? 0) === 0 && (
                                   <button
                                     onClick={() => setOpenCommentsFor(openCommentsFor === act.id ? null : act.id)}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#888', fontSize: '11px' }}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#94a3b8', fontSize: '11px' }}
                                     className="hover:text-gray-700 dark:hover:text-gray-300"
                                   >
                                     {openCommentsFor === act.id ? 'Hide replies' : 'Reply'}
@@ -835,11 +835,11 @@ export default function AccountDetailPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '500px' }}>
                         <thead>
                           <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ textAlign: 'left', padding: '6px 8px', color: '#888', fontWeight: 500 }}>Period</th>
+                            <th style={{ textAlign: 'left', padding: '6px 8px', color: '#94a3b8', fontWeight: 500 }}>Period</th>
                             {years.map((y) => (
                               <th key={y} colSpan={2} style={{ textAlign: 'center', padding: '6px 8px', color: '#1a4731', fontWeight: 600, borderLeft: '1px solid #e5e7eb' }}>{y}</th>
                             ))}
-                            <th style={{ textAlign: 'center', padding: '6px 8px', color: '#888', fontWeight: 500, borderLeft: '1px solid #e5e7eb' }}>YoY</th>
+                            <th style={{ textAlign: 'center', padding: '6px 8px', color: '#94a3b8', fontWeight: 500, borderLeft: '1px solid #e5e7eb' }}>YoY</th>
                           </tr>
                           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <th />
@@ -861,9 +861,9 @@ export default function AccountDetailPage() {
                               <tr key={q.label} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                                 <td style={{ padding: '8px 8px', fontWeight: 500 }}>{q.label}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 500, color: '#1a4731' }}>{curAmt > 0 ? formatCurrency(Math.round(curAmt)) : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear, q.months)) > 0 ? Math.round(sumKg(getData(curYear, q.months))).toLocaleString() : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#666', borderLeft: '1px solid #e5e7eb' }}>{prevAmt > 0 ? formatCurrency(Math.round(prevAmt)) : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear - 1, q.months)) > 0 ? Math.round(sumKg(getData(curYear - 1, q.months))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, q.months)) > 0 ? Math.round(sumKg(getData(curYear, q.months))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevAmt > 0 ? formatCurrency(Math.round(prevAmt)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, q.months)) > 0 ? Math.round(sumKg(getData(curYear - 1, q.months))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 600, color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
                                   {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
                                 </td>
@@ -879,9 +879,9 @@ export default function AccountDetailPage() {
                               <tr style={{ borderTop: '2px solid #1a4731', background: '#f0f7ee', fontWeight: 600 }}>
                                 <td style={{ padding: '8px 8px', color: '#1a4731' }}>YTD</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#1a4731' }}>{curYTD > 0 ? formatCurrency(Math.round(curYTD)) : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear, ytdMonths))).toLocaleString() : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#666', borderLeft: '1px solid #e5e7eb' }}>{prevYTD > 0 ? formatCurrency(Math.round(prevYTD)) : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#888', fontSize: '11px' }}>{sumKg(getData(curYear - 1, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear - 1, ytdMonths))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear, ytdMonths))).toLocaleString() : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevYTD > 0 ? formatCurrency(Math.round(prevYTD)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear - 1, ytdMonths))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'center', color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
                                   {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
                                 </td>
@@ -895,7 +895,7 @@ export default function AccountDetailPage() {
                 })()}
 
                 {purchaseView === 'list' && accountSales.length === 0 ? (
-                  <div style={{ color: '#888', fontSize: '13px', padding: '16px 0' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '13px', padding: '16px 0' }}>
                     No purchase records yet.
                   </div>
                 ) : purchaseView === 'list' ? (
@@ -962,7 +962,7 @@ export default function AccountDetailPage() {
                               {products.map((p) => <option key={p} value={p}>{p}</option>)}
                             </select>
                           )}
-                          <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#888', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <span>{Math.round(totalKg).toLocaleString()} kg</span>
                             <span style={{ fontWeight: 600, color: '#1a4731' }}>{formatCurrency(Math.round(totalAmt))}</span>
                             {prevTotal > 0 && (() => {
@@ -973,7 +973,7 @@ export default function AccountDetailPage() {
                         </div>
                         {/* Previous year comparison bar */}
                         {prevTotal > 0 && (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888', marginBottom: '12px', padding: '6px 8px', background: '#f9fafb', borderRadius: '6px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', marginBottom: '12px', padding: '6px 8px', background: '#f9fafb', borderRadius: '6px' }}>
                             <span>vs {cY - 1} same period:</span>
                             <span>{Math.round(prevKg).toLocaleString()} kg &middot; {formatCurrency(Math.round(prevTotal))}</span>
                           </div>
@@ -986,8 +986,8 @@ export default function AccountDetailPage() {
                             <div key={product} style={{ marginBottom: '10px' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
                                 <span style={{ fontWeight: 500 }}>{product}</span>
-                                <span style={{ color: '#666' }}>
-                                  {data.kg > 0 && <span style={{ color: '#888', marginRight: '8px' }}>{Math.round(data.kg).toLocaleString()} kg</span>}
+                                <span style={{ color: '#94a3b8' }}>
+                                  {data.kg > 0 && <span style={{ color: '#94a3b8', marginRight: '8px' }}>{Math.round(data.kg).toLocaleString()} kg</span>}
                                   {formatCurrency(Math.round(data.amount))}
                                 </span>
                               </div>
@@ -1000,7 +1000,7 @@ export default function AccountDetailPage() {
 
                         {/* Transactions */}
                         <div style={{ marginTop: '16px', borderTop: '0.5px solid #e5e7eb', paddingTop: '16px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: 500, color: '#888', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 500, color: '#94a3b8', marginBottom: '8px' }}>
                             Transactions ({filtered.length})
                           </div>
                           {filtered.length === 0 ? (
@@ -1011,7 +1011,7 @@ export default function AccountDetailPage() {
                                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '0.5px solid #f3f4f6', fontSize: '12px' }}>
                                   <div>
                                     <span style={{ fontWeight: 500 }}>{sale.productName || 'Unknown'}</span>
-                                    <span style={{ color: '#888', marginLeft: '8px' }}>{formatDate(sale.date)}</span>
+                                    <span style={{ color: '#94a3b8', marginLeft: '8px' }}>{formatDate(sale.date)}</span>
                                     {(sale.volumeKg || 0) > 0 && <span style={{ color: '#aaa', marginLeft: '6px' }}>{Math.round(sale.volumeKg).toLocaleString()} kg</span>}
                                   </div>
                                   <span style={{ fontWeight: 500, color: '#1a4731' }}>{formatCurrency(Math.round(Number(sale.amount)))}</span>
@@ -1045,7 +1045,7 @@ export default function AccountDetailPage() {
               >
                 <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Key Contacts</h3>
                 {accountContacts.length === 0 ? (
-                  <div style={{ color: '#888', fontSize: '13px' }}>No contacts yet.</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px' }}>No contacts yet.</div>
                 ) : (
                   accountContacts
                     .sort((a, b) => (b.isKeyMan ? 1 : 0) - (a.isKeyMan ? 1 : 0))
@@ -1077,7 +1077,7 @@ export default function AccountDetailPage() {
                           </div>
                           <div
                             style={{
-                              fontSize: '11px', color: '#888',
+                              fontSize: '11px', color: '#94a3b8',
                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                             }}
                           >
@@ -1124,7 +1124,7 @@ export default function AccountDetailPage() {
               >
                 <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Open Deals</h3>
                 {openDeals.length === 0 ? (
-                  <div style={{ color: '#888', fontSize: '13px' }}>No open deals.</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px' }}>No open deals.</div>
                 ) : (
                   openDeals.map((opp) => {
                     const sc = STAGE_COLORS[opp.stage] || STAGE_COLORS.Prospecting;
@@ -1152,7 +1152,7 @@ export default function AccountDetailPage() {
                           >
                             {opp.stage}
                           </span>
-                          <span style={{ fontSize: '11px', color: '#888' }}>
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                             Close: {formatDate(opp.closeDate)}
                           </span>
                         </div>
@@ -1172,7 +1172,7 @@ export default function AccountDetailPage() {
               >
                 <h3 style={{ margin: '0 0 14px', fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">Open Tasks</h3>
                 {accountTasks.filter((t) => t.status !== 'Completed').length === 0 ? (
-                  <div style={{ color: '#888', fontSize: '13px' }}>No open tasks.</div>
+                  <div style={{ color: '#94a3b8', fontSize: '13px' }}>No open tasks.</div>
                 ) : (
                   accountTasks
                     .filter((t) => t.status !== 'Completed')
@@ -1277,7 +1277,7 @@ export default function AccountDetailPage() {
         >
           <div style={{ borderRadius: '12px', width: '100%', maxWidth: '380px', margin: '0 16px', padding: '24px' }} className="bg-white dark:bg-slate-900">
             <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }} className="text-gray-900 dark:text-gray-100">Delete Account</h2>
-            <p style={{ fontSize: '14px', color: '#666', marginBottom: '4px' }}>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '4px' }}>
               Are you sure you want to delete <strong>{account.name}</strong>?
             </p>
             <p style={{ fontSize: '12px', color: '#dc2626', marginBottom: '20px' }}>
