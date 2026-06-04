@@ -11,7 +11,7 @@ import Toast from '@/app/components/Toast';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
-const ASSIGNABLE_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo', 'sales', 'marketing'];
+const ASSIGNABLE_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo', 'sales', 'marketing', 'technical_manager'];
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
