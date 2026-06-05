@@ -34,6 +34,24 @@ const TONE_TEXT: Record<string, string> = {
   na: 'text-gray-400 dark:text-gray-500',
 };
 
+/**
+ * Pick the row whose date is closest to (latestDate - 1 year), within
+ * a ±21-day window. Wider than 14 to absorb weekly USDA cadence + the
+ * occasional skipped publication. Returns null when nothing qualifies.
+ */
+function findClosestYearAgo(rows: PriceRow[], latestDate: string): PriceRow | null {
+  const target = new Date(`${latestDate}T00:00:00Z`).getTime() - 365 * 86400000;
+  const WINDOW_MS = 21 * 86400000;
+  let best: { row: PriceRow; diff: number } | null = null;
+  for (const r of rows) {
+    const t = new Date(`${r.date}T00:00:00Z`).getTime();
+    const diff = Math.abs(t - target);
+    if (diff > WINDOW_MS) continue;
+    if (!best || diff < best.diff) best = { row: r, diff };
+  }
+  return best?.row ?? null;
+}
+
 export default function TodayMarketCard() {
   const [entries, setEntries] = useState<CommodityCardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,10 +61,10 @@ export default function TodayMarketCard() {
     let cancelled = false;
     async function load() {
       try {
-        // Only need latest + previous trading day, so a 14-day window
-        // is more than enough (covers weekends, holidays, USDA's weekly
-        // cadence). Keeps the payload tiny on every dashboard load.
-        const since = new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0];
+        // ~13 months window covers the YoY column (latest vs ~365d
+        // ago + a buffer for weekends, holidays, and USDA's weekly
+        // cadence). Still tiny — 5 commodities × ~290 rows worst case.
+        const since = new Date(Date.now() - 400 * 86400000).toISOString().split('T')[0];
         const { data, error: err } = await supabase
           .from('commodity_prices')
           .select('commodity_key, date, price, unit, source')
@@ -54,7 +72,7 @@ export default function TodayMarketCard() {
           .order('date', { ascending: false });
         if (err) throw err;
 
-        // Group by commodity key, then derive latest / previous.
+        // Group by commodity key, then derive latest / previous / year-ago.
         const byKey = new Map<CommodityKey, PriceRow[]>();
         for (const r of (data ?? []) as Array<{ commodity_key: string; date: string; price: string | number; unit: string; source: string }>) {
           const key = r.commodity_key as CommodityKey;
@@ -74,10 +92,11 @@ export default function TodayMarketCard() {
           const rows = byKey.get(cfg.key) ?? [];
           const latest = rows[0] ?? null;            // already sorted DESC
           const previous = rows[1] ?? null;
+          const yearAgo = latest ? findClosestYearAgo(rows, latest.date) : null;
           const stale = latest && cfg.source === 'usda-ams'
             ? `as of ${fmtShortDate(latest.date)}`
             : undefined;
-          return { config: cfg, latest, previous, yearAgo: null, asOfNote: stale };
+          return { config: cfg, latest, previous, yearAgo, asOfNote: stale };
         });
 
         if (!cancelled) {
@@ -116,14 +135,15 @@ export default function TodayMarketCard() {
         <div className="text-sm text-rose-600 dark:text-rose-400 py-4">{error}</div>
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-slate-800">
-          {entries.map(({ config, latest, previous, asOfNote }) => {
+          {entries.map(({ config, latest, previous, yearAgo, asOfNote }) => {
             const daily = fmtDelta(latest && previous ? pctDelta(latest.price, previous.price) : null);
+            const yoy = fmtDelta(latest && yearAgo ? pctDelta(latest.price, yearAgo.price) : null);
             const unitShort = config.unit.replace('USD/', '').replace('cents/', '¢/');
             return (
               <li key={config.key} className="py-2.5 text-sm">
                 {/* Name on its own line so it never gets clipped on mobile.
-                    Price / unit / delta share a second line that wraps as
-                    a unit (smaller right-aligned cluster), keeping the
+                    Price / unit / day-Δ / YoY-Δ share a second line that
+                    wraps as a unit (right-aligned cluster), keeping the
                     important "name vs number" grouping intact. */}
                 <div className="flex items-baseline justify-between gap-3">
                   <div className="text-gray-900 dark:text-gray-100 font-medium" title={config.description}>
@@ -136,8 +156,17 @@ export default function TodayMarketCard() {
                     <span className="text-[10px] text-gray-400 dark:text-gray-500">
                       {unitShort}
                     </span>
-                    <span className={`tabular-nums text-xs w-16 text-right ${TONE_TEXT[daily.tone]}`}>
+                    <span
+                      className={`tabular-nums text-xs w-16 text-right ${TONE_TEXT[daily.tone]}`}
+                      title="vs previous trading day / weekly report"
+                    >
                       {daily.text}
+                    </span>
+                    <span
+                      className={`tabular-nums text-xs w-20 text-right ${TONE_TEXT[yoy.tone]}`}
+                      title={yearAgo ? `YoY vs ${fmtShortDate(yearAgo.date)}` : 'Year-over-year (insufficient history)'}
+                    >
+                      {yoy.text === '—' ? '—' : `${yoy.text} YoY`}
                     </span>
                   </div>
                 </div>

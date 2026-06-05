@@ -44,7 +44,9 @@ type FetchResult = FetchOk | FetchErr;
  */
 async function fetchYahoo(symbol: string): Promise<FetchResult> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1mo`;
+    // 2y window backfills enough history for the dashboard's YoY
+    // column (latest vs ~365 days ago) on the very first cron run.
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2y`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 PathwayCRM/1.0' },
     });
@@ -121,7 +123,7 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
     // Sort dates descending. report_date format is MM/dd/yyyy.
     const dates = [...byDate.keys()].sort((a, b) => mmddyyyyToTime(b) - mmddyyyyToTime(a));
     const points: PricePoint[] = [];
-    for (const rd of dates.slice(0, 26)) {  // keep ~6 months of weekly history
+    for (const rd of dates.slice(0, 105)) {  // keep ~2 years of weekly history for YoY
       const prices = byDate.get(rd) || [];
       if (prices.length === 0) continue;
       const avg = prices.reduce((s, v) => s + v, 0) / prices.length;
