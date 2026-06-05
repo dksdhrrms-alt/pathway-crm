@@ -31,12 +31,19 @@ export async function GET(request: NextRequest) {
   }
 
   const slug = request.nextUrl.searchParams.get('slug') || '3618';
-  // Default call returns only the "Report Header" section (metadata
-  // about each weekly issue, no prices). Real price rows live in the
-  // "Report Detail" section — pass `?section=Report Detail`.
+  // Default call returns only the "Report Header" section (metadata only).
+  // Real price rows live in "Report Detail" — pass `?section=Report Detail`.
+  // MARS API documents both path and query-param forms; the probe lets you
+  // pass `style=query` to test the query-param form.
   const section = request.nextUrl.searchParams.get('section');
+  const style = request.nextUrl.searchParams.get('style') || 'path';
   const base = `https://marsapi.ams.usda.gov/services/v1.1/reports/${encodeURIComponent(slug)}`;
-  const url = section ? `${base}/${encodeURIComponent(section)}` : base;
+  let url = base;
+  if (section) {
+    url = style === 'query'
+      ? `${base}?reportSection=${encodeURIComponent(section)}`
+      : `${base}/${encodeURIComponent(section)}`;
+  }
   const basic = Buffer.from(`${apiKey}:`).toString('base64');
 
   let res: Response;
