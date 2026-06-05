@@ -3,7 +3,8 @@
  *
  * Five feed inputs we surface on the home dashboard. Three trade as
  * CBOT futures (fetched from Yahoo Finance daily); two are USDA AMS
- * cash references (scraped weekly from the public text reports).
+ * cash references read from the MyMarketNews JSON API (the old plain-
+ * text reports were retired by USDA in 2025).
  */
 
 export type CommodityKey =
@@ -13,16 +14,27 @@ export type CommodityKey =
   | 'ddgs'
   | 'choice_white_grease';
 
+/** Filter conditions matched against rows in the MMN Report Detail. */
+export interface MmnFilter {
+  commodity?: string;
+  trade_loc?: string;
+  variety?: string;
+}
+
 export interface CommodityConfig {
   key: CommodityKey;
   label: string;
   unit: string;
-  /** 'cbot' = Yahoo Finance futures contract; 'usda-ams' = USDA scrape. */
+  /** 'cbot' = Yahoo Finance futures contract; 'usda-ams' = USDA MMN. */
   source: 'cbot' | 'usda-ams';
   /** Yahoo Finance symbol for CBOT futures (continuous front month). */
   yahooSymbol?: string;
-  /** USDA AMS report identifier for cash-market commodities. */
-  usdaReport?: string;
+  /** USDA MyMarketNews slug_id (e.g. '3618' for DDGS). */
+  mmnSlug?: string;
+  /** Row filter applied to the MMN Report Detail rows. */
+  mmnFilter?: MmnFilter;
+  /** Which numeric field on a matching row is the price. */
+  mmnPriceField?: 'price' | 'avg_price';
   /** Short descriptor used in the dashboard tooltip. */
   description: string;
 }
@@ -57,16 +69,22 @@ export const COMMODITIES: CommodityConfig[] = [
     label: 'DDGS (Iowa)',
     unit: 'USD/ton',
     source: 'usda-ams',
-    usdaReport: 'sj_gr852',
-    description: 'USDA AMS — Iowa Distillers Dried Grains (weekly cash).',
+    mmnSlug: '3618',
+    mmnFilter: { commodity: 'Distillers Grain', trade_loc: 'Iowa', variety: 'Dried 10%' },
+    mmnPriceField: 'price',
+    description: 'USDA AMS — Iowa Dried DDGS (10% moisture, weekly cash).',
   },
   {
     key: 'choice_white_grease',
     label: 'Choice White Grease',
     unit: 'cents/lb',
     source: 'usda-ams',
-    usdaReport: 'wa_ls441',
-    description: 'USDA AMS — National Weekly Choice White Grease.',
+    mmnSlug: '3510',
+    mmnFilter: { commodity: 'Choice White Grease' },
+    // Report covers multiple locations on the same date; the cron
+    // averages avg_price across all matching rows of the latest date.
+    mmnPriceField: 'avg_price',
+    description: 'USDA AMS — National Weekly Choice White Grease (avg across regions).',
   },
 ];
 

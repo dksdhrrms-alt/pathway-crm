@@ -77,109 +77,80 @@ async function fetchYahoo(symbol: string): Promise<FetchResult> {
 }
 
 /**
- * USDA AMS text report parser. The reports at
- *   https://www.ams.usda.gov/mnreports/<reportid>.txt
- * are plain text with a header line carrying the report date and a
- * table of locations + price ranges further down. Without a stable
- * JSON API this is the most reliable public source.
- *
- * For DDGS Iowa (sj_gr852) we average the high/low of the "Iowa
- * Plant Origin" line. For Choice White Grease (wa_ls441) we take the
- * "Choice White Grease" line's mid.
- *
- * If the report can't be parsed we return ok:false so the row isn't
- * overwritten and the dashboard keeps the last good price.
+ * USDA MyMarketNews (MARS) JSON API. We fetch the "Report Detail"
+ * section of each report (Header has metadata only), filter rows by
+ * the config's mmnFilter, group by report_date, and return the latest
+ * date's price — averaged across regions when the report covers
+ * multiple locations (CWG).
  */
-async function fetchUsdaText(reportId: string, parser: (txt: string) => FetchResult): Promise<FetchResult> {
+async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
+  const apiKey = process.env.USDA_MMN_API_KEY;
+  if (!apiKey) return { ok: false, error: 'no-mmn-api-key' };
+  if (!c.mmnSlug || !c.mmnPriceField) return { ok: false, error: 'no-mmn-config' };
   try {
-    const url = `https://www.ams.usda.gov/mnreports/${reportId}.txt`;
+    const url = `https://marsapi.ams.usda.gov/services/v1.2/reports/${encodeURIComponent(c.mmnSlug)}/${encodeURIComponent('Report Detail')}`;
+    const basic = Buffer.from(`${apiKey}:`).toString('base64');
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 PathwayCRM/1.0', Accept: 'text/plain' },
+      headers: { Authorization: `Basic ${basic}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(20_000),
     });
-    if (!res.ok) return { ok: false, error: `usda ${res.status}` };
-    const txt = await res.text();
-    return parser(txt);
+    if (!res.ok) return { ok: false, error: `mmn ${res.status}` };
+    const data = await res.json() as {
+      results?: Array<Record<string, unknown>>;
+    };
+    const rows = data.results || [];
+    const f = c.mmnFilter || {};
+    const matching = rows.filter((r) => {
+      if (f.commodity && r.commodity !== f.commodity) return false;
+      if (f.trade_loc && r.trade_loc !== f.trade_loc) return false;
+      if (f.variety && r.variety !== f.variety) return false;
+      return true;
+    });
+    if (matching.length === 0) return { ok: false, error: 'no-matching-rows' };
+    // Group by report_date (MM/dd/yyyy), pick the most recent.
+    const byDate = new Map<string, number[]>();
+    for (const r of matching) {
+      const rd = String(r.report_date || '');
+      const p = Number(r[c.mmnPriceField]);
+      if (!rd || !isFinite(p)) continue;
+      const arr = byDate.get(rd) ?? [];
+      arr.push(p);
+      byDate.set(rd, arr);
+    }
+    if (byDate.size === 0) return { ok: false, error: 'no-priced-rows' };
+    // Sort dates descending. report_date format is MM/dd/yyyy.
+    const dates = [...byDate.keys()].sort((a, b) => mmddyyyyToTime(b) - mmddyyyyToTime(a));
+    const points: PricePoint[] = [];
+    for (const rd of dates.slice(0, 26)) {  // keep ~6 months of weekly history
+      const prices = byDate.get(rd) || [];
+      if (prices.length === 0) continue;
+      const avg = prices.reduce((s, v) => s + v, 0) / prices.length;
+      points.push({ date: mmddyyyyToIso(rd), price: avg });
+    }
+    if (points.length === 0) return { ok: false, error: 'no-points' };
+    return { ok: true, points };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
-/**
- * Extract a date from the USDA header. They use formats like
- *   "May 30, 2026"
- *   "5/30/2026"
- * Fallback: today's date if we can't find one.
- */
-function extractReportDate(txt: string): string {
-  const longRe = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})/i;
-  const m = txt.match(longRe);
-  if (m) {
-    const d = new Date(`${m[1]} ${m[2]}, ${m[3]}`);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  }
-  const shortRe = /(\d{1,2})\/(\d{1,2})\/(\d{4})/;
-  const ms = txt.match(shortRe);
-  if (ms) {
-    const d = new Date(`${ms[3]}-${ms[1].padStart(2, '0')}-${ms[2].padStart(2, '0')}T00:00:00`);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  }
-  return new Date().toISOString().split('T')[0];
+/** "06/01/2026" → "2026-06-01" */
+function mmddyyyyToIso(s: string): string {
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return s;
+  return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
 }
 
-/**
- * DDGS Iowa parser — looks for the first numeric range on a line that
- * mentions "Iowa" or "DDG" and takes its midpoint as USD/ton.
- */
-function parseDdgs(txt: string): FetchResult {
-  const date = extractReportDate(txt);
-  const lines = txt.split('\n');
-  // Pattern: anything → "200.00-220.00" or "200-220" toward end of line
-  const rangeRe = /(\d{2,4}(?:\.\d{1,2})?)\s*-\s*(\d{2,4}(?:\.\d{1,2})?)/;
-  for (const raw of lines) {
-    const line = raw.toLowerCase();
-    if (!/iowa|ddg|distillers/.test(line)) continue;
-    const m = raw.match(rangeRe);
-    if (!m) continue;
-    const lo = Number(m[1]);
-    const hi = Number(m[2]);
-    if (!isFinite(lo) || !isFinite(hi) || lo <= 0 || hi <= 0) continue;
-    const mid = (lo + hi) / 2;
-    if (mid < 50 || mid > 800) continue;  // sanity bound for USD/ton
-    return { ok: true, points: [{ date, price: mid }] };
-  }
-  return { ok: false, error: 'no-iowa-ddgs-line' };
-}
-
-/**
- * Choice White Grease parser — finds the line mentioning "Choice
- * White Grease" and pulls its price (cents/lb). Reports sometimes
- * quote a range, sometimes a single number.
- */
-function parseChoiceWhiteGrease(txt: string): FetchResult {
-  const date = extractReportDate(txt);
-  const lines = txt.split('\n');
-  for (const raw of lines) {
-    if (!/choice\s+white\s+grease/i.test(raw)) continue;
-    const range = raw.match(/(\d{1,3}(?:\.\d{1,3})?)\s*-\s*(\d{1,3}(?:\.\d{1,3})?)/);
-    if (range) {
-      const mid = (Number(range[1]) + Number(range[2])) / 2;
-      if (mid > 5 && mid < 200) return { ok: true, points: [{ date, price: mid }] };
-    }
-    const single = raw.match(/(\d{1,3}\.\d{1,3})/);
-    if (single) {
-      const v = Number(single[1]);
-      if (v > 5 && v < 200) return { ok: true, points: [{ date, price: v }] };
-    }
-  }
-  return { ok: false, error: 'no-cwg-line' };
+/** Comparable timestamp from MM/dd/yyyy (0 if unparseable). */
+function mmddyyyyToTime(s: string): number {
+  const iso = mmddyyyyToIso(s);
+  const t = new Date(`${iso}T00:00:00Z`).getTime();
+  return isFinite(t) ? t : 0;
 }
 
 async function fetchOne(c: CommodityConfig): Promise<FetchResult> {
   if (c.source === 'cbot' && c.yahooSymbol) return fetchYahoo(c.yahooSymbol);
-  if (c.source === 'usda-ams' && c.usdaReport) {
-    if (c.key === 'ddgs') return fetchUsdaText(c.usdaReport, parseDdgs);
-    if (c.key === 'choice_white_grease') return fetchUsdaText(c.usdaReport, parseChoiceWhiteGrease);
-  }
+  if (c.source === 'usda-ams' && c.mmnSlug) return fetchMmn(c);
   return { ok: false, error: 'no-fetcher' };
 }
 
