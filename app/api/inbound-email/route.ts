@@ -303,6 +303,42 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
+  // ── Step (a2): full-body email scan as secondary safety net ──────
+  // If steps (a)+(b) found no candidate that matched a contact, scan
+  // the ENTIRE body for any email-shaped substring (not just inside
+  // forwarded-header blocks), then check if any of them belongs to a
+  // CRM contact we know about. This catches Outlook BCC patterns where
+  // the marker regex didn't fire but the contact's address is still
+  // sitting somewhere in the message (signatures, scattered quoted
+  // text, mailto: links, etc.). Pathway domain addresses are filtered
+  // out so we never match ourselves to ourselves.
+  if (!matchedContactId && !matchedAccountId) {
+    const bodyForScan = (d.text || htmlToPlain(d.html || '') || '').toLowerCase();
+    const emailRegex = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g;
+    const scanHits = [...new Set((bodyForScan.match(emailRegex) || []))]
+      .filter((e) => !e.endsWith('@log.pathway-intermediates.com'))
+      .filter((e) => !e.endsWith('@pathway-intermediates.com')) // never the rep
+      .slice(0, 30);
+    console.warn('[inbound-email] step: body email scan', { hit_count: scanHits.length, sample: scanHits.slice(0, 5) });
+    if (scanHits.length > 0) {
+      const orFilter = scanHits.map((e) => `email.ilike.${e}`).join(',');
+      const { data: rows, error: scErr } = await supabase
+        .from('contacts')
+        .select('id, email, account_id')
+        .is('archived_at', null)
+        .or(orFilter);
+      if (scErr) console.error('[inbound-email] body-scan contact lookup error:', scErr.message);
+      const hit = rows && rows[0];
+      if (hit) {
+        matchedContactId = hit.id as string;
+        matchedAccountId = (hit.account_id as string) || null;
+        console.warn('[inbound-email] step: matched by body-scan', {
+          contact_id: matchedContactId, account_id: matchedAccountId, matched_email: hit.email,
+        });
+      }
+    }
+  }
+
   // ── Step (c): subject-based account-name match ────────────────────
   // BCC strips recipient info from envelope on most clients (Outlook +
   // Gmail), so contact_email matching often fails for the exact
@@ -339,6 +375,56 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
+  // ── Step (c'): Re:/Fwd: subject → original activity's account/contact ──
+  // The single most reliable signal that a reply is "for" a particular
+  // account is finding the original outbound Email we already logged
+  // under that account. When the subject starts with Re:/Fwd: and we
+  // haven't matched a contact yet, look for any Email activity from
+  // this sender with the same cleaned subject in the last 90 days, and
+  // adopt its account_id + contact_id. This MUST run before step (d)'s
+  // 30-day fallback — otherwise the fallback picks the rep's most-
+  // recent activity (e.g. Land O Lakes) and mis-routes every reply.
+  const replyPrefixRegexEarly = /^\s*(re|fwd|fw|antw|wg|sv|tr|rv|ant|aw|enc)\s*:\s*/i;
+  const rawSubjectEarly = d.subject || '';
+  const isReplyEarly = replyPrefixRegexEarly.test(rawSubjectEarly);
+  let cleanSubjectEarly = rawSubjectEarly;
+  for (let i = 0; i < 3 && replyPrefixRegexEarly.test(cleanSubjectEarly); i++) {
+    cleanSubjectEarly = cleanSubjectEarly.replace(replyPrefixRegexEarly, '');
+  }
+  cleanSubjectEarly = cleanSubjectEarly.trim();
+
+  if (!matchedContactId && !matchedAccountId && isReplyEarly && cleanSubjectEarly.length >= 3) {
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const { data: parentByOwner, error: pErr } = await supabase
+      .from('activities')
+      .select('id, subject, contact_id, account_id, date')
+      .eq('type', 'Email')
+      .eq('owner_id', ownerId)
+      .ilike('subject', `%${cleanSubjectEarly}%`)
+      .is('archived_at', null)
+      .gte('date', since)
+      .order('date', { ascending: true })
+      .limit(20);
+    if (pErr) console.error('[inbound-email] re-subject parent lookup error:', pErr.message);
+
+    const normalizeEarly = (s: string) => {
+      let v = (s || '').replace(/^📨\s*/, '');
+      for (let i = 0; i < 3 && replyPrefixRegexEarly.test(v); i++) v = v.replace(replyPrefixRegexEarly, '');
+      return v.trim().toLowerCase();
+    };
+    const targetParent = (parentByOwner || []).find((c) => normalizeEarly(c.subject) === cleanSubjectEarly.toLowerCase());
+    if (targetParent && (targetParent.contact_id || targetParent.account_id)) {
+      matchedContactId = (targetParent.contact_id as string) || null;
+      matchedAccountId = (targetParent.account_id as string) || null;
+      console.warn('[inbound-email] step: matched by Re:/Fwd: parent subject lookup', {
+        parent_activity_id: targetParent.id,
+        clean_subject: cleanSubjectEarly.slice(0, 80),
+        adopted_contact: matchedContactId,
+        adopted_account: matchedAccountId,
+      });
+    }
+  }
+
   // ── Step (d): sender's most recent contact activity (30-day window) ──
   // Real-world pattern: a sales rep BCCs the inbound mailbox right after
   // emailing a customer they were just touching in the CRM. The window
@@ -347,8 +433,9 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   // weekly customer cadence is normal.
   // Trade-off: 30 days raises the chance of mis-attribution (the rep's
   // most recent activity could be on a different account than the one
-  // they're emailing). To mitigate, the subject-match above runs first
-  // and is much more specific.
+  // they're emailing). To mitigate, both the subject-match (c) AND the
+  // Re:/Fwd: parent-subject match (c') above run first and are far more
+  // specific than this catch-all.
   const FALLBACK_DAYS = 30;
   if (!matchedContactId && !matchedAccountId) {
     const since = new Date(Date.now() - FALLBACK_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -457,6 +544,81 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     description += '\n\n📎 Attachments:\n' + attachmentLinks
       .map((a) => `• ${a.filename} (${a.sizeLabel}) — ${a.url}`)
       .join('\n');
+  }
+
+  // ── 4b. Reply-threading: append to parent activity if "Re:"/"Fwd:" ──
+  // When the inbound subject starts with a reply prefix, look for the
+  // original Email activity (same scope, same cleaned subject) inside a
+  // 90-day window. If found, append the reply body to that row's
+  // description instead of creating a new sibling activity — keeps the
+  // conversation in one timeline entry. Falls through to a normal
+  // insert when no parent is found, so unattached replies still land.
+  const replyPrefixRegex = /^\s*(re|fwd|fw|antw|wg|sv|tr|rv|ant|aw|enc)\s*:\s*/i;
+  const rawSubject = d.subject || '';
+  const isReply = replyPrefixRegex.test(rawSubject);
+  // Strip up to 3 nested prefixes ("Re: Fwd: Re: Hello" → "Hello").
+  let cleanSubject = rawSubject;
+  for (let i = 0; i < 3 && replyPrefixRegex.test(cleanSubject); i++) {
+    cleanSubject = cleanSubject.replace(replyPrefixRegex, '');
+  }
+  cleanSubject = cleanSubject.trim();
+
+  if (isReply && cleanSubject.length >= 3) {
+    const lookupSince = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0];
+    let q = supabase
+      .from('activities')
+      .select('id, description, subject, date')
+      .eq('type', 'Email')
+      .ilike('subject', `%${cleanSubject}%`)
+      .is('archived_at', null)
+      .gte('date', lookupSince)
+      .order('date', { ascending: true })
+      .limit(20);
+    // Prefer the tightest scope we know: contact > account > owner.
+    if (matchedContactId) q = q.eq('contact_id', matchedContactId);
+    else if (matchedAccountId) q = q.eq('account_id', matchedAccountId);
+    else q = q.eq('owner_id', ownerId);
+
+    const { data: candidates, error: thErr } = await q;
+    if (thErr) console.error('[inbound-email] thread lookup error:', thErr.message);
+
+    // Normalize each candidate's stored subject (strip the 📨 prefix our
+    // own inserts prepend, plus any leading reply prefixes) so we match
+    // against the cleaned reply subject.
+    const normalize = (s: string) => {
+      let v = (s || '').replace(/^📨\s*/, '');
+      for (let i = 0; i < 3 && replyPrefixRegex.test(v); i++) v = v.replace(replyPrefixRegex, '');
+      return v.trim().toLowerCase();
+    };
+    const parent = (candidates || []).find((c) => normalize(c.subject) === cleanSubject.toLowerCase());
+
+    if (parent) {
+      const sender = (d.from || fromEmail || '').trim();
+      const nowLabel = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+      const separator = '\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+      const replyHeader = `↳ Reply from ${sender} · ${nowLabel}\n\n`;
+      const attachmentSuffix = attachmentLinks.length
+        ? '\n\n📎 Attachments:\n' + attachmentLinks.map((a) => `• ${a.filename} (${a.sizeLabel}) — ${a.url}`).join('\n')
+        : '';
+      const THREAD_MAX = 32000;
+      const combined = ((parent.description || '') + separator + replyHeader + bodyText + attachmentSuffix).slice(0, THREAD_MAX);
+
+      const { error: updErr } = await supabase
+        .from('activities')
+        .update({ description: combined })
+        .eq('id', parent.id);
+      if (updErr) {
+        console.error('[inbound-email] thread append error, falling through to insert:', updErr.message);
+      } else {
+        console.warn('[inbound-email] threaded reply into', parent.id, { subject_preview: cleanSubject.slice(0, 60) });
+        return { processed: true, note: `threaded:${parent.id}` };
+      }
+    } else {
+      console.warn('[inbound-email] reply prefix detected but no parent matched — inserting standalone', {
+        clean_subject: cleanSubject.slice(0, 60),
+        candidates_seen: candidates?.length ?? 0,
+      });
+    }
   }
 
   // ── 5. Insert activity (deterministic id for retry-dedup) ─────────
@@ -637,13 +799,19 @@ function extractForwardedRecipients(body: string): string[] {
     // is right there. Limit so we don't accidentally match a quoted
     // To: in body prose far below.
     const window = body.slice(start, start + 2000);
-    // Multiline match `^To:` and `^Cc:` lines.
+    // Multiline match `^From:`, `^To:` and `^Cc:` lines. From is included
+    // because in REPLY emails the quoted block has `From: <contact>`
+    // and `To: <us>` — the contact we want to match is the From, not
+    // the To (which is just our own address). Including From: catches
+    // the Jeff→Nathan reply pattern that was mis-routing to Land O
+    // Lakes via the 30-day fallback.
+    const fromMatch = window.match(/^\s*From:\s*(.+)$/im);
     const toMatch = window.match(/^\s*To:\s*(.+)$/im);
     const ccMatch = window.match(/^\s*Cc:\s*(.+)$/im);
-    for (const line of [toMatch?.[1], ccMatch?.[1]]) {
+    for (const line of [fromMatch?.[1], toMatch?.[1], ccMatch?.[1]]) {
       if (!line) continue;
-      // A To/Cc line can list multiple recipients separated by commas
-      // or semicolons, each as bare email or "Name <email>".
+      // A To/Cc/From line can list multiple recipients separated by
+      // commas or semicolons, each as bare email or "Name <email>".
       for (const part of line.split(/[,;]/)) {
         const e = extractEmail(part);
         if (e) collected.push(e);
@@ -753,11 +921,6 @@ async function fetchAndStoreAttachment(
 ): Promise<{ filename: string; url: string; sizeKb: number; sizeLabel: string } | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return null;
-  // Resend's inbound attachment endpoint returns a JSON metadata object
-  // (object/id/filename/.../download_url/expires_at), NOT the file
-  // bytes. The actual content lives at `download_url`. We had been
-  // mis-storing the JSON metadata blob as the "file", which is why
-  // every attachment was ~1KB and unopenable.
   const metaRes = await fetch(
     `https://api.resend.com/emails/inbound/${emailId}/attachments/${att.id}`,
     { headers: { Authorization: `Bearer ${apiKey}` } },
@@ -785,9 +948,6 @@ async function fetchAndStoreAttachment(
     console.error('[inbound-email] attachment download returned zero bytes — skipping');
     return null;
   }
-  // Preserve unicode (Korean, emoji, etc.) in storage filenames. The `u`
-  // flag plus a wider whitelist means "창고 사업성 검토.xlsx" no longer
-  // collapses to "___.xlsx".
   const safeName = (att.filename || `attachment-${att.id}`)
     .replace(/[^\p{L}\p{N}.\-_ ]+/gu, '_').replace(/_+/g, '_').slice(0, 120);
   const objectPath = `${emailId}/${safeName}`;
@@ -801,10 +961,6 @@ async function fetchAndStoreAttachment(
     console.error('[inbound-email] storage upload error:', upErr.message);
     return null;
   }
-  // Signed URLs work whether or not the bucket is public AND whether or
-  // not RLS policies are set. 1-year expiry is long enough for any
-  // reasonable email-archive use; we can regenerate later via a script
-  // if anything older is ever needed.
   const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
   const { data: signed, error: signErr } = await supabase
     .storage
