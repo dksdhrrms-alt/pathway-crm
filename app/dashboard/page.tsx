@@ -7,6 +7,7 @@ import { ActivityType, Stage } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import MetricCard from '@/app/components/MetricCard';
+import TodayMarketCard from '@/app/components/TodayMarketCard';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Toast from '@/app/components/Toast';
@@ -296,6 +297,11 @@ export default function DashboardPage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* ============ TODAY'S FEED MARKET ============ */}
+          <div className="mb-6">
+            <TodayMarketCard />
           </div>
 
           {/* ============ QUICK ACTIONS — open modals directly ============ */}
