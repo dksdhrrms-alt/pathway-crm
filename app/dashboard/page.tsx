@@ -8,6 +8,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import MetricCard from '@/app/components/MetricCard';
 import TodayMarketCard from '@/app/components/TodayMarketCard';
+import IndustryNewsCard from '@/app/components/IndustryNewsCard';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
 import Toast from '@/app/components/Toast';
@@ -299,9 +300,10 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ============ TODAY'S FEED MARKET ============ */}
-          <div className="mb-6">
+          {/* ============ TODAY'S MARKET + INDUSTRY NEWS ============ */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <TodayMarketCard />
+            <IndustryNewsCard />
           </div>
 
           {/* ============ QUICK ACTIONS — open modals directly ============ */}
