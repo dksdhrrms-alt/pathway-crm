@@ -19,7 +19,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import type { Project, ProjectTeam, ProjectStage, ProjectTask } from '@/lib/data';
+import type { Project, ProjectTeam, ProjectStage, ProjectTask, ProjectSubBar } from '@/lib/data';
 import { generateId, PROJECT_TEAMS, PROJECT_STAGES } from '@/lib/data';
 
 /**
@@ -95,6 +95,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
   const [endDate, setEndDate] = useState<string>(editing?.endDate ?? defaultEndDate);
   const [tasks, setTasks] = useState<ProjectTask[]>(editing?.tasks ?? []);
   const [newTaskLabel, setNewTaskLabel] = useState('');
+  const [subBars, setSubBars] = useState<ProjectSubBar[]>(editing?.subBars ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -137,6 +138,36 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
   const completedCount = tasks.filter((t) => t.done).length;
   const progressPct = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
+  // ── Sub-bar (phase) handlers ──────────────────────────────────────
+  function addSubBar() {
+    setSubBars((prev) => [...prev, {
+      id: generateId(),
+      label: '',
+      // Default to inheriting the parent's range so the row stays
+      // within the parent bar by default. User can edit dates.
+      startDate: startDate || new Date().toISOString().split('T')[0],
+      endDate: endDate || new Date().toISOString().split('T')[0],
+      done: false,
+    }]);
+  }
+  function updateSubBar(id: string, patch: Partial<ProjectSubBar>) {
+    setSubBars((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+  function deleteSubBar(id: string) {
+    setSubBars((prev) => prev.filter((s) => s.id !== id));
+  }
+  function moveSubBar(id: string, dir: -1 | 1) {
+    setSubBars((prev) => {
+      const idx = prev.findIndex((s) => s.id === id);
+      if (idx === -1) return prev;
+      const swap = idx + dir;
+      if (swap < 0 || swap >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  }
+
   // ESC to close.
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === 'Escape' && !submitting) onClose(); }
@@ -163,6 +194,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
           startDate,
           endDate,
           tasks,
+          subBars,
         });
       } else {
         await dbCreateProject({
@@ -179,6 +211,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
           sortOrder: 9999, // append at bottom; reorder UI re-numbers in 0..N.
           ownerId: session?.user?.id ?? '',
           tasks,
+          subBars,
         });
       }
       onChanged();
@@ -359,6 +392,77 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
                 Add
               </button>
             </div>
+          </div>
+
+          {/* Sub-bars (timeline phases) — render thin bars on Gantt */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Phases <span className="text-gray-400 dark:text-gray-500 text-xs">(optional · timeline sub-bars)</span>
+              </label>
+              <button
+                type="button"
+                onClick={addSubBar}
+                className="text-xs text-blue-700 dark:text-blue-300 hover:underline"
+              >
+                + Add phase
+              </button>
+            </div>
+            {subBars.length === 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Break the project into time-bound phases (Material Prep → Test → Analysis).
+                They appear as thin bars under the parent in the Gantt.
+              </p>
+            )}
+            <ul className="space-y-1.5">
+              {subBars.map((s, i) => (
+                <li key={s.id} className="border border-gray-200 dark:border-slate-700 rounded-lg p-2 group">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!!s.done}
+                      onChange={(e) => updateSubBar(s.id, { done: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
+                      title="Mark phase complete"
+                    />
+                    <input
+                      type="text"
+                      value={s.label}
+                      onChange={(e) => updateSubBar(s.id, { label: e.target.value })}
+                      placeholder="Phase name (e.g. Material Prep)"
+                      className={
+                        'flex-1 bg-transparent text-sm border border-transparent rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-400 ' +
+                        (s.done ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100')
+                      }
+                    />
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 text-xs">
+                      <button type="button" onClick={() => moveSubBar(s.id, -1)} disabled={i === 0}
+                        className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30" title="Move up">↑</button>
+                      <button type="button" onClick={() => moveSubBar(s.id, 1)} disabled={i === subBars.length - 1}
+                        className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30" title="Move down">↓</button>
+                      <button type="button" onClick={() => deleteSubBar(s.id)}
+                        className="w-5 h-5 text-gray-400 hover:text-red-600" title="Remove">×</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-1.5">
+                    <input
+                      type="date"
+                      value={s.startDate}
+                      onChange={(e) => updateSubBar(s.id, { startDate: e.target.value })}
+                      className="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                      title="Start date"
+                    />
+                    <input
+                      type="date"
+                      value={s.endDate}
+                      onChange={(e) => updateSubBar(s.id, { endDate: e.target.value })}
+                      className="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+                      title="End date"
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

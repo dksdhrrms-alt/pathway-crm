@@ -32,6 +32,8 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   startDate: 'start_date', endDate: 'end_date',
   completedAt: 'completed_at', sortOrder: 'sort_order',
   archivedAt: 'archived_at',
+  // Project sub-bars (timeline phases) — JSONB column.
+  subBars: 'sub_bars',
   // R&D expense column — same reason. (Already silently broken for the
   // rnd table soft-delete; explicit mapping makes it deterministic.)
   annualAmount: 'annual_amount', updatedAt: 'updated_at',

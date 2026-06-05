@@ -270,6 +270,21 @@ export interface ProjectTask {
   doneAt?: string | null;
 }
 
+/**
+ * A time-bound phase inside a project's timeline. Rendered as a thin
+ * (~6px) bar below the parent bar on the Gantt — gives users the
+ * "Material Prep Jun 1-7 → Test Jun 8-15 → Analysis Jun 16-30" view
+ * without spinning up a full nested project. Inherits team/owner/stage
+ * from the parent.
+ */
+export interface ProjectSubBar {
+  id: string;
+  label: string;
+  startDate: string;  // YYYY-MM-DD
+  endDate: string;    // YYYY-MM-DD
+  done?: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -285,6 +300,8 @@ export interface Project {
   archivedAt?: string | null;
   /** Ordered checklist of sub-steps. Persisted as JSONB on the row. */
   tasks?: ProjectTask[];
+  /** Time-bound phases (thin Gantt sub-bars). Persisted as JSONB. */
+  subBars?: ProjectSubBar[];
 }
 
 export const initialAccounts: Account[] = [

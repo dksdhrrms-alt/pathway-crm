@@ -556,8 +556,14 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
     onDragOverCompletedChange(false);
   }
 
+  // Sub-bars (timeline phases) — each renders as a ~6px slim bar below
+  // the parent bar in the same row. We grow the row height by 8px per
+  // sub-bar so they don't overlap subsequent project rows.
+  const subBars = project.subBars ?? [];
+  const subBarRowHeight = 40 + (subBars.length > 0 ? 8 + subBars.length * 8 : 0);
+
   return (
-    <div ref={rowRef} className="relative h-10 my-1 px-2">
+    <div ref={rowRef} className="relative my-1 px-2" style={{ height: `${subBarRowHeight}px` }}>
       <div
         role="button"
         tabIndex={0}
@@ -610,6 +616,34 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
             : stageLabel}
         </span>
       </div>
+
+      {subBars.map((sb, sbIdx) => {
+        const sbStart = new Date(sb.startDate + 'T00:00:00');
+        const sbEnd = new Date(sb.endDate + 'T00:00:00');
+        if (isNaN(sbStart.getTime()) || isNaN(sbEnd.getTime())) return null;
+        const sbVisStart = sbStart < yearStart ? yearStart : sbStart;
+        const sbVisEnd = sbEnd > yearEnd ? yearEnd : sbEnd;
+        const sbStartDay = dayOfYear(sbVisStart);
+        const sbEndDay = dayOfYear(sbVisEnd) + 1;
+        if (sbEndDay <= sbStartDay) return null;
+        const sbLeft = (sbStartDay / yearDays) * 100;
+        const sbWidth = Math.max(0.3, ((sbEndDay - sbStartDay) / yearDays) * 100);
+        return (
+          <div
+            key={sb.id}
+            title={`${sb.label || '(unnamed phase)'} · ${sb.startDate} → ${sb.endDate}${sb.done ? ' · done' : ''}`}
+            className="absolute h-1.5 rounded-sm pointer-events-none"
+            style={{
+              left: `${sbLeft}%`,
+              width: `${sbWidth}%`,
+              top: `${40 + 4 + sbIdx * 8}px`,
+              backgroundColor: team?.color ?? '#999',
+              opacity: sb.done ? 0.45 : 0.85,
+              minWidth: 4,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
