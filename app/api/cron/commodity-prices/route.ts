@@ -191,10 +191,14 @@ export async function GET(request: NextRequest) {
     if (error) {
       results.push({ key: c.key, status: 'failed', detail: error.message });
     } else {
-      const last = r.points[r.points.length - 1];
+      // Find the newest point regardless of source ordering — Yahoo
+      // returns chronological, MMN returns reverse-chronological. Min/
+      // max scan is cheap (≤ ~30 points) and robust to either shape.
+      const newest = r.points.reduce((a, b) => (a.date > b.date ? a : b));
+      const oldest = r.points.reduce((a, b) => (a.date < b.date ? a : b));
       results.push({
         key: c.key, status: 'ok',
-        detail: `${rows.length} rows up to ${last.date} (${last.price})`,
+        detail: `${rows.length} rows ${oldest.date}..${newest.date} (latest=${newest.price})`,
       });
     }
   }
