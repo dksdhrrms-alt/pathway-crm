@@ -555,15 +555,15 @@ export default function AccountDetailPage() {
                   <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Complex</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Owner</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Last Contact</th>
-                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>30d Acts</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Open Deals</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pipeline</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>% of Pipe</th>
-                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Sales</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Complex</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Owner</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Last Contact</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>30d Acts</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Open Deals</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Pipeline</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>% of Pipe</th>
+                        <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: '11px', color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Total Sales</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -576,17 +576,17 @@ export default function AccountDetailPage() {
                         const salesColor = salesPct >= 50 ? '#1a4731' : salesPct >= 25 ? '#2d6a4f' : salesPct >= 10 ? '#52a672' : '#9ca3af';
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
-                            <td style={{ padding: '10px' }}>
-                              <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-[#1a4731] dark:text-white">{c.name}</Link>
-                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                            <td style={{ padding: '10px', maxWidth: 320, lineHeight: 1.35 }}>
+                              <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-[#1a4731] dark:text-white" title={c.name} style={{ wordBreak: 'break-word' }}>{c.name}</Link>
+                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', whiteSpace: 'nowrap' }}>
                                 {c.industry || '—'}
                                 {c.country ? ` · ${c.country}` : ''}
                               </div>
                             </td>
-                            <td style={{ padding: '10px', fontSize: '12px', color: '#94a3b8' }}>{c.ownerName || getOwnerName(c.ownerId) || '—'}</td>
-                            <td style={{ padding: '10px', fontSize: '12px', color: daysSince > 30 ? '#dc2626' : '#444' }}>{relativeDate(daysSince, lastDateStr)}</td>
+                            <td style={{ padding: '10px', fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{c.ownerName || getOwnerName(c.ownerId) || '—'}</td>
+                            <td style={{ padding: '10px', fontSize: '12px', color: daysSince > 30 ? '#dc2626' : '#444', whiteSpace: 'nowrap' }}>{relativeDate(daysSince, lastDateStr)}</td>
                             <td style={{ padding: '10px' }}>
-                              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color }}>{sb.label}</span>
+                              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color, whiteSpace: 'nowrap', display: 'inline-block' }}>{sb.label}</span>
                             </td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? '#0F6E56' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? '#1a4731' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
