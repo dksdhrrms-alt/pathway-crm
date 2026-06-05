@@ -17,7 +17,6 @@
  */
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -114,10 +113,20 @@ export default function ArchivePage() {
   // Unassigned-only filter — surfaces inbound emails the parser couldn't
   // confidently route. Activated by URL `?filter=unassigned` (NotificationBell
   // bell badge links here) or by toggling the chip in the filter row.
-  const searchParams = useSearchParams();
-  const [unassignedOnly, setUnassignedOnly] = useState<boolean>(
-    () => searchParams?.get('filter') === 'unassigned',
-  );
+  //
+  // We deliberately initialize to `false` and read the URL in an effect.
+  // Reading window.location inside the useState initializer would diverge
+  // between server prerender (no window → false) and client hydration
+  // (with ?filter=unassigned → true), tripping React's hydration check.
+  // Starting consistent on both sides and flipping after mount avoids
+  // that mismatch — the toggle is just one render later.
+  const [unassignedOnly, setUnassignedOnly] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (new URLSearchParams(window.location.search).get('filter') === 'unassigned') {
+      setUnassignedOnly(true);
+    }
+  }, []);
 
   // Pickable users — allowedUsers filtered to active and sorted by name.
   // (Inactive users would still match historical activities, but they
