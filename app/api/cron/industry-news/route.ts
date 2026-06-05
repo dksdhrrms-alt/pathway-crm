@@ -103,7 +103,10 @@ function decodeEntities(s: string): string {
 async function fetchOneFeed(src: { name: string; url: string }): Promise<RssEntry[]> {
   try {
     const res = await fetch(src.url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 PathwayCRM/1.0 NewsBot' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'application/rss+xml, application/xml, text/xml, */*',
+      },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
@@ -224,7 +227,10 @@ export async function GET(request: NextRequest) {
   ).flat();
 
   if (allEntries.length === 0) {
-    return Response.json({ ok: false, error: 'all RSS feeds empty' }, { status: 502 });
+    // Graceful: 200 + ok:false so Vercel doesn't mark the cron as a
+    // hard failure and the bell stops flooding. Logs still show which
+    // feeds returned what status (logged inside fetchOneFeed).
+    return Response.json({ ok: false, error: 'all RSS feeds empty' });
   }
 
   // 2. Filter to last 24h; widen to 7 days if too few.

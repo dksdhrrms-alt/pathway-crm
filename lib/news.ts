@@ -24,17 +24,27 @@ export interface RssSource {
 }
 
 /**
- * RSS feeds we poll each morning. All publicly accessible, no auth.
- * Reordering only affects tie-breakers; Claude scores relevance first.
+ * RSS feeds we poll each morning.
+ *
+ * We use Google News RSS search instead of polling industry sites
+ * directly: Vercel data-center IPs got increasingly blocked (Cloudflare
+ * 403s) and several publishers retired their public RSS endpoints
+ * (404s). Google News aggregates the same publishers, doesn't block,
+ * and returns a clean RSS 2.0 feed. The `<source>` element inside each
+ * item still carries the real publisher name.
+ *
+ * Buckets chosen to cover Pathway's customer base — feed additive
+ * (core), poultry, swine, cattle/dairy. Claude scores cross-bucket
+ * relevance, so weight ties only matter when scores are equal.
  */
+const GNEWS = (q: string) =>
+  `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+
 export const RSS_SOURCES: RssSource[] = [
-  { name: 'WattAgNet',     url: 'https://www.wattagnet.com/rss.xml',      weight: 1.0 },
-  { name: 'Pork Business', url: 'https://www.porkbusiness.com/rss.xml',   weight: 1.0 },
-  { name: 'Drovers',       url: 'https://www.drovers.com/rss.xml',        weight: 1.0 },
-  { name: 'Feedstuffs',    url: 'https://www.feedstuffs.com/rss',         weight: 1.1 },
-  { name: 'AllAboutFeed',  url: 'https://www.allaboutfeed.net/feed/',     weight: 1.0 },
-  { name: 'The Poultry Site', url: 'https://www.thepoultrysite.com/rss/news', weight: 0.9 },
-  { name: 'Pig Progress',  url: 'https://www.pigprogress.net/feed/',      weight: 0.9 },
+  { name: 'Feed Additive', url: GNEWS('"feed additive" OR "animal nutrition" OR "livestock feed"'), weight: 1.2 },
+  { name: 'Poultry',       url: GNEWS('poultry industry OR broiler OR "chicken production"'),       weight: 1.0 },
+  { name: 'Swine',         url: GNEWS('pork industry OR swine OR "hog production"'),                weight: 1.0 },
+  { name: 'Cattle/Dairy',  url: GNEWS('dairy industry OR "beef production" OR "cattle ranching"'),  weight: 1.0 },
 ];
 
 /** Format a UTC ISO string → 'Jun 4, 9:31 AM' for the card. */
