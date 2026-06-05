@@ -257,11 +257,17 @@ export default function ProjectsPage() {
               completedZoneRef={completedZoneRef}
               onDragOverCompletedChange={setDragOverCompleted}
               onEdit={(p) => setModal({ mode: 'edit', project: p })}
-              onDateShift={async (id, newStart, newEnd) => {
+              onDateShift={async (id, newStart, newEnd, newSubBars) => {
                 // Optimistic update + persist. On error, reload to reconcile.
-                setProjects((prev) => prev.map((p) => p.id === id ? { ...p, startDate: newStart, endDate: newEnd } : p));
+                setProjects((prev) => prev.map((p) => p.id === id
+                  ? { ...p, startDate: newStart, endDate: newEnd, ...(newSubBars ? { subBars: newSubBars } : {}) }
+                  : p));
                 try {
-                  await dbUpdateProject(id, { startDate: newStart, endDate: newEnd });
+                  await dbUpdateProject(id, {
+                    startDate: newStart,
+                    endDate: newEnd,
+                    ...(newSubBars ? { subBars: newSubBars } : {}),
+                  });
                 } catch (err) {
                   const msg = err instanceof Error ? err.message : String(err);
                   console.error('Date shift failed:', msg);
@@ -372,7 +378,9 @@ interface GanttPanelProps {
   completedZoneRef: React.RefObject<HTMLDivElement | null>;
   onDragOverCompletedChange: (over: boolean) => void;
   onEdit: (p: Project) => void;
-  onDateShift: (id: string, newStart: string, newEnd: string) => void;
+  // Sub-bars travel with the parent on drag — the 4th arg carries the
+  // already-shifted phases so the page handler just persists them.
+  onDateShift: (id: string, newStart: string, newEnd: string, newSubBars?: Project['subBars']) => void;
   onMarkCompleted: (id: string) => void;
 }
 
@@ -453,7 +461,7 @@ interface GanttBarProps {
   completedZoneRef: React.RefObject<HTMLDivElement | null>;
   onDragOverCompletedChange: (over: boolean) => void;
   onEdit: (p: Project) => void;
-  onDateShift: (id: string, newStart: string, newEnd: string) => void;
+  onDateShift: (id: string, newStart: string, newEnd: string, newSubBars?: Project['subBars']) => void;
   onMarkCompleted: (id: string) => void;
 }
 
@@ -548,7 +556,17 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
     newStart.setDate(newStart.getDate() + deltaDays);
     const newEnd = new Date(end);
     newEnd.setDate(newEnd.getDate() + deltaDays);
-    onDateShift(project.id, fmtISODate(newStart), fmtISODate(newEnd));
+    // Shift every sub-bar by the same number of days so phases travel
+    // with the parent. Without this the parent's drag would silently
+    // leave the phases stranded at their original dates.
+    const shiftedSubBars = (project.subBars ?? []).map((sb) => {
+      const ss = new Date(sb.startDate + 'T00:00:00');
+      const se = new Date(sb.endDate + 'T00:00:00');
+      ss.setDate(ss.getDate() + deltaDays);
+      se.setDate(se.getDate() + deltaDays);
+      return { ...sb, startDate: fmtISODate(ss), endDate: fmtISODate(se) };
+    });
+    onDateShift(project.id, fmtISODate(newStart), fmtISODate(newEnd), shiftedSubBars);
   }
   function onPointerCancel() {
     draggingRef.current = null;
@@ -632,7 +650,9 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
         const sbStartDay = dayOfYear(sbVisStart);
         const sbEndDay = dayOfYear(sbVisEnd) + 1;
         if (sbEndDay <= sbStartDay) return null;
-        const sbLeft = (sbStartDay / yearDays) * 100;
+        // Apply the same in-progress drag offset as the parent so phases
+        // travel with the parent bar visually while the pointer is down.
+        const sbLeft = (sbStartDay / yearDays) * 100 + dragDeltaPct;
         const sbWidth = Math.max(0.3, ((sbEndDay - sbStartDay) / yearDays) * 100);
         const labelText = sb.label || '(unnamed phase)';
         return (
