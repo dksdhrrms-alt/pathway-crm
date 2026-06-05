@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   // pass `style=query` to test the query-param form.
   const section = request.nextUrl.searchParams.get('section');
   const style = request.nextUrl.searchParams.get('style') || 'path';
-  const base = `https://marsapi.ams.usda.gov/services/v1.1/reports/${encodeURIComponent(slug)}`;
+  const base = `https://marsapi.ams.usda.gov/services/v1.2/reports/${encodeURIComponent(slug)}`;
   let url = base;
   if (section) {
     url = style === 'query'
