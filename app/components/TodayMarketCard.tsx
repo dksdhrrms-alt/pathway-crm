@@ -15,7 +15,6 @@
  * key in parallel.
  */
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import {
   COMMODITIES,
@@ -119,34 +118,40 @@ export default function TodayMarketCard() {
         <ul className="divide-y divide-gray-100 dark:divide-slate-800">
           {entries.map(({ config, latest, previous, asOfNote }) => {
             const daily = fmtDelta(latest && previous ? pctDelta(latest.price, previous.price) : null);
+            const unitShort = config.unit.replace('USD/', '').replace('cents/', '¢/');
             return (
-              <li key={config.key} className="flex items-center gap-3 py-2.5 text-sm">
-                <div className="flex-1 min-w-0">
-                  <div className="text-gray-900 dark:text-gray-100 font-medium truncate" title={config.description}>
+              <li key={config.key} className="py-2.5 text-sm">
+                {/* Name on its own line so it never gets clipped on mobile.
+                    Price / unit / delta share a second line that wraps as
+                    a unit (smaller right-aligned cluster), keeping the
+                    important "name vs number" grouping intact. */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-gray-900 dark:text-gray-100 font-medium" title={config.description}>
                     {config.label}
                   </div>
-                  {asOfNote && (
-                    <div className="text-[11px] text-gray-400 dark:text-gray-500">{asOfNote}</div>
-                  )}
+                  <div className="flex items-baseline gap-2 whitespace-nowrap">
+                    <span className="tabular-nums text-gray-900 dark:text-gray-100">
+                      {latest ? fmtPrice(latest.price, config.unit) : '—'}
+                    </span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                      {unitShort}
+                    </span>
+                    <span className={`tabular-nums text-xs w-16 text-right ${TONE_TEXT[daily.tone]}`}>
+                      {daily.text}
+                    </span>
+                  </div>
                 </div>
-                <div className="w-24 text-right tabular-nums text-gray-900 dark:text-gray-100">
-                  {latest ? fmtPrice(latest.price, config.unit) : '—'}
-                </div>
-                <div className="w-14 text-[10px] text-right text-gray-400 dark:text-gray-500">
-                  {config.unit.replace('USD/', '').replace('cents/', '¢/')}
-                </div>
-                <div className={`w-24 text-right tabular-nums text-xs ${TONE_TEXT[daily.tone]}`}>
-                  {daily.text}
-                </div>
+                {asOfNote && (
+                  <div className="text-[11px] text-gray-400 dark:text-gray-500">{asOfNote}</div>
+                )}
               </li>
             );
           })}
         </ul>
       )}
 
-      <div className="mt-3 text-[11px] text-gray-400 dark:text-gray-500 flex items-center justify-between">
-        <span>CBOT closes via Yahoo Finance · USDA AMS cash references</span>
-        <Link href="/insights" className="hover:underline">More →</Link>
+      <div className="mt-3 text-[11px] text-gray-400 dark:text-gray-500">
+        CBOT closes via Yahoo Finance · USDA AMS cash references
       </div>
     </div>
   );

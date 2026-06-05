@@ -31,17 +31,20 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-interface FetchOk { ok: true; date: string; price: number }
+interface PricePoint { date: string; price: number }
+interface FetchOk { ok: true; points: PricePoint[] }
 interface FetchErr { ok: false; error: string }
 type FetchResult = FetchOk | FetchErr;
 
 /**
- * Yahoo Finance chart API. Public, no auth, returns the most recent
- * 5d/1d candles in a single shot. We take the latest closed daily bar.
+ * Yahoo Finance chart API. Public, no auth. We pull a 30-day window
+ * and return EVERY non-null close — upserting all of them means a
+ * first-run on a fresh DB instantly seeds enough history for the
+ * widget to display a price even before today's close lands.
  */
 async function fetchYahoo(symbol: string): Promise<FetchResult> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1mo`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 PathwayCRM/1.0' },
     });
@@ -55,16 +58,19 @@ async function fetchYahoo(symbol: string): Promise<FetchResult> {
     const r = data.chart?.result?.[0];
     const ts = r?.timestamp ?? [];
     const closes = r?.indicators?.quote?.[0]?.close ?? [];
-    // Walk backwards to find the last non-null close.
-    for (let i = closes.length - 1; i >= 0; i--) {
+    const points: PricePoint[] = [];
+    for (let i = 0; i < closes.length; i++) {
       const c = closes[i];
       const t = ts[i];
       if (c != null && t != null) {
-        const date = new Date(t * 1000).toISOString().split('T')[0];
-        return { ok: true, date, price: Number(c) };
+        points.push({
+          date: new Date(t * 1000).toISOString().split('T')[0],
+          price: Number(c),
+        });
       }
     }
-    return { ok: false, error: 'no-close-in-window' };
+    if (points.length === 0) return { ok: false, error: 'no-close-in-window' };
+    return { ok: true, points };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
@@ -139,7 +145,7 @@ function parseDdgs(txt: string): FetchResult {
     if (!isFinite(lo) || !isFinite(hi) || lo <= 0 || hi <= 0) continue;
     const mid = (lo + hi) / 2;
     if (mid < 50 || mid > 800) continue;  // sanity bound for USD/ton
-    return { ok: true, date, price: mid };
+    return { ok: true, points: [{ date, price: mid }] };
   }
   return { ok: false, error: 'no-iowa-ddgs-line' };
 }
@@ -157,12 +163,12 @@ function parseChoiceWhiteGrease(txt: string): FetchResult {
     const range = raw.match(/(\d{1,3}(?:\.\d{1,3})?)\s*-\s*(\d{1,3}(?:\.\d{1,3})?)/);
     if (range) {
       const mid = (Number(range[1]) + Number(range[2])) / 2;
-      if (mid > 5 && mid < 200) return { ok: true, date, price: mid };
+      if (mid > 5 && mid < 200) return { ok: true, points: [{ date, price: mid }] };
     }
     const single = raw.match(/(\d{1,3}\.\d{1,3})/);
     if (single) {
       const v = Number(single[1]);
-      if (v > 5 && v < 200) return { ok: true, date, price: v };
+      if (v > 5 && v < 200) return { ok: true, points: [{ date, price: v }] };
     }
   }
   return { ok: false, error: 'no-cwg-line' };
@@ -196,19 +202,29 @@ export async function GET(request: NextRequest) {
       results.push({ key: c.key, status: 'failed', detail: r.error });
       continue;
     }
-    const id = `cp-${c.key}-${r.date}`;
-    const { error } = await sb.from('commodity_prices').upsert({
-      id,
+    // Upsert every point Yahoo / USDA gave us. Yahoo returns the
+    // last 30 days in one shot, so a first-ever run instantly
+    // backfills history and the widget can display yesterday's
+    // close before today's CBOT settlement even lands.
+    const rows = r.points.map((p) => ({
+      id: `cp-${c.key}-${p.date}`,
       commodity_key: c.key,
-      date: r.date,
-      price: r.price,
+      date: p.date,
+      price: p.price,
       unit: c.unit,
       source: c.source,
-    }, { onConflict: 'commodity_key,date' });
+    }));
+    const { error } = await sb.from('commodity_prices').upsert(rows, {
+      onConflict: 'commodity_key,date',
+    });
     if (error) {
       results.push({ key: c.key, status: 'failed', detail: error.message });
     } else {
-      results.push({ key: c.key, status: 'ok', detail: `${r.date} ${r.price}` });
+      const last = r.points[r.points.length - 1];
+      results.push({
+        key: c.key, status: 'ok',
+        detail: `${rows.length} rows up to ${last.date} (${last.price})`,
+      });
     }
   }
 
