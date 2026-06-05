@@ -256,6 +256,20 @@ export const PROJECT_STAGES: { id: ProjectStage; label: string }[] = [
   { id: 'completed',   label: 'Completed'   },
 ];
 
+/**
+ * A single step inside a project's checklist. Stored as JSONB on the
+ * project row (no separate table) — these are lightweight items, never
+ * referenced from anywhere else, and grow per-project rather than
+ * across-projects.
+ */
+export interface ProjectTask {
+  id: string;
+  label: string;
+  done: boolean;
+  /** ISO timestamp set by the client the moment `done` flips to true. */
+  doneAt?: string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -269,6 +283,8 @@ export interface Project {
   ownerId?: string;
   createdAt?: string;
   archivedAt?: string | null;
+  /** Ordered checklist of sub-steps. Persisted as JSONB on the row. */
+  tasks?: ProjectTask[];
 }
 
 export const initialAccounts: Account[] = [

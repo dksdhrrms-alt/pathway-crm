@@ -581,14 +581,33 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
           minWidth: 56,
         }}
       >
-        <span className="text-[11px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+        {/* Checklist progress overlay — darker shade fills the bar from
+            the left, proportional to completed steps. Aria-hidden because
+            the count is also rendered in the badge for sighted users
+            and screen readers get it via the bar's title attribute. */}
+        {(() => {
+          const total = project.tasks?.length ?? 0;
+          if (total === 0) return null;
+          const done = project.tasks!.filter((t) => t.done).length;
+          const pct = Math.round((done / total) * 100);
+          return (
+            <div
+              aria-hidden="true"
+              className="absolute inset-y-0 left-0 pointer-events-none"
+              style={{ width: `${pct}%`, backgroundColor: 'rgba(0,0,0,0.18)' }}
+            />
+          );
+        })()}
+        <span className="text-[11px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis relative z-10">
           {project.name}
         </span>
         <span
-          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0"
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 relative z-10"
           style={{ backgroundColor: 'rgba(255,255,255,0.35)', color: team?.textColor ?? '#111' }}
         >
-          {stageLabel}
+          {project.tasks && project.tasks.length > 0
+            ? `${project.tasks.filter((t) => t.done).length}/${project.tasks.length}`
+            : stageLabel}
         </span>
       </div>
     </div>

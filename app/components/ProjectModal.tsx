@@ -19,8 +19,42 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import type { Project, ProjectTeam, ProjectStage } from '@/lib/data';
+import type { Project, ProjectTeam, ProjectStage, ProjectTask } from '@/lib/data';
 import { generateId, PROJECT_TEAMS, PROJECT_STAGES } from '@/lib/data';
+
+/**
+ * Parse a free-text description for inline status markers users have
+ * been writing as a workaround ("Material prep - done" / "Test - in
+ * progress"). Returns the inferred checklist for one-click conversion
+ * via the "Convert description to checklist" button.
+ */
+function inferTasksFromDescription(desc: string): ProjectTask[] {
+  if (!desc) return [];
+  const lines = desc.split('\n').map((l) => l.trim()).filter(Boolean);
+  // Only convert if at least 2 lines look "checklist-y" — avoids a
+  // false-positive button on plain prose. A line is "checklist-y" when
+  // it ends with a status keyword, is short, or starts with a bullet.
+  const doneRe = /\s[-–—:]?\s*(done|complete[d]?|finished|✓)\s*$/i;
+  const wipRe = /\s[-–—:]?\s*(in progress|wip|ongoing|진행\s*중|진행중)\s*$/i;
+  const bulletRe = /^[-•*]\s*/;
+  const tasks: ProjectTask[] = [];
+  let signal = 0;
+  for (const raw of lines) {
+    let label = raw.replace(bulletRe, '');
+    const isDone = doneRe.test(label);
+    const isWip = wipRe.test(label);
+    label = label.replace(doneRe, '').replace(wipRe, '').trim();
+    if (!label) continue;
+    if (isDone || isWip || bulletRe.test(raw) || label.length < 60) signal++;
+    tasks.push({
+      id: generateId(),
+      label,
+      done: isDone,
+      doneAt: isDone ? new Date().toISOString() : null,
+    });
+  }
+  return signal >= 2 ? tasks : [];
+}
 import { dbCreateProject, dbUpdateProject, dbDeleteProject } from '@/lib/db';
 import SubmitButton from './SubmitButton';
 
@@ -59,8 +93,49 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
   const [stage, setStage] = useState<ProjectStage>(editing?.stage ?? 'planning');
   const [startDate, setStartDate] = useState<string>(editing?.startDate ?? defaultStartDate);
   const [endDate, setEndDate] = useState<string>(editing?.endDate ?? defaultEndDate);
+  const [tasks, setTasks] = useState<ProjectTask[]>(editing?.tasks ?? []);
+  const [newTaskLabel, setNewTaskLabel] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // One-shot suggestion: if the existing description looks like a manual
+  // status list ("X - done"), surface a button to convert it to checklist.
+  const inferredTasks = editing && tasks.length === 0
+    ? inferTasksFromDescription(description)
+    : [];
+
+  function addTask() {
+    const label = newTaskLabel.trim();
+    if (!label) return;
+    setTasks((prev) => [...prev, { id: generateId(), label, done: false, doneAt: null }]);
+    setNewTaskLabel('');
+  }
+  function toggleTask(id: string) {
+    setTasks((prev) => prev.map((t) => {
+      if (t.id !== id) return t;
+      const nextDone = !t.done;
+      return { ...t, done: nextDone, doneAt: nextDone ? new Date().toISOString() : null };
+    }));
+  }
+  function deleteTask(id: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  }
+  function updateTaskLabel(id: string, label: string) {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, label } : t)));
+  }
+  function moveTask(id: string, dir: -1 | 1) {
+    setTasks((prev) => {
+      const idx = prev.findIndex((t) => t.id === id);
+      if (idx === -1) return prev;
+      const swap = idx + dir;
+      if (swap < 0 || swap >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swap]] = [next[swap], next[idx]];
+      return next;
+    });
+  }
+  const completedCount = tasks.filter((t) => t.done).length;
+  const progressPct = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
 
   // ESC to close.
   useEffect(() => {
@@ -87,6 +162,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
           stage,
           startDate,
           endDate,
+          tasks,
         });
       } else {
         await dbCreateProject({
@@ -102,6 +178,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
           completedAt: stage === 'completed' ? new Date().toISOString() : null,
           sortOrder: 9999, // append at bottom; reorder UI re-numbers in 0..N.
           ownerId: session?.user?.id ?? '',
+          tasks,
         });
       }
       onChanged();
@@ -203,6 +280,85 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
               rows={3}
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
+            {inferredTasks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { setTasks(inferredTasks); setDescription(''); }}
+                className="mt-2 text-xs text-blue-700 dark:text-blue-300 hover:underline"
+                title="Detected status markers in description — convert to checkboxes"
+              >
+                Convert {inferredTasks.length} line{inferredTasks.length === 1 ? '' : 's'} to checklist →
+              </button>
+            )}
+          </div>
+
+          {/* Checklist of sub-steps */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Checklist <span className="text-gray-400 dark:text-gray-500 text-xs">(optional)</span>
+              </label>
+              {tasks.length > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {completedCount} / {tasks.length} done · {progressPct}%
+                </span>
+              )}
+            </div>
+            {tasks.length > 0 && (
+              <div className="mb-2 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-green-500 transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            )}
+            <ul className="space-y-1">
+              {tasks.map((t, i) => (
+                <li key={t.id} className="flex items-center gap-2 group">
+                  <input
+                    type="checkbox"
+                    checked={t.done}
+                    onChange={() => toggleTask(t.id)}
+                    className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={t.label}
+                    onChange={(e) => updateTaskLabel(t.id, e.target.value)}
+                    className={
+                      'flex-1 bg-transparent text-sm border border-transparent rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-400 ' +
+                      (t.done ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-100')
+                    }
+                  />
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 text-xs">
+                    <button type="button" onClick={() => moveTask(t.id, -1)} disabled={i === 0}
+                      className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30" title="Move up">↑</button>
+                    <button type="button" onClick={() => moveTask(t.id, 1)} disabled={i === tasks.length - 1}
+                      className="w-5 h-5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30" title="Move down">↓</button>
+                    <button type="button" onClick={() => deleteTask(t.id)}
+                      className="w-5 h-5 text-gray-400 hover:text-red-600" title="Remove">×</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 mt-1">
+              <input
+                type="text"
+                value={newTaskLabel}
+                onChange={(e) => setNewTaskLabel(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTask(); } }}
+                placeholder="Add a step and press Enter…"
+                className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <button
+                type="button"
+                onClick={addTask}
+                disabled={!newTaskLabel.trim()}
+                className="px-3 py-1.5 text-sm text-white bg-gray-800 dark:bg-slate-700 rounded-lg hover:bg-gray-700 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -265,36 +421,20 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
             </div>
           )}
 
-          {/* "Mark as completed" shortcut — only relevant in edit mode.
-              Sits as its own row above the standard footer so the
-              "celebration" action gets visual weight, and so users don't
-              have to dig into the Stage dropdown for the single most
-              common state change. Toggles back to "Reopen" once done. */}
           {editing && (
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={handleToggleComplete}
-                disabled={submitting}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 ${
-                  editing.stage === 'completed'
-                    ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30'
-                    : 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950/30'
-                }`}
-              >
-                {editing.stage === 'completed' ? (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a4 4 0 014 4v0a4 4 0 01-4 4H7M3 10l4-4m-4 4l4 4" /></svg>
-                    Reopen project
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" /></svg>
-                    Mark as completed
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleToggleComplete}
+              disabled={submitting}
+              className={
+                'w-full py-2 text-sm font-medium rounded-lg border transition-colors ' +
+                (editing.stage === 'completed'
+                  ? 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30'
+                  : 'border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-950/30')
+              }
+            >
+              {editing.stage === 'completed' ? '↻ Reopen project' : '✓ Mark as completed'}
+            </button>
           )}
 
           <div className="flex items-center justify-between pt-2">
