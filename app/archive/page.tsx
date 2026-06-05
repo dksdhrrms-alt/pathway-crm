@@ -172,11 +172,11 @@ export default function ArchivePage() {
         if (fromDate && a.date < fromDate) return false;
         if (toDate && a.date > toDate) return false;
         if (unassignedOnly) {
-          // Unassigned = an Email activity left without a contact or
-          // account by the inbound parser. The rep is expected to open
-          // it and pick the right contact via the Edit modal.
+          // Unassigned = any Email activity missing a contact. The
+          // account may have been inferred by the domain fallback,
+          // but a human still needs to pick the specific person.
           if (a.type !== 'Email') return false;
-          if (a.contactId || a.accountId) return false;
+          if (a.contactId) return false;
         }
         if (needle) {
           const hay = (a.subject + ' ' + (a.description ?? '')).toLowerCase();

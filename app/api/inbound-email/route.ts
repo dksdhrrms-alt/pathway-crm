@@ -339,6 +339,52 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
+  // ── Step (a3): Domain-based ACCOUNT fallback ──────────────────────
+  // If we couldn't find a specific contact, but we can extract a
+  // candidate's email domain (e.g. `mcarabeau@poulingrain.com`), look
+  // for any existing contact in CRM whose email shares that domain. If
+  // multiple, pick the most common account_id among them. This catches
+  // "new contact at known company" — the email lands on the correct
+  // account even though the specific person isn't in CRM yet. The rep
+  // then only needs to attach a contact, not also pick the account.
+  if (!matchedContactId && !matchedAccountId) {
+    const bodyForDomainScan = (d.text || htmlToPlain(d.html || '') || '').toLowerCase();
+    const emailRegexDom = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/g;
+    const allEmailsForDomain = [
+      ...allCandidates,
+      ...((bodyForDomainScan.match(emailRegexDom) || [])),
+    ];
+    const externalDomains = [...new Set(
+      allEmailsForDomain
+        .map((e) => (e.split('@')[1] || '').toLowerCase().trim())
+        .filter((dom) => dom && dom !== 'pathway-intermediates.com' && !dom.endsWith('log.pathway-intermediates.com'))
+    )];
+    if (externalDomains.length > 0) {
+      const orFilter = externalDomains.map((dom) => `email.ilike.%@${dom}`).join(',');
+      const { data: domainContacts, error: dErr } = await supabase
+        .from('contacts')
+        .select('account_id, email')
+        .is('archived_at', null)
+        .or(orFilter);
+      if (dErr) console.error('[inbound-email] domain-fallback contact fetch error:', dErr.message);
+      const acctCount = new Map<string, number>();
+      for (const c of domainContacts || []) {
+        if (c.account_id) acctCount.set(c.account_id as string, (acctCount.get(c.account_id as string) || 0) + 1);
+      }
+      if (acctCount.size > 0) {
+        const topAcct = [...acctCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        matchedAccountId = topAcct;
+        console.warn('[inbound-email] step: matched ACCOUNT only by domain fallback', {
+          domains: externalDomains,
+          account_id: topAcct,
+          domain_contacts_count: domainContacts?.length || 0,
+        });
+      } else {
+        console.warn('[inbound-email] step: no domain-fallback hit', { domains: externalDomains });
+      }
+    }
+  }
+
   // ── Step (c): subject-based account-name match ────────────────────
   // BCC strips recipient info from envelope on most clients (Outlook +
   // Gmail), so contact_email matching often fails for the exact
@@ -347,30 +393,71 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   // Q3", "FW: Cargill sample request"), so we scan the subject for any
   // known account name as a high-precision fallback.
   //
-  // To avoid false positives:
-  //   - require account name to be ≥ 4 chars (so "USA" doesn't match
-  //     every email)
-  //   - prefer LONGER matches when multiple accounts substring the
-  //     subject (so "Tyson Fresh Meats" beats "Tyson")
-  //   - skip generic suffixes ("LLC", "Inc", "Foods", "Farms" alone)
+  // Two-pass strategy:
+  //   1. Exact substring of full account name (highest precision)
+  //   2. Token-overlap score against the account's significant words
+  //      ("Poulin Grain" vs subject "fw: poulin annual sales meeting"
+  //      gets a 0.5 score on the "poulin" token — accepted because the
+  //      single matched token is significant after stop-word removal).
+  //
+  // Safeguards against false positives:
+  //   - account name must be ≥ 4 chars total for substring path
+  //   - token comparison drops stop words (USA, LLC, Inc, Foods, Farms,
+  //     and, of, group, …) so generic suffixes can't win
+  //   - tokens must be ≥ 3 chars
+  //   - prefer LONGER name on ties (more specific account)
   const SUBJECT_MIN_NAME_LEN = 4;
+  const TOKEN_STOPWORDS = new Set([
+    'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for',
+    'by', 'with', 'usa', 'inc', 'llc', 'corp', 'corporation', 'co', 'ltd',
+    'group', 'company', 'companies', 'foods', 'farms', 'farm', 'enterprises',
+  ]);
+  const tokenize = (s: string): string[] =>
+    s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !TOKEN_STOPWORDS.has(t));
   const subjectLower = (d.subject || '').toLowerCase();
   if (!matchedContactId && !matchedAccountId && subjectLower) {
     const { data: accts, error: aErr } = await supabase
       .from('accounts').select('id, name').range(0, 4999);
     if (aErr) console.error('[inbound-email] subject-match account fetch error:', aErr.message);
-    let bestHit: { id: string; name: string; len: number } | null = null;
+    const subjTokens = new Set(tokenize(d.subject || ''));
+    let bestSubstr: { id: string; name: string; len: number } | null = null;
+    // (id, name, score, matchedCount, nameLen) — used to break ties
+    let bestToken: { id: string; name: string; score: number; matchedCount: number; nameLen: number } | null = null;
     for (const a of accts || []) {
       const n = String(a.name || '').trim();
       if (n.length < SUBJECT_MIN_NAME_LEN) continue;
-      if (subjectLower.includes(n.toLowerCase()) && (!bestHit || n.length > bestHit.len)) {
-        bestHit = { id: a.id as string, name: n, len: n.length };
+      // Pass 1: substring of full account name
+      if (subjectLower.includes(n.toLowerCase()) && (!bestSubstr || n.length > bestSubstr.len)) {
+        bestSubstr = { id: a.id as string, name: n, len: n.length };
+        continue;
+      }
+      // Pass 2: token-overlap scoring
+      const acctTokens = tokenize(n);
+      if (acctTokens.length === 0) continue;
+      const matchedCount = acctTokens.filter((t) => subjTokens.has(t)).length;
+      if (matchedCount === 0) continue;
+      const score = matchedCount / acctTokens.length;
+      if (score < 0.5) continue;
+      // Tie-break: higher score → higher matchedCount → longer name
+      if (
+        !bestToken ||
+        score > bestToken.score ||
+        (score === bestToken.score && matchedCount > bestToken.matchedCount) ||
+        (score === bestToken.score && matchedCount === bestToken.matchedCount && n.length > bestToken.nameLen)
+      ) {
+        bestToken = { id: a.id as string, name: n, score, matchedCount, nameLen: n.length };
       }
     }
-    if (bestHit) {
-      matchedAccountId = bestHit.id;
+    const finalSubjectHit = bestSubstr
+      ? { id: bestSubstr.id, name: bestSubstr.name, source: 'substring' as const }
+      : bestToken
+        ? { id: bestToken.id, name: bestToken.name, source: `tokens(${bestToken.matchedCount}/${Math.round(bestToken.score * 10) / 10})` }
+        : null;
+    if (finalSubjectHit) {
+      matchedAccountId = finalSubjectHit.id;
       console.warn('[inbound-email] step: matched by subject-account-name', {
-        account_id: bestHit.id, account_name: bestHit.name, subject: d.subject,
+        account_id: finalSubjectHit.id, account_name: finalSubjectHit.name,
+        match_source: finalSubjectHit.source, subject: d.subject,
       });
     }
   }
@@ -434,9 +521,26 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
   //   bell badge → Archive filter) for one-click assignment by the rep.
   //   Better an empty assignment than a confidently wrong one.
   if (!matchedContactId && !matchedAccountId) {
+    // Diagnostic dump for unmatched emails. Every field that could
+    // have contained a recipient hint is logged so we can see what
+    // Outlook/Resend actually delivers when BCC strips the envelope.
+    // This drives the next round of parser improvements without
+    // guessing.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dExtForLog = d as any;
     console.warn('[inbound-email] step: no match — saving as unassigned for manual review', {
-      subject: d.subject?.slice(0, 80),
+      subject: d.subject?.slice(0, 120),
       from: fromEmail,
+      envelope_to: d.to,
+      envelope_cc: d.cc,
+      headers_keys: dExtForLog.headers ? Object.keys(dExtForLog.headers).slice(0, 20) : null,
+      headers_to: dExtForLog.headers?.to ?? dExtForLog.headers?.To ?? null,
+      headers_cc: dExtForLog.headers?.cc ?? dExtForLog.headers?.Cc ?? null,
+      headers_from: dExtForLog.headers?.from ?? dExtForLog.headers?.From ?? null,
+      headers_references: dExtForLog.headers?.references ?? dExtForLog.headers?.References ?? null,
+      headers_in_reply_to: dExtForLog.headers?.['in-reply-to'] ?? dExtForLog.headers?.['In-Reply-To'] ?? null,
+      forwarded_extracted: forwardedCandidates,
+      all_candidates: allCandidates,
     });
   }
 
@@ -831,50 +935,45 @@ function htmlToPlain(html: string): string {
     .trim();
 }
 
-function logEventSummary(rawBody: string, opts: { verified: boolean }): void {
-  let event: InboundEmailEvent | null = null;
+/**
+ * Resend's `email.received` payload SHOULD ship the body inline, but
+ * we occasionally see empty `text` and `html`. As a last resort try the
+ * outbound retrieval endpoint — sometimes works for messages our own
+ * users sent + Bcc'd back to us via Outlook's autoforward rule.
+ */
+/**
+ * Logs a 1-line summary of the incoming webhook event so the Vercel
+ * Functions tab shows what arrived, even when we 200 silently. Doesn't
+ * throw — diagnostic-only.
+ */
+function logEventSummary(rawBody: string, ctx: { verified: boolean }): void {
   try {
-    event = JSON.parse(rawBody) as InboundEmailEvent;
+    const evt = JSON.parse(rawBody) as InboundEmailEvent;
+    console.warn('[inbound-email] received', {
+      verified: ctx.verified,
+      type: evt.type,
+      from: evt.data?.from,
+      subject: evt.data?.subject,
+      email_id: evt.data?.email_id,
+    });
   } catch {
-    console.warn('[inbound-email] body is not valid JSON');
-    return;
+    console.warn('[inbound-email] received: (un-parseable body)', { verified: ctx.verified });
   }
-  const d = event?.data;
-  console.warn('[inbound-email] received', {
-    verified: opts.verified,
-    type: event?.type,
-    email_id: d?.email_id,
-    from: d?.from?.replace(/<.+>/, '').trim(),
-    to_count: d?.to?.length ?? 0,
-    bcc_count: d?.bcc?.length ?? 0,
-    subject: d?.subject?.slice(0, 80),
-    attachments: d?.attachments?.length ?? 0,
-  });
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-//  Resend Inbound API helpers — body fallback + attachment download
-// ──────────────────────────────────────────────────────────────────────────
-
-/**
- * Try to fetch the rendered body for an inbound email via Resend's API.
- * Used as a fallback when the webhook payload's text / html are empty
- * (happens on some forwarded messages from Outlook). Returns empty
- * string on any failure — caller must handle "no body" gracefully.
- */
 async function fetchInboundBodyFromResend(emailId: string): Promise<string> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || !emailId) return '';
   try {
-    const res = await fetch(`https://api.resend.com/emails/inbound/${emailId}`, {
+    const res = await fetch(`https://api.resend.com/emails/${emailId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) {
-      console.warn('[inbound-email] body fetch non-OK:', res.status);
+      console.warn(`[inbound-email] body fetch non-OK ${res.status}`);
       return '';
     }
-    const j = await res.json() as { text?: string; html?: string };
-    const txt = j.text || (j.html ? htmlToPlain(j.html) : '');
+    const data = await res.json().catch(() => ({} as { text?: string; html?: string }));
+    const txt = (data as { text?: string }).text || htmlToPlain((data as { html?: string }).html || '');
     return (txt || '').trim();
   } catch (err) {
     console.warn('[inbound-email] body fetch error:', err instanceof Error ? err.message : String(err));
@@ -883,12 +982,8 @@ async function fetchInboundBodyFromResend(emailId: string): Promise<string> {
 }
 
 /**
- * Pull one attachment's bytes from Resend, push to the `email-attachments`
- * Supabase Storage bucket, and return a record suitable for stitching
- * into the activity description.
- *
- * Path layout: `<emailId>/<filename>` — flat, easy to browse in the
- * Supabase dashboard. Filename is slugged to keep URLs clean.
+ * Pull one attachment's bytes from Resend, push to Supabase Storage,
+ * return a record for stitching into the activity description.
  */
 async function fetchAndStoreAttachment(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

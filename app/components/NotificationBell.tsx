@@ -263,16 +263,20 @@ export default function NotificationBell() {
     const unassignedSince = todayMs - 30 * 86400000;
     activities
       .filter((a) => a.ownerId === userId && a.type === 'Email')
-      .filter((a) => !a.contactId && !a.accountId)
+      // No contact assigned = needs human review regardless of whether
+      // the account was inferred (domain fallback may set account_id
+      // but leave contact_id null — rep still needs to pick the person).
+      .filter((a) => !a.contactId)
       .filter((a) => new Date(a.date + 'T00:00:00').getTime() >= unassignedSince)
       .slice(0, 10)
       .forEach((a) => {
         const id = `unassigned_email_${a.id}`;
         if (dismissed.has(id)) return;
+        const acctHint = a.accountId ? ` (account already on ${accounts.find((x) => x.id === a.accountId)?.name ?? '…'})` : '';
         result.push({
           id, type: 'unassigned_email', priority: 'high',
-          title: 'Email needs assignment',
-          body: `"${a.subject}" — couldn't auto-match a contact. Click to assign.`,
+          title: 'Email needs contact',
+          body: `"${a.subject}"${acctHint} — click to assign.`,
           link: `/archive?filter=unassigned`,
         });
       });
