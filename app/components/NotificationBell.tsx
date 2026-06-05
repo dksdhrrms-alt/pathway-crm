@@ -8,7 +8,7 @@ import { getRecentCommentsOnActivities, type Comment } from '@/lib/comments';
 
 interface Notification {
   id: string;
-  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect' | 'new_comment' | 'stalled_deal';
+  type: 'overdue_task' | 'closing_soon' | 'no_contact' | 'follow_up' | 'birthday' | 'complex_neglect' | 'new_comment' | 'stalled_deal' | 'unassigned_email';
   priority: 'high' | 'medium' | 'low';
   title: string;
   body: string;
@@ -18,7 +18,7 @@ interface Notification {
 const PRIORITY_COLOR: Record<string, string> = { high: '#E24B4A', medium: '#EF9F27', low: '#378ADD' };
 const PRIORITY_BG: Record<string, string> = { high: '#FCEBEB', medium: '#FAEEDA', low: '#E6F1FB' };
 const PRIORITY_BG_DARK: Record<string, string> = { high: 'rgba(220, 38, 38, 0.15)', medium: 'rgba(245, 158, 11, 0.15)', low: 'rgba(37, 99, 235, 0.15)' };
-const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6', new_comment: '\uD83D\uDCAC', stalled_deal: '\uD83D\uDEA9' };
+const TYPE_ICON: Record<string, string> = { overdue_task: '\u26A0\uFE0F', closing_soon: '\uD83C\uDFAF', no_contact: '\uD83D\uDCED', follow_up: '\uD83D\uDD14', birthday: '\uD83C\uDF82', complex_neglect: '\u25C6', new_comment: '\uD83D\uDCAC', stalled_deal: '\uD83D\uDEA9', unassigned_email: '\uD83D\uDCE7' };
 
 export default function NotificationBell() {
   const { data: session } = useSession();
@@ -251,6 +251,29 @@ export default function NotificationBell() {
           title: `${c.authorName} replied`,
           body: `"${act.subject}" — ${preview}`,
           link,
+        });
+      });
+
+    // 7. Unassigned inbound emails — Email-type activities I own where
+    //    the parser couldn't confidently determine a contact. Surfaced
+    //    after the 30-day "guess" fallback was removed: better to ask
+    //    the rep for a one-click assignment than silently misroute to
+    //    the wrong account. Limited to last 30 days so old unmatched
+    //    rows don't accumulate forever in the bell.
+    const unassignedSince = todayMs - 30 * 86400000;
+    activities
+      .filter((a) => a.ownerId === userId && a.type === 'Email')
+      .filter((a) => !a.contactId && !a.accountId)
+      .filter((a) => new Date(a.date + 'T00:00:00').getTime() >= unassignedSince)
+      .slice(0, 10)
+      .forEach((a) => {
+        const id = `unassigned_email_${a.id}`;
+        if (dismissed.has(id)) return;
+        result.push({
+          id, type: 'unassigned_email', priority: 'high',
+          title: 'Email needs assignment',
+          body: `"${a.subject}" — couldn't auto-match a contact. Click to assign.`,
+          link: `/archive?filter=unassigned`,
         });
       });
 

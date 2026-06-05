@@ -425,42 +425,19 @@ async function processInboundEvent(rawBody: string): Promise<ProcessResult> {
     }
   }
 
-  // ── Step (d): sender's most recent contact activity (30-day window) ──
-  // Real-world pattern: a sales rep BCCs the inbound mailbox right after
-  // emailing a customer they were just touching in the CRM. The window
-  // is 30 days (up from 7) because BCC users who can't change their
-  // mail-server config rely heavily on this fallback, and longer-than-
-  // weekly customer cadence is normal.
-  // Trade-off: 30 days raises the chance of mis-attribution (the rep's
-  // most recent activity could be on a different account than the one
-  // they're emailing). To mitigate, both the subject-match (c) AND the
-  // Re:/Fwd: parent-subject match (c') above run first and are far more
-  // specific than this catch-all.
-  const FALLBACK_DAYS = 30;
+  // ── Step (d) REMOVED — silent "recent activity" fallback was the root
+  //   cause of every mis-routing incident (Poulin Grain → Land O Lakes,
+  //   Nathan/Cornerstone → Land O Lakes, Melissa/Poulin → Jamie/LOL).
+  //   When parser cannot identify a contact we deliberately leave
+  //   contact_id NULL + account_id empty. The activity still lands so
+  //   nothing is lost, but it surfaces in the Unassigned queue (TopBar
+  //   bell badge → Archive filter) for one-click assignment by the rep.
+  //   Better an empty assignment than a confidently wrong one.
   if (!matchedContactId && !matchedAccountId) {
-    const since = new Date(Date.now() - FALLBACK_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const { data: recentActs, error: raErr } = await supabase
-      .from('activities')
-      .select('contact_id, account_id, date')
-      .eq('owner_id', ownerId)
-      .gte('date', since)
-      .is('archived_at', null)
-      .not('contact_id', 'is', null)
-      .order('date', { ascending: false })
-      .limit(1);
-    if (raErr) console.error('[inbound-email] recent-activity fallback error:', raErr.message);
-    const recent = recentActs && recentActs[0];
-    if (recent && recent.contact_id) {
-      matchedContactId = recent.contact_id as string;
-      matchedAccountId = (recent.account_id as string) || null;
-      console.warn(`[inbound-email] step: fallback to recent contact (${FALLBACK_DAYS}d window)`, {
-        contact_id: matchedContactId,
-        account_id: matchedAccountId,
-        from_activity_date: recent.date,
-      });
-    } else {
-      console.warn(`[inbound-email] step: no recent-contact fallback available (${FALLBACK_DAYS}d window empty)`);
-    }
+    console.warn('[inbound-email] step: no match — saving as unassigned for manual review', {
+      subject: d.subject?.slice(0, 80),
+      from: fromEmail,
+    });
   }
 
   // ── 4. Get body — payload first, Resend API fallback ──────────────

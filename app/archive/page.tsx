@@ -17,6 +17,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -110,6 +111,13 @@ export default function ArchivePage() {
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  // Unassigned-only filter — surfaces inbound emails the parser couldn't
+  // confidently route. Activated by URL `?filter=unassigned` (NotificationBell
+  // bell badge links here) or by toggling the chip in the filter row.
+  const searchParams = useSearchParams();
+  const [unassignedOnly, setUnassignedOnly] = useState<boolean>(
+    () => searchParams?.get('filter') === 'unassigned',
+  );
 
   // Pickable users — allowedUsers filtered to active and sorted by name.
   // (Inactive users would still match historical activities, but they
@@ -163,6 +171,13 @@ export default function ArchivePage() {
       .filter((a) => {
         if (fromDate && a.date < fromDate) return false;
         if (toDate && a.date > toDate) return false;
+        if (unassignedOnly) {
+          // Unassigned = an Email activity left without a contact or
+          // account by the inbound parser. The rep is expected to open
+          // it and pick the right contact via the Edit modal.
+          if (a.type !== 'Email') return false;
+          if (a.contactId || a.accountId) return false;
+        }
         if (needle) {
           const hay = (a.subject + ' ' + (a.description ?? '')).toLowerCase();
           if (!hay.includes(needle)) return false;
@@ -170,7 +185,7 @@ export default function ArchivePage() {
         return true;
       })
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [activities, canPickOthers, selectedUserIds, sessionUserId, fromDate, toDate, search]);
+  }, [activities, canPickOthers, selectedUserIds, sessionUserId, fromDate, toDate, search, unassignedOnly]);
 
   // Type tally chips above the table. Keeps the user oriented when filters
   // are applied — they can see at a glance how many of each kind survived.
@@ -338,11 +353,26 @@ export default function ArchivePage() {
                 />
               </div>
 
-              <div className={(canPickOthers ? 'md:col-span-1' : 'md:col-span-1') + ' flex items-end'}>
+              <div className={(canPickOthers ? 'md:col-span-1' : 'md:col-span-1') + ' flex items-end gap-2'}>
                 <button
                   type="button"
-                  onClick={resetFilters}
-                  className="w-full md:w-auto px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-gray-300 dark:hover:bg-slate-800"
+                  onClick={() => setUnassignedOnly((v) => !v)}
+                  title={unassignedOnly
+                    ? 'Showing only inbound emails without a contact. Click to clear.'
+                    : 'Show only inbound emails where the parser could not auto-match a contact.'}
+                  className={
+                    'px-3 py-2 text-sm rounded-lg border whitespace-nowrap ' +
+                    (unassignedOnly
+                      ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-400 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/60'
+                      : 'border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800')
+                  }
+                >
+                  {unassignedOnly ? '✓ Unassigned' : 'Unassigned'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setUnassignedOnly(false); resetFilters(); }}
+                  className="px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 dark:border-slate-600 dark:text-gray-300 dark:hover:bg-slate-800"
                   title="Clear all filters"
                 >
                   Reset
