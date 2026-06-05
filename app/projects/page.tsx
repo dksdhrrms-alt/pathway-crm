@@ -556,11 +556,16 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
     onDragOverCompletedChange(false);
   }
 
-  // Sub-bars (timeline phases) — each renders as a ~6px slim bar below
-  // the parent bar in the same row. We grow the row height by 8px per
-  // sub-bar so they don't overlap subsequent project rows.
+  // Sub-bars (timeline phases) — each renders as a slim bar below the
+  // parent bar with its own label. 12px tall so 9px text reads inside.
+  // Row height grows by 14px per sub-bar (12 bar + 2 gap) so they don't
+  // collide with the next project row.
   const subBars = project.subBars ?? [];
-  const subBarRowHeight = 40 + (subBars.length > 0 ? 8 + subBars.length * 8 : 0);
+  const SUB_BAR_HEIGHT = 12;
+  const SUB_BAR_GAP = 2;
+  const subBarRowHeight = 40 + (subBars.length > 0
+    ? 4 + subBars.length * (SUB_BAR_HEIGHT + SUB_BAR_GAP)
+    : 0);
 
   return (
     <div ref={rowRef} className="relative my-1 px-2" style={{ height: `${subBarRowHeight}px` }}>
@@ -628,20 +633,35 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
         if (sbEndDay <= sbStartDay) return null;
         const sbLeft = (sbStartDay / yearDays) * 100;
         const sbWidth = Math.max(0.3, ((sbEndDay - sbStartDay) / yearDays) * 100);
+        const labelText = sb.label || '(unnamed phase)';
         return (
           <div
             key={sb.id}
-            title={`${sb.label || '(unnamed phase)'} · ${sb.startDate} → ${sb.endDate}${sb.done ? ' · done' : ''}`}
-            className="absolute h-1.5 rounded-sm pointer-events-none"
+            title={`${labelText} · ${sb.startDate} → ${sb.endDate}${sb.done ? ' · done' : ''}`}
+            className="absolute rounded-sm pointer-events-none flex items-center overflow-hidden"
             style={{
               left: `${sbLeft}%`,
               width: `${sbWidth}%`,
-              top: `${40 + 4 + sbIdx * 8}px`,
+              top: `${40 + 4 + sbIdx * (SUB_BAR_HEIGHT + SUB_BAR_GAP)}px`,
+              height: `${SUB_BAR_HEIGHT}px`,
               backgroundColor: team?.color ?? '#999',
-              opacity: sb.done ? 0.45 : 0.85,
+              opacity: sb.done ? 0.45 : 0.9,
               minWidth: 4,
+              paddingLeft: 4,
+              paddingRight: 4,
             }}
-          />
+          >
+            <span
+              className="text-[9px] font-semibold whitespace-nowrap leading-none"
+              style={{
+                color: team?.textColor ?? '#111',
+                textDecoration: sb.done ? 'line-through' : 'none',
+                textDecorationThickness: sb.done ? '1px' : undefined,
+              }}
+            >
+              {labelText}
+            </span>
+          </div>
         );
       })}
     </div>
