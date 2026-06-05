@@ -49,20 +49,48 @@ function fmtUSD(n: number): string {
 
 // Inline-style helper for the colored team pill — pulls fill from the
 // per-team color (chosen by the user in BudgetTeamsModal) and chooses a
-// matching text color via simple luminance check. Avoids dragging the
-// dark-mode palette decisions in this file.
-function teamBadgeStyle(color: string): React.CSSProperties {
-  // Approximate luminance — values >0.6 get dark text, otherwise white.
+// matching text color via simple luminance check. Dark-mode-aware:
+//   - light mode  : light colors get dark text (high contrast on tint)
+//   - dark mode   : we always use the team color itself, which pops
+//                   against the slate-950 page background. Without this
+//                   override, light-color teams (Ruminant orange, Other
+//                   gray) ended up rendering dark-gray text on a dark
+//                   tint — virtually invisible.
+function teamBadgeStyle(color: string, isDark: boolean): React.CSSProperties {
   const hex = color.replace('#', '');
   const r = parseInt(hex.slice(0, 2), 16) / 255;
   const g = parseInt(hex.slice(2, 4), 16) / 255;
   const b = parseInt(hex.slice(4, 6), 16) / 255;
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  let textColor: string;
+  if (isDark) {
+    // Very dark team colors would blend into the background; bump those
+    // toward a light gray fallback so something is readable.
+    textColor = lum > 0.25 ? color : '#e5e7eb';
+  } else {
+    textColor = lum > 0.6 ? '#1f2937' : color;
+  }
   return {
-    background: color + '33',   // 20% opacity tint as the fill
-    color: lum > 0.6 ? '#1f2937' : color,
-    border: `1px solid ${color}55`,
+    background: color + (isDark ? '22' : '33'),
+    color: textColor,
+    border: `1px solid ${color}66`,
   };
+}
+
+/** Hook: returns true when the html.dark class is set. Updates on toggle
+ *  via MutationObserver so badges re-style without a full reload. */
+function useIsDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const update = () => setIsDark(root.classList.contains('dark'));
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
 }
 
 export default function RndPage() {
@@ -74,6 +102,7 @@ export default function RndPage() {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
+  const isDark = useIsDarkMode();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   // Top-of-page toggle: R&D (default) or Event. All budgets/expenses,
   // breakdown table, and the 12-month grid are scoped to this category.
@@ -396,7 +425,7 @@ export default function RndPage() {
                   {teamStats.map((t) => (
                     <tr key={t.team} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="px-4 py-3">
-                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium" style={teamBadgeStyle(t.color)}>{t.label}</span>
+                        <span className="inline-block px-2 py-0.5 rounded text-xs font-medium" style={teamBadgeStyle(t.color, isDark)}>{t.label}</span>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{fmtUSD(t.budget)}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-gray-200">{fmtUSD(t.spent)}</td>
@@ -492,7 +521,7 @@ export default function RndPage() {
                 className="px-2.5 py-1 rounded text-xs font-medium border transition-colors"
                 style={
                   selectedTeam === t.id
-                    ? teamBadgeStyle(t.color)
+                    ? teamBadgeStyle(t.color, isDark)
                     : undefined
                 }
               >
@@ -568,7 +597,7 @@ export default function RndPage() {
                               return (
                                 <span
                                   className="text-[10px] px-1.5 py-0.5 rounded font-medium"
-                                  style={teamBadgeStyle(tm?.color ?? '#6B7280')}
+                                  style={teamBadgeStyle(tm?.color ?? '#6B7280', isDark)}
                                 >
                                   {tm?.label ?? e.team}
                                 </span>
