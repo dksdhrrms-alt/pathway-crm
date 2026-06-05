@@ -154,7 +154,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }} className="dark:text-gray-100">Quick Log</h3>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }} className="text-gray-900 dark:text-gray-100">Quick Log</h3>
             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#888' }} className="dark:text-gray-400">
               {session?.user?.name} &middot; {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
@@ -399,21 +399,32 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
         </div>
 
         {/* Notes + voice mic */}
-        <div style={{ position: 'relative', marginBottom: '10px' }}>
+        <div style={{ position: 'relative', marginBottom: '10px', lineHeight: 0 }}>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Notes (optional) — or click 🎤 to dictate"
             rows={3}
             style={{
-              width: '100%', padding: '10px 12px', paddingRight: '46px', fontSize: '13px',
-              border: '1px solid #e5e7eb', borderRadius: '8px',
-              resize: 'none', boxSizing: 'border-box',
+              width: '100%',
+              padding: '10px 12px',
+              paddingRight: '46px',
+              fontSize: '13px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              resize: 'none',
+              boxSizing: 'border-box',
               fontFamily: 'inherit',
+              display: 'block',
+              lineHeight: 1.4,
             }}
             className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
           />
-          <div style={{ position: 'absolute', right: '6px', bottom: '6px' }}>
+          {/* Pulled in 10px so the 28px circular mic button sits cleanly
+              inside the textarea border instead of hugging the corner.
+              Previously bottom:6/right:6 made the rounded edge clip
+              against the textarea border in dark mode. */}
+          <div style={{ position: 'absolute', right: '10px', bottom: '10px' }}>
             <VoiceInputButton
               size="sm"
               onTranscript={(text) => setDescription((prev) => prev ? `${prev} ${text}` : text)}
@@ -515,8 +526,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             style={{
               padding: '8px 20px',
               fontSize: '13px',
-              background: saved ? '#1D9E75' : subject.trim() ? '#1a4731' : '#e5e7eb',
-              color: subject.trim() || saved ? 'white' : '#aaa',
+              ...(saved ? { background: '#1D9E75', color: 'white' } : {}),
             }}
           >
             {saved ? '✓ Logged!' : 'Log Activity'}
