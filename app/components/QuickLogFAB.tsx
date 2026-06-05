@@ -202,7 +202,7 @@ export default function QuickLogFAB() {
             justifyContent: 'center', padding: '16px',
           }}
         >
-          <div style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px' }} className="dark:bg-slate-900">
+          <div style={{ borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px' }} className="bg-white dark:bg-slate-900">
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }} className="text-gray-900 dark:text-gray-100">Quick Log</h3>
@@ -220,11 +220,11 @@ export default function QuickLogFAB() {
                   style={{
                     padding: '10px 4px', borderRadius: '10px',
                     border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
-                    background: type === t.id ? '#f0f7ee' : 'white',
+                    background: type === t.id ? '#f0f7ee' : undefined,
                     cursor: 'pointer', display: 'flex', flexDirection: 'column',
                     alignItems: 'center', gap: '4px',
                   }}
-                  className="dark:border-slate-600 dark:bg-slate-800"
+                  className="bg-white dark:border-slate-600 dark:bg-slate-800"
                 >
                   <span style={{ fontSize: '20px' }}>{t.emoji}</span>
                   <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
@@ -243,9 +243,9 @@ export default function QuickLogFAB() {
                 style={{
                   padding: '10px 10px', fontSize: '13px',
                   border: '1px solid #e5e7eb', borderRadius: '8px',
-                  boxSizing: 'border-box', background: 'white', color: '#1f2937', fontFamily: 'inherit',
+                  boxSizing: 'border-box', fontFamily: 'inherit',
                 }}
-                className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
+                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
               />
               <select
                 value={purpose}
@@ -253,10 +253,10 @@ export default function QuickLogFAB() {
                 style={{
                   width: '100%', padding: '10px 12px', fontSize: '13px',
                   border: '1px solid #e5e7eb', borderRadius: '8px',
-                  boxSizing: 'border-box', background: 'white', cursor: 'pointer',
+                  boxSizing: 'border-box', cursor: 'pointer',
                   color: purpose ? '#1f2937' : '#9ca3af', fontFamily: 'inherit',
                 }}
-                className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
               >
                 <option value="">— Purpose (optional) —</option>
                 {ACTIVITY_PURPOSES.map((p) => <option key={p} value={p} style={{ color: '#1f2937' }} className="dark:bg-slate-800 dark:text-gray-100">{p}</option>)}
@@ -298,10 +298,10 @@ export default function QuickLogFAB() {
                       style={{
                         width: '100%', padding: '10px 12px', fontSize: '13px',
                         border: '1px solid #e5e7eb', borderRadius: '8px',
-                        background: 'white', cursor: 'pointer', boxSizing: 'border-box',
-                        color: '#1f2937', fontFamily: 'inherit',
+                        cursor: 'pointer', boxSizing: 'border-box',
+                        fontFamily: 'inherit',
                       }}
-                      className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
+                      className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100">
                       {activeUsers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
                   </>
@@ -325,7 +325,7 @@ export default function QuickLogFAB() {
                 border: '1px solid #e5e7eb', borderRadius: '8px',
                 marginBottom: '10px', boxSizing: 'border-box',
               }}
-              className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+              className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
             />
 
             {/* Account Search */}
@@ -341,9 +341,9 @@ export default function QuickLogFAB() {
                   fontSize: '14px',
                   border: accountId ? '1px solid #1a4731' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
-                  background: accountId ? '#f0f7ee' : 'white',
+                  background: accountId ? '#f0f7ee' : undefined,
                 }}
-                className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
               />
               {accountName && (
                 <button
@@ -359,7 +359,7 @@ export default function QuickLogFAB() {
               )}
               {showAccountDD && accountSearch && filteredAccounts.length > 0 && (
                 <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, background: 'white',
+                  position: 'absolute', top: '100%', left: 0, right: 0,
                   border: '1px solid #e5e7eb', borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10001,
                   maxHeight: '200px', overflowY: 'auto',
@@ -375,7 +375,7 @@ export default function QuickLogFAB() {
                       }}
                       className="dark:border-slate-700 dark:text-gray-200"
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
                     >
                       <div style={{
                         width: '28px', height: '28px', borderRadius: '6px', background: '#1a4731',
@@ -407,9 +407,9 @@ export default function QuickLogFAB() {
                   fontSize: '14px',
                   border: contactId ? '1px solid #1a4731' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
-                  background: contactId ? '#f0f7ee' : 'white',
+                  background: contactId ? '#f0f7ee' : undefined,
                 }}
-                className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
               />
               {contactSearch && (
                 <button
@@ -425,7 +425,7 @@ export default function QuickLogFAB() {
               )}
               {showContactDD && contactSearch && filteredContacts.length > 0 && (
                 <div style={{
-                  position: 'absolute', top: '100%', left: 0, right: 0, background: 'white',
+                  position: 'absolute', top: '100%', left: 0, right: 0,
                   border: '1px solid #e5e7eb', borderRadius: '8px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10001,
                   maxHeight: '200px', overflowY: 'auto',
@@ -453,7 +453,7 @@ export default function QuickLogFAB() {
                         }}
                         className="dark:border-slate-700 dark:text-gray-200"
                         onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
                       >
                         <div style={{
                           width: '28px', height: '28px', borderRadius: '50%', background: '#185FA5',
@@ -498,7 +498,7 @@ export default function QuickLogFAB() {
                   display: 'block',
                   lineHeight: 1.4,
                 }}
-                className="dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
               />
               {/* 10px inset so the 28px round mic button sits cleanly
                   inside the textarea border instead of clipping the
@@ -520,7 +520,7 @@ export default function QuickLogFAB() {
                 style={{
                   width: '100%', padding: '8px 12px', fontSize: '12px',
                   border: '1px solid', borderRadius: '8px',
-                  background: internalParticipants.size > 0 ? '#eff6ff' : 'white',
+                  background: internalParticipants.size > 0 ? '#eff6ff' : undefined,
                   borderColor: internalParticipants.size > 0 ? '#bfdbfe' : '#e5e7eb',
                   color: internalParticipants.size > 0 ? '#1e40af' : '#666',
                   cursor: 'pointer', display: 'flex', justifyContent: 'space-between',
@@ -532,11 +532,11 @@ export default function QuickLogFAB() {
                 <span style={{ transform: showParticipants ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>▼</span>
               </button>
               {showParticipants && (
-                <div style={{ marginTop: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: 140, overflowY: 'auto' }} className="dark:border-slate-600 dark:bg-slate-800">
+                <div style={{ marginTop: '6px', border: '1px solid #e5e7eb', borderRadius: '8px', maxHeight: 140, overflowY: 'auto' }} className="bg-white dark:border-slate-600 dark:bg-slate-800">
                   {activeUsers.filter((u) => u.id !== session?.user?.id).map((u) => (
                     <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '12px', cursor: 'pointer', borderBottom: '0.5px solid #f3f4f6' }} className="dark:border-slate-700 dark:text-gray-200"
                       onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}>
+                      onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}>
                       <input type="checkbox" checked={internalParticipants.has(u.id)} onChange={() => toggleParticipant(u.id)} className="dark:bg-slate-700 dark:border-slate-600" />
                       <span>{u.name}</span>
                     </label>
