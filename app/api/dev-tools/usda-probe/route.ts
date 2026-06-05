@@ -31,7 +31,12 @@ export async function GET(request: NextRequest) {
   }
 
   const slug = request.nextUrl.searchParams.get('slug') || '3618';
-  const url = `https://marsapi.ams.usda.gov/services/v1.1/reports/${encodeURIComponent(slug)}`;
+  // Default call returns only the "Report Header" section (metadata
+  // about each weekly issue, no prices). Real price rows live in the
+  // "Report Detail" section — pass `?section=Report Detail`.
+  const section = request.nextUrl.searchParams.get('section');
+  const base = `https://marsapi.ams.usda.gov/services/v1.1/reports/${encodeURIComponent(slug)}`;
+  const url = section ? `${base}/${encodeURIComponent(section)}` : base;
   const basic = Buffer.from(`${apiKey}:`).toString('base64');
 
   let res: Response;
