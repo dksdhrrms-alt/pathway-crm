@@ -592,14 +592,15 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
           minWidth: 56,
         }}
       >
-        {/* Checklist progress overlay — darker shade fills the bar from
-            the left, proportional to completed steps. Aria-hidden because
-            the count is also rendered in the badge for sighted users
-            and screen readers get it via the bar's title attribute. */}
+        {/* Phase progress overlay — darker shade fills the bar from the
+            left, proportional to completed sub-bars (phases). Switched
+            from tasks → subBars because phases are the more meaningful
+            unit of completion at the project level (each phase = a real
+            chunk of work, while checklist items are sub-step details). */}
         {(() => {
-          const total = project.tasks?.length ?? 0;
+          const total = project.subBars?.length ?? 0;
           if (total === 0) return null;
-          const done = project.tasks!.filter((t) => t.done).length;
+          const done = project.subBars!.filter((s) => s.done).length;
           const pct = Math.round((done / total) * 100);
           return (
             <div
@@ -616,8 +617,8 @@ function GanttBar({ project, year, completedZoneRef, onDragOverCompletedChange, 
           className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 relative z-10"
           style={{ backgroundColor: 'rgba(255,255,255,0.35)', color: team?.textColor ?? '#111' }}
         >
-          {project.tasks && project.tasks.length > 0
-            ? `${project.tasks.filter((t) => t.done).length}/${project.tasks.length}`
+          {project.subBars && project.subBars.length > 0
+            ? `${project.subBars.filter((s) => s.done).length}/${project.subBars.length}`
             : stageLabel}
         </span>
       </div>
