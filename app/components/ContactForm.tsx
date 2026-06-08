@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { Contact, generateId, US_STATES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -37,7 +38,7 @@ interface Props {
 }
 
 export default function ContactForm({ initialData, onSave, onCancel, mode }: Props) {
-  const { accounts, addContact, updateContact, addActivity } = useCRM();
+  const { accounts, contacts, addContact, updateContact, addActivity } = useCRM();
   const { users } = useUsers();
   const activeUsers = users.filter((u) => u.status === 'active');
 
@@ -62,6 +63,33 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [submitting, setSubmitting] = useState(false);
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
+
+  // ── Duplicate detection ──────────────────────────────────────────
+  // Surface potential duplicates the moment the user types enough to
+  // be confident there's a match. Two signals:
+  //   (a) email exact match (case-insensitive)
+  //   (b) firstName + lastName exact match (case-insensitive)
+  // In edit mode we exclude the contact being edited itself.
+  // Non-blocking — the user can still proceed if they really mean to
+  // create a duplicate (e.g. same name at a different company).
+  const editingId = initialData?.id;
+  const dupes = useMemo(() => {
+    if (mode !== 'new') return [] as Contact[];
+    const fn = firstName.trim().toLowerCase();
+    const ln = lastName.trim().toLowerCase();
+    const em = email.trim().toLowerCase();
+    if (!em && !(fn && ln)) return [];
+    const hits = contacts.filter((c) => {
+      if (c.id === editingId) return false;
+      const cEmail = (c.email || '').trim().toLowerCase();
+      const cFn = (c.firstName || '').trim().toLowerCase();
+      const cLn = (c.lastName || '').trim().toLowerCase();
+      const emailMatch = em && cEmail === em;
+      const nameMatch = fn && ln && cFn === fn && cLn === ln;
+      return emailMatch || nameMatch;
+    });
+    return hits.slice(0, 5);
+  }, [mode, firstName, lastName, email, contacts, editingId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +157,35 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {dupes.length > 0 && (
+        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm">
+          <div className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+            ⚠️ Possible duplicate{dupes.length > 1 ? 's' : ''} — review before saving
+          </div>
+          <ul className="text-amber-900 dark:text-amber-100 space-y-1">
+            {dupes.map((c) => {
+              const acct = accounts.find((a) => a.id === c.accountId);
+              return (
+                <li key={c.id}>
+                  <Link
+                    href={`/contacts/${c.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-700 dark:hover:text-amber-300"
+                  >
+                    {c.firstName} {c.lastName}
+                  </Link>
+                  {acct ? <span className="text-amber-700 dark:text-amber-300"> · {acct.name}</span> : null}
+                  {c.email ? <span className="text-amber-600 dark:text-amber-400"> · {c.email}</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+            You can still save if this is a different person — but please check first to avoid splitting their history.
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">First Name *</label>

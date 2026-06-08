@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { Account, generateId, US_STATES } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -32,7 +33,7 @@ function findUserByName(name: string, users: { id: string; name: string }[]) {
 }
 
 export default function AccountForm({ initialData, onSave, onCancel, mode }: Props) {
-  const { addAccount, updateAccount, addActivity } = useCRM();
+  const { accounts, addAccount, updateAccount, addActivity } = useCRM();
   const { users } = useUsers();
   const activeUsers = users.filter((u) => u.status === 'active');
 
@@ -63,6 +64,27 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   // Guards against double-submit (button still visible during the brief
   // window between click and the parent closing the modal via onSave).
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Duplicate detection ──────────────────────────────────────────
+  // Trigger once the typed name is ≥4 chars (avoids matching every
+  // 2-letter draft). Match strategy:
+  //   - exact case-insensitive name match (highest signal)
+  //   - substring match either direction ("Poulin" in "Poulin Grain"
+  //     or "Cargill Mid-West" containing user-typed "Cargill")
+  // Edit mode excludes the current row.
+  const editingId = initialData?.id;
+  const dupes = useMemo(() => {
+    if (mode !== 'new') return [] as Account[];
+    const n = name.trim().toLowerCase();
+    if (n.length < 4) return [];
+    const hits = accounts.filter((a) => {
+      if (a.id === editingId) return false;
+      const an = (a.name || '').trim().toLowerCase();
+      if (!an) return false;
+      return an === n || an.includes(n) || n.includes(an);
+    });
+    return hits.slice(0, 5);
+  }, [mode, name, accounts, editingId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -138,6 +160,32 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {dupes.length > 0 && (
+        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 p-3 text-sm">
+          <div className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+            ⚠️ Possible duplicate{dupes.length > 1 ? 's' : ''} — review before saving
+          </div>
+          <ul className="text-amber-900 dark:text-amber-100 space-y-1">
+            {dupes.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/accounts/${a.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-amber-700 dark:hover:text-amber-300"
+                >
+                  {a.name}
+                </Link>
+                {a.industry ? <span className="text-amber-700 dark:text-amber-300"> · {a.industry}</span> : null}
+                {a.country ? <span className="text-amber-600 dark:text-amber-400"> · {a.country}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <div className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+            You can still save if this is a different company — but please check first to avoid splitting their data.
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Account Name *</label>
