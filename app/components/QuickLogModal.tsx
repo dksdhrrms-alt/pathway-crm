@@ -187,8 +187,11 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           ))}
         </div>
 
-        {/* Date + Purpose */}
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '10px' }}>
+        {/* Date + Purpose. Column needs to fit "MM/DD/YYYY" plus the
+            native calendar picker glyph — 120px was clipping the year
+            (looked like "06/08/202€"). 160px shows the full date
+            comfortably across platforms. */}
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '8px', marginBottom: '10px' }}>
           <input
             type="date"
             value={date}

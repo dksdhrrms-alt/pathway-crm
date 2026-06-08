@@ -234,8 +234,12 @@ export default function QuickLogFAB() {
               ))}
             </div>
 
-            {/* Date + Purpose */}
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '10px' }}>
+            {/* Date + Purpose. Column needs to fit "MM/DD/YYYY" plus the
+                native calendar picker glyph — 120px was clipping the year
+                in dark mode (looked like "06/08/202€"). 160px is the
+                minimum that comfortably shows the full date on Windows
+                Chrome at default font scale. */}
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '8px', marginBottom: '10px' }}>
               <input
                 type="date"
                 value={date}
