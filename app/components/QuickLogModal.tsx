@@ -200,9 +200,13 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               padding: '10px 10px', fontSize: '13px',
               border: '1px solid #e5e7eb', borderRadius: '8px',
               boxSizing: 'border-box',
-              color: '#1f2937', fontFamily: 'inherit',
+              fontFamily: 'inherit',
+              // Color is intentionally NOT set inline so the Tailwind
+              // dark variant below wins. Inline #1f2937 (dark gray) on
+              // dark slate-800 background made the auto-filled date
+              // visually disappear — looked like nothing was filled.
             }}
-            className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
+            className="bg-white text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100"
           />
           <select
             value={purpose}
