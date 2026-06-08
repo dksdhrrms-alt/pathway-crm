@@ -86,7 +86,12 @@ export default function AdminPage() {
         // on every successful sign-in. May be null for users who haven't logged
         // in since the column was introduced.
         const lastLoginAt = (user as { lastLoginAt?: string | null }).lastLoginAt ?? null;
-        return { user, openDeals, pipelineValue, openTaskCount, overdueTaskCount, lastActivity, lastLoginAt };
+        // lastSeenAt: 60s heartbeat from /api/me/seen — true presence
+        // signal (browsing/clicking) rather than the credentials-only
+        // sign-in moment. Empty until the user opens the CRM after
+        // this column was introduced.
+        const lastSeenAt = (user as { lastSeenAt?: string | null }).lastSeenAt ?? null;
+        return { user, openDeals, pipelineValue, openTaskCount, overdueTaskCount, lastActivity, lastLoginAt, lastSeenAt };
       }),
     [allUsers, opportunities, tasks, activities]
   );
@@ -372,11 +377,12 @@ export default function AdminPage() {
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Open Tasks</th>
                       <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Overdue</th>
                       <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Last Activity</th>
-                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide" title="Timestamp of the user's last sign-in event. Active sessions do NOT update this — only a fresh login does. Empty until that user logs in for the first time after this column was added.">Last Login</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide" title="Heartbeat updated every ~60s while the user has the CRM tab open. Best signal that someone is actively using the system. Empty until they open the CRM after this column was introduced.">Last Active</th>
+                      <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide" title="Timestamp of the user's last sign-in event. Active sessions do NOT update this — only a fresh login does.">Last Login</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {repStats.map(({ user, openDeals, pipelineValue, overdueTaskCount, openTaskCount, lastActivity, lastLoginAt }) => {
+                    {repStats.map(({ user, openDeals, pipelineValue, overdueTaskCount, openTaskCount, lastActivity, lastLoginAt, lastSeenAt }) => {
                       const isCurrentUser = user.id === currentUserId;
                       return (
                         <tr key={user.id} className={`border-b border-gray-50 dark:border-slate-800 transition-colors ${isCurrentUser ? 'bg-green-50/40 dark:bg-green-900/20' : 'hover:bg-gray-50/60 dark:hover:bg-slate-800/60'}`}>
@@ -421,6 +427,32 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-gray-500 dark:text-gray-400">{formatDate(lastActivity)}</td>
+                          <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                            {lastSeenAt ? (() => {
+                              // Tiered relative-time. <2min = green
+                              // "Online now" pip; otherwise counts up to
+                              // weeks before falling back to a date so the
+                              // column reads like "is this rep around right
+                              // now?" rather than just a stamp.
+                              const d = new Date(lastSeenAt);
+                              const seconds = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+                              let label: string;
+                              let online = false;
+                              if (seconds < 120) { label = 'Online now'; online = true; }
+                              else if (seconds < 3600) label = `${Math.floor(seconds / 60)}m ago`;
+                              else if (seconds < 86400) label = `${Math.floor(seconds / 3600)}h ago`;
+                              else if (seconds < 86400 * 7) label = `${Math.floor(seconds / 86400)}d ago`;
+                              else label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                              return (
+                                <span title={d.toISOString()} className="inline-flex items-center gap-1.5">
+                                  {online && <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />}
+                                  <span className={online ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>{label}</span>
+                                </span>
+                              );
+                            })() : (
+                              <span className="text-gray-400 dark:text-gray-500 italic">never</span>
+                            )}
+                          </td>
                           <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
                             {lastLoginAt ? (() => {
                               const d = new Date(lastLoginAt);

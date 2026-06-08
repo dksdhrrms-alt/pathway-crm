@@ -8,6 +8,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
+import PresenceHeartbeat from './PresenceHeartbeat';
 import { cacheClear } from '@/lib/cache';
 
 interface TopBarProps {
@@ -76,6 +77,10 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
     <div
       className="fixed top-0 right-0 z-20 flex items-center justify-between px-4 md:px-6 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm left-0 md:left-60 transition-colors"
     >
+      {/* Renders nothing — pings /api/me/seen every ~60s while the
+          tab is visible so admin Team Overview shows a real
+          "Last Active" timestamp. */}
+      <PresenceHeartbeat />
       {/* Search — visible on mobile for list pages.
           Two modes:
           (1) Page passes searchValue + onSearchChange → input filters

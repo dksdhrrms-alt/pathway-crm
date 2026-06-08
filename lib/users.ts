@@ -23,6 +23,10 @@ export interface AppUser {
   team?: UserTeam;
   /** ISO timestamp of last successful sign-in. */
   lastLoginAt?: string | null;
+  /** ISO timestamp of the latest /api/me/seen heartbeat (~60s while
+   *  tab is visible). More useful than lastLoginAt for "is this rep
+   *  actively using the CRM this week?" in the admin overview. */
+  lastSeenAt?: string | null;
 }
 
 /**

@@ -43,6 +43,7 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // unwrapped the Supabase error shape.
   isSystem: 'is_system',
   lastLoginAt: 'last_login_at',
+  lastSeenAt: 'last_seen_at',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};
@@ -83,7 +84,7 @@ export async function dbGetUsers(): Promise<AppUser[]> {
   // to every client through the UserContext fetch.
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, role, status, initials, team, phone, profile_photo, created_at, last_login_at')
+    .select('id, name, email, role, status, initials, team, phone, profile_photo, created_at, last_login_at, last_seen_at')
     .order('name')
     .range(0, 9999);
   if (error) throw error;
