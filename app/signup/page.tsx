@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateUserId, UserRole } from '@/lib/users';
+import { formatPhone } from '@/lib/phone';
 
 const SIGNUP_ROLES: { value: UserRole; label: string }[] = [
   { value: 'sales', label: 'Sales Rep' },
@@ -216,8 +217,8 @@ export default function SignUpPage() {
               <input
                 type="text"
                 value={phone}
-                onChange={(e) => { setPhone(e.target.value); setErrors((p) => ({ ...p, phone: '' })); }}
-                placeholder="+1 (555) 000-0000"
+                onChange={(e) => { setPhone(formatPhone(e.target.value)); setErrors((p) => ({ ...p, phone: '' })); }}
+                placeholder="814-466-3366"
                 className="w-full px-3.5 py-2.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition dark:bg-slate-800 dark:text-gray-100"
               />
               {errors.phone && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{errors.phone}</p>}

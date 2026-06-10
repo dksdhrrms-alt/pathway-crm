@@ -9,6 +9,7 @@ import { getRoleLabel } from '@/lib/users';
 import CountrySelect from './CountrySelect';
 import AccountSearchSelect from './AccountSearchSelect';
 import SubmitButton from './SubmitButton';
+import { formatPhone } from '@/lib/phone';
 
 export const SPECIES_LIST = [
   'Primary Breeder', 'Broilers', 'Turkeys', 'Layers', 'Ruminant',
@@ -23,6 +24,7 @@ export const CONTACT_TYPES = [
   'Company Nutritionist',
   'Dairy Producer',
   'Feedlot Manager/Owner',
+  'Feed Mill',
   'Manager',
   'Industry Contact - Dairy',
   'Industry Contact - Beef',
@@ -274,12 +276,12 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cell Phone</label>
-          <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 000-0000"
+          <input type="text" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="814-466-3366"
             className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tel (office)</label>
-          <input type="text" value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Office telephone"
+          <input type="text" value={tel} onChange={(e) => setTel(formatPhone(e.target.value))} placeholder="Office telephone"
             className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
