@@ -19,7 +19,8 @@ export default function EditContactModal({ contact, onClose, onSaved }: Props) {
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <ContactForm mode="edit" initialData={contact} onSave={onSaved} onCancel={onClose} />
+        {/* Auto-close on successful save — see NewContactModal comment. */}
+        <ContactForm mode="edit" initialData={contact} onSave={() => { onSaved(); onClose(); }} onCancel={onClose} />
       </div>
     </div>
   );

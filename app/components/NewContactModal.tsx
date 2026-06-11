@@ -18,7 +18,11 @@ export default function NewContactModal({ defaultAccountId, onClose, onSave }: P
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        <ContactForm mode="new" initialData={defaultAccountId ? { accountId: defaultAccountId } : undefined} onSave={onSave} onCancel={onClose} />
+        {/* Auto-close the modal after a successful save so the rep gets
+            visual confirmation (modal disappearing = it worked) instead
+            of having to hunt for the X. The form itself doesn't close;
+            this wrapper owns the dismiss. */}
+        <ContactForm mode="new" initialData={defaultAccountId ? { accountId: defaultAccountId } : undefined} onSave={() => { onSave(); onClose(); }} onCancel={onClose} />
       </div>
     </div>
   );
