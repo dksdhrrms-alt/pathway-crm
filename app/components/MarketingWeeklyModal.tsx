@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import SubmitButton from './SubmitButton';
+import { useEscClose } from '@/lib/useEscClose';
 
 interface Props {
   onClose: () => void;
@@ -65,6 +66,9 @@ function nextFriday(today = new Date()): string {
 }
 
 export default function MarketingWeeklyModal({ onClose }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   const { data: session } = useSession();
   const authorName = session?.user?.name ?? '';
 
@@ -152,7 +156,7 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
+     
     >
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-6 py-4 flex items-start justify-between">

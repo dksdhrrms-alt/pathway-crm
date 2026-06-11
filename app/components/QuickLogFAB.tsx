@@ -195,7 +195,7 @@ export default function QuickLogFAB() {
         <div
           data-quicklog-fab="1"
           className="fixed inset-0"
-          onClick={(e) => e.target === e.currentTarget && setIsOpen(false)}
+         
           style={{
             background: 'rgba(0,0,0,0.4)',
             zIndex: 10000, display: 'flex', alignItems: 'center',

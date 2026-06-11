@@ -103,7 +103,7 @@ export default function NewOpportunityModal({ defaultAccountId = '', defaultStag
   }
 
   function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) onClose();
+    /* backdrop-click dismiss removed */
   }
 
   return (

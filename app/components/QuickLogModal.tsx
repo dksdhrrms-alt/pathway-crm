@@ -136,7 +136,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
 
   return (
     <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+     
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
         zIndex: 10000, display: 'flex', alignItems: 'center',

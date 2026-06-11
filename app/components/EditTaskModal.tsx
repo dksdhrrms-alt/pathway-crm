@@ -5,6 +5,7 @@ import { Task, Priority } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import AccountSearchSelect from './AccountSearchSelect';
 import SubmitButton from './SubmitButton';
+import { useEscClose } from '@/lib/useEscClose';
 
 const PRIORITIES: Priority[] = ['High', 'Medium', 'Low'];
 
@@ -15,6 +16,9 @@ interface Props {
 }
 
 export default function EditTaskModal({ task, onClose, onSaved }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   const { updateTask } = useCRM();
   const { accounts, contacts } = useCRM();
 
@@ -57,7 +61,7 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Task</h2>

@@ -7,6 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import AccountSearchSelect from './AccountSearchSelect';
 import SubmitButton from './SubmitButton';
+import { useEscClose } from '@/lib/useEscClose';
 
 const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
@@ -14,6 +15,9 @@ const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Quali
 interface Props { opportunity: Opportunity; onClose: () => void; onSaved: () => void; }
 
 export default function EditOpportunityModal({ opportunity, onClose, onSaved }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   const { updateOpportunityStage, accounts } = useCRM();
   const { users } = useUsers();
   const activeUsers = users.filter((u) => u.status === 'active');
@@ -87,7 +91,7 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Opportunity</h2>

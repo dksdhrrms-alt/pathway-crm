@@ -781,7 +781,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+     >
       <div style={{ borderRadius: '16px', width: '100%', maxWidth: '950px', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} className="bg-white dark:bg-slate-900">
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
@@ -891,7 +891,7 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Set {CATEGORY_LABELS[category]} Budget</h2>
 

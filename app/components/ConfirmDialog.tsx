@@ -103,7 +103,7 @@ export default function ConfirmDialog({
       aria-labelledby="confirm-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !pending) onCancel();
+        /* backdrop-click dismiss removed */
       }}
     >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6">

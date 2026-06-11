@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import type { BudgetTeam } from '@/lib/data';
 import { dbListBudgetTeams, dbCreateBudgetTeam, dbUpdateBudgetTeam, dbDeleteBudgetTeam } from '@/lib/db';
 import SubmitButton from './SubmitButton';
+import { useEscClose } from '@/lib/useEscClose';
 
 interface Props {
   onClose: () => void;
@@ -56,6 +57,9 @@ function describeError(err: unknown): string {
 }
 
 export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   const [teams, setTeams] = useState<BudgetTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +164,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
+     
     >
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">

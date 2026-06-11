@@ -7,6 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { generateId, Account } from '@/lib/data';
 import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, generateContactTemplate, parseMondayCompanies, parseMondayContacts, ParsedAccount, ParsedContact, fuzzyMatchUser } from '@/lib/importParser';
 import SubmitButton from './SubmitButton';
+import { useEscClose } from '@/lib/useEscClose';
 
 type ImportType = 'accounts' | 'contacts';
 type Step = 'upload' | 'mapping' | 'preview' | 'done';
@@ -22,6 +23,9 @@ const ACCOUNT_FIELDS = ['name', 'industry', 'location', 'annualRevenue', 'websit
 const CONTACT_FIELDS = ['firstName', 'lastName', 'title', 'accountName', 'phone', 'email', 'linkedIn'];
 
 export default function ImportModal({ type, onClose, onDone }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   const { data: session } = useSession();
   const { accounts, addAccount, contacts, addContact } = useCRM();
   const { users } = useUsers();
@@ -245,7 +249,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">

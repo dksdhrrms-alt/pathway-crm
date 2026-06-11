@@ -1,6 +1,7 @@
 'use client';
 
 import ContactForm from './ContactForm';
+import { useEscClose } from '@/lib/useEscClose';
 
 interface Props {
   defaultAccountId?: string;
@@ -9,8 +10,11 @@ interface Props {
 }
 
 export default function NewContactModal({ defaultAccountId, onClose, onSave }: Props) {
+  // Esc closes the modal — backdrop-click dismiss was removed.
+  useEscClose(onClose);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Contact</h2>

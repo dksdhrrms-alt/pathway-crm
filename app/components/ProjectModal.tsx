@@ -266,7 +266,7 @@ export default function ProjectModal({ editing, defaultStartDate, defaultEndDate
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
+     
       tabIndex={-1}
     >
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
