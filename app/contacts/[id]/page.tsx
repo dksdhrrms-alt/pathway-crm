@@ -14,6 +14,7 @@ import StageBadge from '@/app/components/StageBadge';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import EditContactModal from '@/app/components/EditContactModal';
+import { formatPhone } from '@/lib/phone';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -124,22 +125,59 @@ export default function ContactDetailPage() {
                       <span className="text-sm text-gray-500">{contact.title}</span>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 mt-2">
-                    {account && (
+                  {/* Account link sits on its own row so the company name
+                      reads cleanly. */}
+                  {account && (
+                    <div className="mt-2">
                       <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline text-[#2d6a4f] dark:text-emerald-300">
                         {account.name}
                       </Link>
+                    </div>
+                  )}
+                  {/* Contact channels — phone (tel:), email (mailto:),
+                      LinkedIn. Pills with icons so each channel is
+                      visually distinct and one-click-actionable. mailto:
+                      hands off to the OS default mail client which is
+                      Outlook on the reps' Windows machines.
+                      Phone number is reformatted with dashes on display
+                      (formatPhone) so legacy "8144663366" rows look
+                      consistent with new "814-466-3366" entries. */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {contact.phone && (
+                      <a
+                        href={`tel:${contact.phone.replace(/\D/g, '')}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition"
+                        title="Call this number"
+                      >
+                        <svg className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2.28a2 2 0 011.94 1.515l.7 2.8a2 2 0 01-.45 1.9L8 10.5a11 11 0 005.5 5.5l1.285-1.47a2 2 0 011.9-.45l2.8.7A2 2 0 0121 16.72V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {formatPhone(contact.phone)}
+                      </a>
                     )}
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{contact.phone}</span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">{contact.email}</span>
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition"
+                        title="Send email via your default mail client"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        {contact.email}
+                      </a>
+                    )}
                     {contact.linkedIn && (
                       <a
                         href={contact.linkedIn}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm hover:underline"
-                        style={{ color: '#2d6a4f' }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50 transition"
+                        title="Open LinkedIn profile"
                       >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z" />
+                        </svg>
                         LinkedIn
                       </a>
                     )}
