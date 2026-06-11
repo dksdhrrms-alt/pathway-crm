@@ -109,6 +109,12 @@ function ContactsPageInner() {
       position: uniq(allContacts.map((c) => c.position)),
       company: uniq(allContacts.map((c) => allAccounts.find((a) => a.id === c.accountId)?.name || c.accountName || '')),
       keyMan: ['Yes', 'No'],
+      // Address columns — enumerable from existing rows. Street is
+      // excluded (free-form, every value unique → unusable as a
+      // dropdown filter). State/city/zip cluster enough to be useful.
+      stateAddr: uniq(allContacts.map((c) => c.state)),
+      city: uniq(allContacts.map((c) => c.city)),
+      zip: uniq(allContacts.map((c) => c.zip)),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allContacts, allAccounts, users]);
@@ -121,6 +127,9 @@ function ContactsPageInner() {
       case 'position': return c.position || '';
       case 'company': return allAccounts.find((a) => a.id === c.accountId)?.name || c.accountName || '';
       case 'keyMan': return c.isKeyMan ? 'Yes' : 'No';
+      case 'stateAddr': return c.state || '';
+      case 'city': return c.city || '';
+      case 'zip': return c.zip || '';
       default: return '';
     }
   }
@@ -385,7 +394,7 @@ function ContactsPageInner() {
                     />
                   </th>
                   {visibleCols.map((col) => {
-                    const isFilterable = ['species','country','owner','position','company','keyMan'].includes(col.id);
+                    const isFilterable = ['species','country','owner','position','company','keyMan','stateAddr','city','zip'].includes(col.id);
                     return (
                       <th key={col.id}
                         className={`px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs whitespace-nowrap tracking-wide ${col.align === 'center' ? 'text-center' : 'text-left'}`}
