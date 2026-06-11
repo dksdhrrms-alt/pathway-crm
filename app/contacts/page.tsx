@@ -148,6 +148,14 @@ function ContactsPageInner() {
     { id: 'birthday', label: 'Birthday', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'birthday' as SortKey },
     { id: 'anniversary', label: 'Anniversary', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'anniversary' as SortKey },
     { id: 'linkedIn', label: 'LinkedIn', defaultVisible: false, minWidth: 130, sortable: false },
+    // Physical address — hidden by default. Reps that need mailing
+    // info can toggle them on; everyone else doesn't pay the table-width
+    // cost. State already lives in the form/data; the column is added
+    // here too for consistency with city/zip.
+    { id: 'street', label: 'Street', defaultVisible: false, minWidth: 160, sortable: false },
+    { id: 'city', label: 'City', defaultVisible: false, minWidth: 120, sortable: false },
+    { id: 'stateAddr', label: 'State', defaultVisible: false, minWidth: 80, sortable: false },
+    { id: 'zip', label: 'ZIP', defaultVisible: false, minWidth: 90, sortable: false },
   ], []);
   const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
@@ -500,6 +508,12 @@ function ContactsPageInner() {
                                 {contact.linkedIn ? <a href={contact.linkedIn} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">LinkedIn</a> : <span className="text-gray-400 dark:text-gray-500">—</span>}
                               </td>
                             );
+                            // Physical address — opt-in columns. Each cell
+                            // shows the value or an em-dash for empty rows.
+                            case 'street': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={contact.street || ''}>{contact.street || <span className="text-gray-400 dark:text-gray-500">—</span>}</td>;
+                            case 'city': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{contact.city || <span className="text-gray-400 dark:text-gray-500">—</span>}</td>;
+                            case 'stateAddr': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{contact.state || <span className="text-gray-400 dark:text-gray-500">—</span>}</td>;
+                            case 'zip': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{contact.zip || <span className="text-gray-400 dark:text-gray-500">—</span>}</td>;
                             default: return null;
                           }
                         })}

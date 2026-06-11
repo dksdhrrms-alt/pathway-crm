@@ -58,6 +58,9 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
   const [birthday, setBirthday] = useState(initialData?.birthday || '');
   const [anniversary, setAnniversary] = useState(initialData?.anniversary || '');
   const [stateVal, setStateVal] = useState(initialData?.state || '');
+  const [street, setStreet] = useState(initialData?.street || '');
+  const [city, setCity] = useState(initialData?.city || '');
+  const [zip, setZip] = useState(initialData?.zip || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Guards against double-submit (button still visible during the brief
@@ -124,6 +127,9 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
         birthday: birthday || undefined,
         anniversary: anniversary || undefined,
         state: stateVal.trim(),
+        street: street.trim(),
+        city: city.trim(),
+        zip: zip.trim(),
         notes: notes.trim(),
         title: position.trim() || species,
       };
@@ -238,6 +244,28 @@ export default function ContactForm({ initialData, onSave, onCancel, mode }: Pro
             <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           )}
+        </div>
+      </div>
+
+      {/* Physical address — street + city + zip. State is captured
+          above (US dropdown / free-text for non-US). Keeping these
+          three on the same row mirrors a US mailing label layout
+          and stays compact for the modal width. */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Street Address</label>
+        <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="123 Main St, Apt 4"
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">City</label>
+          <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ZIP / Postal Code</label>
+          <input type="text" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="02134"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
 

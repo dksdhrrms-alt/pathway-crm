@@ -55,6 +55,13 @@ export interface Contact {
   birthday?: string;
   anniversary?: string;
   state?: string;
+  /** Physical address — street line (e.g. "123 Main St, Apt 4"). */
+  street?: string;
+  /** City portion of the physical address. */
+  city?: string;
+  /** US ZIP / postal code. Stored as string to preserve leading zeros
+   *  ("02134" rather than 2134). */
+  zip?: string;
   notes?: string;
   createdAt?: string;
   status?: string;
