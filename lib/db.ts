@@ -22,6 +22,9 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   uploadBatchId: 'upload_batch_id', uploadedAt: 'uploaded_at', uploadedBy: 'uploaded_by',
   fileName: 'file_name', recordCount: 'record_count', skippedCount: 'skipped_count',
   budgetAmount: 'budget_amount',
+  // Account billing + shipping address columns (16-accounts-addresses.sql).
+  billingStreet: 'billing_street', billingCity: 'billing_city', billingState: 'billing_state', billingZip: 'billing_zip',
+  shippingStreet: 'shipping_street', shippingCity: 'shipping_city', shippingState: 'shipping_state', shippingZip: 'shipping_zip',
   companyType: 'company_type',
   expectedStartDate: 'expected_start_date',
   parentAccountId: 'parent_account_id',

@@ -419,6 +419,57 @@ export default function AccountDetailPage() {
             </div>
           </div>
 
+          {/* ========== ADDRESSES (Billing + Shipping) ==========
+              Sits above Summary because billing/shipping is the single
+              most-asked-for piece of context when a rep is looking at
+              an account — invoicing, shipping a sample, deciding
+              whether the visit is worth the drive. Two cards side by
+              side; only renders if any address field has been
+              populated, so old accounts stay clean. Each card is
+              Google-Maps-clickable, like the contact-detail address.
+          */}
+          {(() => {
+            const hasBilling = !!(account.billingStreet || account.billingCity || account.billingState || account.billingZip);
+            const hasShipping = !!(account.shippingStreet || account.shippingCity || account.shippingState || account.shippingZip);
+            if (!hasBilling && !hasShipping) return null;
+            const buildBlock = (label: string, street?: string, city?: string, st?: string, zip?: string) => {
+              const cityStZip = [city, st].filter(Boolean).join(', ') + (zip ? `  ${zip}` : '');
+              const fullAddr = [street, cityStZip].filter((s) => s && s.trim()).join(', ');
+              const hasAny = !!(street || city || st || zip);
+              return (
+                <div style={{ border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '16px' }} className="bg-white dark:bg-slate-900 dark:border-slate-700 flex-1 min-w-0">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <h3 style={{ margin: 0, fontSize: '13px', fontWeight: 600 }} className="text-gray-700 dark:text-gray-200 uppercase tracking-wide">{label}</h3>
+                  </div>
+                  {hasAny ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddr)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 leading-tight block"
+                      title="Open in Google Maps"
+                    >
+                      {street && <>{street}<br /></>}
+                      {cityStZip}
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-400 dark:text-gray-500 italic">Not set</span>
+                  )}
+                </div>
+              );
+            };
+            return (
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                {buildBlock('Billing Address', account.billingStreet, account.billingCity, account.billingState, account.billingZip)}
+                {buildBlock('Shipping Address', account.shippingStreet, account.shippingCity, account.shippingState, account.shippingZip)}
+              </div>
+            );
+          })()}
+
           {/* ========== SUMMARY ========== */}
           <div style={{ border: '0.5px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px' }} className="bg-white dark:bg-slate-900 dark:border-slate-700">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>

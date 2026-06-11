@@ -329,6 +329,13 @@ function ContactsPageInner() {
     { id: 'linkedIn', label: 'LinkedIn', getValue: (c) => c.linkedIn || '' },
     { id: 'birthday', label: 'Birthday', getValue: (c) => c.birthday || '' },
     { id: 'anniversary', label: 'Anniversary', getValue: (c) => c.anniversary || '' },
+    // Physical address — same fields as the Contact form, surfaced
+    // here so XLSX exports can drive mailing campaigns. State already
+    // existed on the type; street/city/zip were added alongside.
+    { id: 'street', label: 'Street', getValue: (c) => c.street || '' },
+    { id: 'city', label: 'City', getValue: (c) => c.city || '' },
+    { id: 'state', label: 'State', getValue: (c) => c.state || '' },
+    { id: 'zip', label: 'ZIP', getValue: (c) => c.zip || '' },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [allAccounts, users]);
 

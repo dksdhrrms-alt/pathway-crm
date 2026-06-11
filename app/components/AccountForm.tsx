@@ -49,6 +49,15 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [website, setWebsite] = useState(initialData?.website || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [stateVal, setStateVal] = useState(initialData?.state || '');
+  // Billing / Shipping address fields — see Account interface in lib/data.ts.
+  const [billingStreet, setBillingStreet] = useState(initialData?.billingStreet || '');
+  const [billingCity, setBillingCity] = useState(initialData?.billingCity || '');
+  const [billingState, setBillingState] = useState(initialData?.billingState || '');
+  const [billingZip, setBillingZip] = useState(initialData?.billingZip || '');
+  const [shippingStreet, setShippingStreet] = useState(initialData?.shippingStreet || '');
+  const [shippingCity, setShippingCity] = useState(initialData?.shippingCity || '');
+  const [shippingState, setShippingState] = useState(initialData?.shippingState || '');
+  const [shippingZip, setShippingZip] = useState(initialData?.shippingZip || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   // "Integration" toggle — when ON, this account is part of an Integration (parent-child) hierarchy.
   // Start with safe defaults; the useEffect below will sync values from `initialData`
@@ -113,6 +122,14 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         website: ws,
         location: location.trim(),
         state: stateVal.trim(),
+        billingStreet: billingStreet.trim(),
+        billingCity: billingCity.trim(),
+        billingState: billingState.trim(),
+        billingZip: billingZip.trim(),
+        shippingStreet: shippingStreet.trim(),
+        shippingCity: shippingCity.trim(),
+        shippingState: shippingState.trim(),
+        shippingZip: shippingZip.trim(),
         notes: notes.trim(),
         // Persist explicit empty string (not undefined) when clearing the link, so
         // updateAccount actually overwrites the existing parent_account_id in the DB

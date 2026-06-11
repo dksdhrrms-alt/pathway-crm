@@ -30,6 +30,21 @@ export interface Account {
   category?: string;
   companyType?: string;
   state?: string;
+  /** Billing address — invoiced / paperwork goes here. Often
+   *  different from shipping (HQ vs. distribution warehouse). All
+   *  four fields are optional; we render the block on the account
+   *  page only when at least one piece is present. */
+  billingStreet?: string;
+  billingCity?: string;
+  billingState?: string;
+  billingZip?: string;
+  /** Shipping address — physical delivery destination for samples
+   *  and orders. Stored separately so a rep can ship to a farm/feed
+   *  mill while invoicing the parent company. */
+  shippingStreet?: string;
+  shippingCity?: string;
+  shippingState?: string;
+  shippingZip?: string;
   notes?: string;
   parentAccountId?: string;  // For Integration Account (parent-child hierarchy)
   createdAt?: string;
