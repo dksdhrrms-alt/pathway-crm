@@ -22,9 +22,14 @@ import { getRoleLabel } from '@/lib/users';
 
 const COUNTRY_FLAGS: Record<string, string> = { USA:'🇺🇸', Mexico:'🇲🇽', UK:'🇬🇧', Colombia:'🇨🇴', Peru:'🇵🇪', Panama:'🇵🇦', 'El Salvador':'🇸🇻', Korea:'🇰🇷' };
 
-type SortKey = 'name' | 'company' | 'country' | 'owner' | 'position' | 'species' | 'birthday' | 'anniversary' | 'keyMan';
+// Every column header that the user can click to sort by. Reps wanted
+// every column sortable (asc/desc), not just the "main" ones — added
+// email/tel/linkedIn + the new address columns (street/city/state/zip)
+// to the union below and to SORTABLE_KEYS so the toggleSort guard
+// admits them.
+type SortKey = 'name' | 'company' | 'country' | 'owner' | 'position' | 'species' | 'birthday' | 'anniversary' | 'keyMan' | 'email' | 'tel' | 'linkedIn' | 'street' | 'city' | 'stateAddr' | 'zip';
 type SortDir = 'asc' | 'desc';
-const SORTABLE_KEYS: SortKey[] = ['name','company','country','owner','position','species','birthday','anniversary','keyMan'];
+const SORTABLE_KEYS: SortKey[] = ['name','company','country','owner','position','species','birthday','anniversary','keyMan','email','tel','linkedIn','street','city','stateAddr','zip'];
 
 export default function ContactsPage() {
   return (
@@ -152,19 +157,19 @@ function ContactsPageInner() {
     { id: 'owner', label: 'Owner', defaultVisible: true, minWidth: 120, sortable: true, sortKey: 'owner' as SortKey },
     { id: 'position', label: 'Contact Type', defaultVisible: true, minWidth: 150, sortable: true, sortKey: 'position' as SortKey },
     { id: 'keyMan', label: 'Key', defaultVisible: true, minWidth: 50, align: 'center' as const, sortable: true, sortKey: 'keyMan' as SortKey },
-    { id: 'email', label: 'Email', defaultVisible: true, minWidth: 160, sortable: false },
-    { id: 'tel', label: 'Tel', defaultVisible: true, minWidth: 130, sortable: false },
+    { id: 'email', label: 'Email', defaultVisible: true, minWidth: 160, sortable: true, sortKey: 'email' as SortKey },
+    { id: 'tel', label: 'Tel', defaultVisible: true, minWidth: 130, sortable: true, sortKey: 'tel' as SortKey },
     { id: 'birthday', label: 'Birthday', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'birthday' as SortKey },
     { id: 'anniversary', label: 'Anniversary', defaultVisible: false, minWidth: 110, sortable: true, sortKey: 'anniversary' as SortKey },
-    { id: 'linkedIn', label: 'LinkedIn', defaultVisible: false, minWidth: 130, sortable: false },
+    { id: 'linkedIn', label: 'LinkedIn', defaultVisible: false, minWidth: 130, sortable: true, sortKey: 'linkedIn' as SortKey },
     // Physical address — hidden by default. Reps that need mailing
     // info can toggle them on; everyone else doesn't pay the table-width
     // cost. State already lives in the form/data; the column is added
     // here too for consistency with city/zip.
-    { id: 'street', label: 'Street', defaultVisible: false, minWidth: 160, sortable: false },
-    { id: 'city', label: 'City', defaultVisible: false, minWidth: 120, sortable: false },
-    { id: 'stateAddr', label: 'State', defaultVisible: false, minWidth: 80, sortable: false },
-    { id: 'zip', label: 'ZIP', defaultVisible: false, minWidth: 90, sortable: false },
+    { id: 'street', label: 'Street', defaultVisible: false, minWidth: 160, sortable: true, sortKey: 'street' as SortKey },
+    { id: 'city', label: 'City', defaultVisible: false, minWidth: 120, sortable: true, sortKey: 'city' as SortKey },
+    { id: 'stateAddr', label: 'State', defaultVisible: false, minWidth: 80, sortable: true, sortKey: 'stateAddr' as SortKey },
+    { id: 'zip', label: 'ZIP', defaultVisible: false, minWidth: 90, sortable: true, sortKey: 'zip' as SortKey },
   ], []);
   const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMNS.map((c) => c.id));
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(
@@ -251,6 +256,16 @@ function ContactsPageInner() {
         case 'birthday': cmp = (a.birthday || '').localeCompare(b.birthday || ''); break;
         case 'anniversary': cmp = (a.anniversary || '').localeCompare(b.anniversary || ''); break;
         case 'keyMan': cmp = (a.isKeyMan ? 1 : 0) - (b.isKeyMan ? 1 : 0); break;
+        // Newly sortable columns. Strings sort with localeCompare so
+        // case differences don't surprise the rep. Phone digit-only is
+        // intentional so "(814) 466-3366" and "8144663366" rank together.
+        case 'email': cmp = (a.email || '').toLowerCase().localeCompare((b.email || '').toLowerCase()); break;
+        case 'tel': cmp = (a.phone || a.tel || '').replace(/\D/g, '').localeCompare((b.phone || b.tel || '').replace(/\D/g, '')); break;
+        case 'linkedIn': cmp = (a.linkedIn || '').localeCompare(b.linkedIn || ''); break;
+        case 'street': cmp = (a.street || '').localeCompare(b.street || ''); break;
+        case 'city': cmp = (a.city || '').localeCompare(b.city || ''); break;
+        case 'stateAddr': cmp = (a.state || '').localeCompare(b.state || ''); break;
+        case 'zip': cmp = (a.zip || '').localeCompare(b.zip || ''); break;
       }
       return sortDir === 'desc' ? -cmp : cmp;
     });

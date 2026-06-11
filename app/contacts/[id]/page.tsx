@@ -182,6 +182,38 @@ export default function ContactDetailPage() {
                       </a>
                     )}
                   </div>
+                  {/* Physical address — shown right under the contact
+                      channels so a rep glancing at the header can see
+                      where this contact actually is. Each piece is
+                      optional; we only render the address row at all
+                      if at least one field is present, and we join the
+                      pieces with the conventional US format:
+                        Street
+                        City, ST  ZIP
+                      Clicking opens Google Maps in a new tab so reps
+                      can quickly look it up before a visit. */}
+                  {(contact.street || contact.city || contact.state || contact.zip) && (() => {
+                    const cityStateZip = [contact.city, contact.state].filter(Boolean).join(', ') + (contact.zip ? `  ${contact.zip}` : '');
+                    const fullAddr = [contact.street, cityStateZip].filter((s) => s && s.trim()).join(', ');
+                    return (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddr)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-start gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
+                        title="Open in Google Maps"
+                      >
+                        <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="leading-tight">
+                          {contact.street && <>{contact.street}<br /></>}
+                          {cityStateZip}
+                        </span>
+                      </a>
+                    );
+                  })()}
                 </div>
               </div>
 
