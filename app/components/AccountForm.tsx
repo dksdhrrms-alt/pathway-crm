@@ -304,51 +304,37 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">State {country && country !== 'USA' && <span className="text-gray-400 dark:text-gray-500 text-xs">(US only)</span>}</label>
+      {/* Company Address — single source of truth for the account's
+          physical/operational location. Uses existing columns: street
+          → physical_street, city → location, state → state, zip →
+          physical_zip. Same fieldset shape as Billing / Shipping
+          below so the form reads consistently. */}
+      <fieldset className="border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+        <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Company Address</legend>
+        <input type="text" value={physicalStreet} onChange={(e) => setPhysicalStreet(e.target.value)} placeholder="Street"
+          className="w-full mb-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        <div className="grid grid-cols-3 gap-2">
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City"
+            className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           {country === 'USA' || !country ? (
             <select value={stateVal} onChange={(e) => setStateVal(e.target.value)}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-              <option value="">Select state...</option>
-              {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+              <option value="">ST</option>
+              {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.code}</option>)}
             </select>
           ) : (
-            <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State / Province / Region"
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={stateVal} onChange={(e) => setStateVal(e.target.value)} placeholder="State"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           )}
+          <input type="text" value={physicalZip} onChange={(e) => setPhysicalZip(e.target.value)} placeholder="ZIP"
+            className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">City</label>
-          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City"
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        </div>
-      </div>
+      </fieldset>
 
-      {/* Physical Address — Street + ZIP. State and City live in the
-          Country/State and (newly labelled) City fields above; we only
-          ask for the missing pieces here so the form doesn't duplicate
-          inputs. This is the authoritative address for duplicate
-          detection (preferred over Billing / Shipping). */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Physical Street</label>
-          <input type="text" value={physicalStreet} onChange={(e) => setPhysicalStreet(e.target.value)} placeholder="123 Main St"
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        </div>
-        <div className="col-span-1">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ZIP</label>
-          <input type="text" value={physicalZip} onChange={(e) => setPhysicalZip(e.target.value)} placeholder="50112"
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Telephone</label>
-          <input type="text" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="814-466-3366"
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Telephone</label>
+        <input type="text" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="814-466-3366"
+          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
 
       <div>
@@ -361,12 +347,6 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Website</label>
         <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com"
           className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Address</label>
-        <textarea value={location} onChange={(e) => setLocation(e.target.value)} rows={2} placeholder="Full address..."
-          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
       </div>
 
       {/* Integration Account toggle */}
