@@ -15,7 +15,12 @@ function sb() {
 }
 
 function canAuthor(role: string | undefined): boolean {
-  return role === 'admin' || role === 'ceo';
+  // Admin-tier authoring. The CRM uses two related roles:
+  //   'admin'                  — the literal 'Admin' role
+  //   'administrative_manager' — labeled 'Admin Manager' in the UI
+  // Both should be allowed alongside CEO. Earlier version only
+  // accepted 'admin' which locked out actual admin-manager accounts.
+  return role === 'admin' || role === 'administrative_manager' || role === 'ceo';
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {

@@ -41,7 +41,9 @@ const SEVERITY_LABELS: Record<Severity, { chip: string; label: string }> = {
 export default function AdminAnnouncementsPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role;
-  const allowed = role === 'admin' || role === 'ceo';
+  // Includes 'administrative_manager' (Admin Manager) alongside the
+  // literal 'admin' role; both should reach this screen.
+  const allowed = role === 'admin' || role === 'administrative_manager' || role === 'ceo';
 
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
