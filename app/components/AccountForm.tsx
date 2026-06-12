@@ -399,6 +399,19 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
               className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </fieldset>
+        <fieldset className="border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+          <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Shipping Address</legend>
+          <input type="text" value={shippingStreet} onChange={(e) => setShippingStreet(e.target.value)} placeholder="Street"
+            className="w-full mb-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" value={shippingCity} onChange={(e) => setShippingCity(e.target.value)} placeholder="City"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={shippingState} onChange={(e) => setShippingState(e.target.value)} placeholder="ST"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={shippingZip} onChange={(e) => setShippingZip(e.target.value)} placeholder="ZIP"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </fieldset>
       </div>
 
       <div>
