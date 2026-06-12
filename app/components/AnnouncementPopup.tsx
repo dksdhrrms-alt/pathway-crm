@@ -33,6 +33,10 @@ interface Announcement {
   active: boolean;
   expires_at: string | null;
   created_at: string;
+  /** Server-attached author info — name + role label so the popup can
+   *  show "Posted by <name> · <role>" instead of an opaque uuid. Null
+   *  if the original author was deleted from the users table. */
+  author?: { id: string; name: string; role: string; role_label: string } | null;
 }
 
 const SEVERITY_STYLES: Record<Severity, { ring: string; pill: string; label: string }> = {
@@ -95,6 +99,18 @@ export default function AnnouncementPopup() {
                 {styles.label}
               </span>
               <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-gray-100">{current.title}</h2>
+              {/* Attribution line — "Posted by <name> · <Role>". Only
+                  renders when the server attached author info; falls
+                  back gracefully if the original author has been
+                  removed from the users table. */}
+              {current.author && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Posted by <span className="font-medium text-gray-700 dark:text-gray-300">{current.author.name}</span>
+                  {current.author.role_label && (
+                    <> · <span className="text-gray-500 dark:text-gray-400">{current.author.role_label}</span></>
+                  )}
+                </p>
+              )}
             </div>
             <button
               onClick={closeForThisLoad}

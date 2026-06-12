@@ -1,6 +1,47 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { createClient } from '@supabase/supabase-js';
+import { getRoleLabel, UserRole } from '@/lib/users';
+
+/**
+ * Helper — for an array of announcement rows, look up each unique
+ * created_by user id and attach a small `author` object so the popup
+ * can display "Posted by <name> · <role>" instead of an opaque UUID.
+ * Returns the rows with `author` annotation.
+ */
+type AnnouncementRow = {
+  id: string; title: string; body: string; severity: string; active: boolean;
+  expires_at: string | null; created_by: string; created_at: string; updated_at: string;
+};
+async function attachAuthors(
+  // Loose `any` rather than the over-narrow `ReturnType<typeof createClient>` —
+  // the strict generic from the client factory rejected the public-schema
+  // Supabase instance we actually instantiate.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  rows: AnnouncementRow[],
+): Promise<(AnnouncementRow & { author: { id: string; name: string; role: string; role_label: string } | null })[]> {
+  if (rows.length === 0) return [];
+  const ids = Array.from(new Set(rows.map((r) => r.created_by).filter(Boolean)));
+  if (ids.length === 0) return rows.map((r) => ({ ...r, author: null }));
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, name, role')
+    .in('id', ids);
+  const userMap = new Map<string, { id: string; name: string; role: string }>();
+  // `users` is typed loosely (Supabase client is `any` in this helper);
+  // explicit unknown cast then narrow per-element to satisfy strict mode.
+  ((users || []) as unknown as { id: string; name: string; role: string }[]).forEach((u) => {
+    userMap.set(u.id, u);
+  });
+  return rows.map((r) => {
+    const u = userMap.get(r.created_by);
+    if (!u) return { ...r, author: null };
+    let label = u.role;
+    try { label = getRoleLabel(u.role as UserRole); } catch { /* unknown role — fall back to raw */ }
+    return { ...r, author: { id: u.id, name: u.name, role: u.role, role_label: label } };
+  });
+}
 
 /**
  * GET  /api/announcements
@@ -57,7 +98,8 @@ export async function GET(req: Request) {
       .select('id, title, body, severity, active, expires_at, created_by, created_at, updated_at')
       .order('created_at', { ascending: false });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ items: data || [] });
+    const enriched = await attachAuthors(supabase, (data || []) as AnnouncementRow[]);
+    return NextResponse.json({ items: enriched });
   }
 
   // User-facing path: active + unexpired only.
@@ -80,7 +122,8 @@ export async function GET(req: Request) {
     .gt('dismissed_until', nowIso);
   const blocked = new Set((dismissals || []).map((d) => d.announcement_id));
 
-  const items = anns.filter((a) => !blocked.has(a.id));
+  const filtered = (anns as AnnouncementRow[]).filter((a) => !blocked.has(a.id));
+  const items = await attachAuthors(supabase, filtered);
   return NextResponse.json({ items });
 }
 
