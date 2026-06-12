@@ -2,52 +2,64 @@
  * Account display + dedup helpers — fallback chain across the three
  * address fields the account can carry:
  *
- *   Physical (state + location)      authoritative — actual farm location
+ *   Company  (state + location)         authoritative — actual location
  *   Billing  (billingState + billingCity)
  *   Shipping (shippingState + shippingCity)
  *
  * For both the "subtitle on collisions" rendering and the duplicate
- * detection in the form, we look at Physical first, then fall back to
- * Billing, then Shipping. This matches the rep mental model: same-named
- * farms in different states are the most common ambiguity, and the
- * Physical state is what tells you "this is the IA Visser, not the WI
- * Visser."
+ * detection in the form, we look at Company first, then fall back to
+ * Billing, then Shipping. Same-named farms in different states are the
+ * common ambiguity and the state field disambiguates them.
+ *
+ * Legacy data note: the `location` column used to be a free-form
+ * "Address" textarea, so old rows have full address strings there
+ * ("705 Edgemont Ln, Hoffman Estates, IL 60169"). `extractCity` below
+ * pulls just the city out so the disambiguation pill reads cleanly.
  */
 
 import type { Account } from './data';
 
-/** Strip out punctuation, collapse whitespace, lowercase. */
 function normalize(name: string): string {
   return (name || '').trim().toLowerCase().replace(/[.,'"&()]/g, '').replace(/\s+/g, ' ');
 }
 
-/**
- * Best (state, city) pair for the account, using the fallback chain
- * physical → billing → shipping. Empty string fields are skipped, so
- * an account with only a shipping address still gets a useful answer.
- */
+function extractCity(loc?: string | null): string {
+  const s = (loc || '').trim();
+  if (!s) return '';
+  // Short, comma-less → already a city.
+  if (s.length <= 25 && !s.includes(',')) return s;
+  // Free-form address — split on commas and skip street/state/zip-looking
+  // segments. The remaining piece is most likely the city.
+  const parts = s.split(',').map((p) => p.trim()).filter(Boolean);
+  for (const p of parts) {
+    if (/^\d/.test(p)) continue;                 // starts with digit → street
+    if (/^[A-Za-z]{2}$/.test(p)) continue;       // bare state code
+    if (/^[A-Za-z]{2}\s+\d/.test(p)) continue;   // "IL 60169"
+    if (/^\d+(?:-\d+)?$/.test(p)) continue;      // ZIP
+    return p;
+  }
+  return '';
+}
+
 export function bestStateCity(a: Pick<Account, 'state' | 'location' | 'billingState' | 'billingCity' | 'shippingState' | 'shippingCity'>): { state: string; city: string } {
   const chain: { state?: string | null; city?: string | null }[] = [
-    { state: a.state,          city: a.location },     // physical (legacy column names)
-    { state: a.billingState,   city: a.billingCity },
-    { state: a.shippingState,  city: a.shippingCity },
+    { state: a.state,         city: a.location },
+    { state: a.billingState,  city: a.billingCity },
+    { state: a.shippingState, city: a.shippingCity },
   ];
   let state = '';
   let city = '';
   for (const entry of chain) {
     if (!state && entry.state && entry.state.trim()) state = entry.state.trim();
-    if (!city && entry.city && entry.city.trim())    city = entry.city.trim();
+    if (!city) {
+      const c = extractCity(entry.city || '');
+      if (c) city = c;
+    }
     if (state && city) break;
   }
   return { state, city };
 }
 
-/**
- * Given the full account list, return a Map from accountId → subtitle.
- * Subtitle is "" for accounts whose name is unique; otherwise it's
- * "City, ST" (or fewer pieces if only one is present) using the
- * fallback chain above.
- */
 export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 'state' | 'location' | 'billingState' | 'billingCity' | 'shippingState' | 'shippingCity' | 'country'>[]): Map<string, string> {
   const counts = new Map<string, number>();
   for (const a of accounts) {
@@ -75,12 +87,6 @@ export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 
   return out;
 }
 
-/**
- * Same-account heuristic — name AND best-effort state must match.
- * The state on each side is resolved through the same fallback
- * chain so it doesn't matter whether the rep typed it in Physical,
- * Billing, or Shipping.
- */
 export function isLikelySameAccount(
   a: Pick<Account, 'name' | 'state' | 'billingState' | 'shippingState'>,
   b: Pick<Account, 'name' | 'state' | 'billingState' | 'shippingState'>,
