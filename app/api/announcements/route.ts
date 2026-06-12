@@ -11,6 +11,11 @@ import { createClient } from '@supabase/supabase-js';
  *   Admin/CEO only. Creates a new announcement.
  */
 
+// Mark dynamic so Vercel doesn't prerender this route at build time.
+// Without this the route can return an empty cached payload until
+// the cache TTL expires — which masked the popup not appearing.
+export const dynamic = 'force-dynamic';
+
 const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
