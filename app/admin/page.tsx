@@ -9,6 +9,7 @@ import { MENU_ITEMS, MenuItem, getUserPerms, saveUserPerms, getUserDataVisibilit
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import { formatPhone } from '@/lib/phone';
+import Link from 'next/link';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -339,6 +340,20 @@ export default function AdminPage() {
                 </span>
               )}
             </button>
+            {/* Announcements lives at its own route (/admin/announcements)
+                — see app/admin/announcements/page.tsx. Keeping it out of
+                the local tab state means the (much larger) admin page
+                doesn't have to grow another panel and the navigation
+                still feels native. */}
+            <Link
+              href="/admin/announcements"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 inline-flex items-center gap-1"
+            >
+              Announcements
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
 
           {activeTab === 'overview' && (

@@ -18,6 +18,7 @@ import NewTaskModal from '@/app/components/NewTaskModal';
 import NewOpportunityModal from '@/app/components/NewOpportunityModal';
 import NewAccountModal from '@/app/components/NewAccountModal';
 import NewContactModal from '@/app/components/NewContactModal';
+import AnnouncementPopup from '@/app/components/AnnouncementPopup';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend,
@@ -255,6 +256,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
       <TopBar placeholder="Search CRM..." />
+      {/* Admin announcement popup — renders on every Home entry; the
+          component returns null when no announcement applies. */}
+      <AnnouncementPopup />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
 
