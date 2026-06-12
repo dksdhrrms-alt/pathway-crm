@@ -30,6 +30,14 @@ export interface Account {
   category?: string;
   companyType?: string;
   state?: string;
+  /** Physical address — the actual farm / feed mill location.
+   *  Street + ZIP are new columns; City and State reuse the
+   *  pre-existing `location` and `state` fields above. This is the
+   *  authoritative address for duplicate detection (same-named
+   *  farms in different states resolve here first), and shows up
+   *  under the account header. */
+  physicalStreet?: string;
+  physicalZip?: string;
   /** Billing address — invoiced / paperwork goes here. Often
    *  different from shipping (HQ vs. distribution warehouse). All
    *  four fields are optional; we render the block on the account

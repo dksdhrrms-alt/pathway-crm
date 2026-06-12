@@ -254,6 +254,57 @@ export default function AccountDetailPage() {
                     {account.country ? ` · ${account.country}` : account.location ? ` · ${account.location}` : ''}
                     {' · Owner: '}{getOwnerName(account.ownerId)}
                   </div>
+                  {/* Physical address one-liner directly under the meta
+                      row. Falls back to billing then shipping if the
+                      physical fields are empty, so older accounts that
+                      only have a billing address still show something
+                      useful. Clicking opens Google Maps so a rep can
+                      eyeball the location before a visit. */}
+                  {(() => {
+                    const physStreet = account.physicalStreet || '';
+                    const physCity = account.location || '';
+                    const physState = account.state || '';
+                    const physZip = account.physicalZip || '';
+                    const billStreet = account.billingStreet || '';
+                    const billCity = account.billingCity || '';
+                    const billState = account.billingState || '';
+                    const billZip = account.billingZip || '';
+                    const shipStreet = account.shippingStreet || '';
+                    const shipCity = account.shippingCity || '';
+                    const shipState = account.shippingState || '';
+                    const shipZip = account.shippingZip || '';
+                    let street = physStreet, city = physCity, st = physState, zip = physZip, label = 'Physical';
+                    if (!street && !city && !st && !zip) {
+                      if (billStreet || billCity || billState || billZip) {
+                        street = billStreet; city = billCity; st = billState; zip = billZip; label = 'Billing';
+                      } else if (shipStreet || shipCity || shipState || shipZip) {
+                        street = shipStreet; city = shipCity; st = shipState; zip = shipZip; label = 'Shipping';
+                      }
+                    }
+                    const hasAny = !!(street || city || st || zip);
+                    if (!hasAny) return null;
+                    const cityStZip = [city, st].filter(Boolean).join(', ') + (zip ? `  ${zip}` : '');
+                    const full = [street, cityStZip].filter((s) => s && s.trim()).join(', ');
+                    return (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(full)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', opacity: 0.85, marginTop: '4px', color: 'inherit', textDecoration: 'none' }}
+                        title={`Open ${label.toLowerCase()} address in Google Maps`}
+                      >
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ flexShrink: 0 }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>
+                          {street ? <>{street}{cityStZip ? ' · ' : ''}</> : null}
+                          {cityStZip}
+                          {label !== 'Physical' ? <span style={{ opacity: 0.65, marginLeft: '6px' }}>({label})</span> : null}
+                        </span>
+                      </a>
+                    );
+                  })()}
                 </div>
               </div>
 

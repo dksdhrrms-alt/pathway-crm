@@ -25,6 +25,10 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // Account billing + shipping address columns (16-accounts-addresses.sql).
   billingStreet: 'billing_street', billingCity: 'billing_city', billingState: 'billing_state', billingZip: 'billing_zip',
   shippingStreet: 'shipping_street', shippingCity: 'shipping_city', shippingState: 'shipping_state', shippingZip: 'shipping_zip',
+  // Physical address — Street and ZIP are dedicated columns
+  // (19-accounts-physical-address.sql); City and State reuse the
+  // pre-existing `location` and `state` columns.
+  physicalStreet: 'physical_street', physicalZip: 'physical_zip',
   companyType: 'company_type',
   expectedStartDate: 'expected_start_date',
   parentAccountId: 'parent_account_id',

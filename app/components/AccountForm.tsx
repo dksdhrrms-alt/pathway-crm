@@ -49,6 +49,11 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   const [website, setWebsite] = useState(initialData?.website || '');
   const [location, setLocation] = useState(initialData?.location || '');
   const [stateVal, setStateVal] = useState(initialData?.state || '');
+  // Physical address — Street and ZIP are dedicated new columns;
+  // City and State live in the legacy `location` and `state` columns
+  // (re-using `location` / `stateVal` above). See 19-accounts-physical-address.sql.
+  const [physicalStreet, setPhysicalStreet] = useState(initialData?.physicalStreet || '');
+  const [physicalZip, setPhysicalZip] = useState(initialData?.physicalZip || '');
   // Billing / Shipping address fields — see Account interface in lib/data.ts.
   const [billingStreet, setBillingStreet] = useState(initialData?.billingStreet || '');
   const [billingCity, setBillingCity] = useState(initialData?.billingCity || '');
@@ -98,7 +103,10 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
     if (mode !== 'new') return { hardDupes: [] as Account[], softDupes: [] as Account[] };
     const n = name.trim().toLowerCase();
     if (n.length < 4) return { hardDupes: [], softDupes: [] };
-    const typedState = (stateVal || '').trim().toLowerCase();
+    // Fallback chain for the state the rep is typing — Physical first
+    // (the meaningful one), then Billing, then Shipping. Same chain on
+    // the candidate side below. Mirrors bestStateCity in lib/accountDisplay.ts.
+    const typedState = (stateVal || billingState || shippingState || '').trim().toLowerCase();
     const hard: Account[] = [];
     const soft: Account[] = [];
     for (const a of accounts) {
@@ -107,7 +115,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       if (!an) continue;
       const nameMatches = an === n || an.includes(n) || n.includes(an);
       if (!nameMatches) continue;
-      const otherState = (a.state || '').trim().toLowerCase();
+      const otherState = (a.state || a.billingState || a.shippingState || '').trim().toLowerCase();
       // No state on either side → can't disambiguate → treat as hard.
       if (!typedState || !otherState) hard.push(a);
       else if (typedState === otherState) hard.push(a);
@@ -115,7 +123,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
       if (hard.length + soft.length >= 8) break;
     }
     return { hardDupes: hard.slice(0, 5), softDupes: soft.slice(0, 5) };
-  }, [mode, name, stateVal, accounts, editingId]);
+  }, [mode, name, stateVal, billingState, shippingState, accounts, editingId]);
   // Preserved for the existing JSX render below — composed of hardDupes
   // only so the strong "review before saving" warning still feels
   // strict. Soft (different-state) matches get their own gentler box.
@@ -147,6 +155,8 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         website: ws,
         location: location.trim(),
         state: stateVal.trim(),
+        physicalStreet: physicalStreet.trim(),
+        physicalZip: physicalZip.trim(),
         billingStreet: billingStreet.trim(),
         billingCity: billingCity.trim(),
         billingState: billingState.trim(),
@@ -309,6 +319,32 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
           )}
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">City</label>
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+      </div>
+
+      {/* Physical Address — Street + ZIP. State and City live in the
+          Country/State and (newly labelled) City fields above; we only
+          ask for the missing pieces here so the form doesn't duplicate
+          inputs. This is the authoritative address for duplicate
+          detection (preferred over Billing / Shipping). */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Physical Street</label>
+          <input type="text" value={physicalStreet} onChange={(e) => setPhysicalStreet(e.target.value)} placeholder="123 Main St"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+        <div className="col-span-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">ZIP</label>
+          <input type="text" value={physicalZip} onChange={(e) => setPhysicalZip(e.target.value)} placeholder="50112"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Telephone</label>
           <input type="text" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} placeholder="814-466-3366"
             className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
@@ -380,19 +416,6 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
             <input type="text" value={billingState} onChange={(e) => setBillingState(e.target.value)} placeholder="ST"
               className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
             <input type="text" value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="ZIP"
-              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-          </div>
-        </fieldset>
-        <fieldset className="border border-gray-200 dark:border-slate-700 rounded-lg p-3">
-          <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Shipping Address</legend>
-          <input type="text" value={shippingStreet} onChange={(e) => setShippingStreet(e.target.value)} placeholder="Street"
-            className="w-full mb-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-          <div className="grid grid-cols-3 gap-2">
-            <input type="text" value={shippingCity} onChange={(e) => setShippingCity(e.target.value)} placeholder="City"
-              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            <input type="text" value={shippingState} onChange={(e) => setShippingState(e.target.value)} placeholder="ST"
-              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            <input type="text" value={shippingZip} onChange={(e) => setShippingZip(e.target.value)} placeholder="ZIP"
               className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
           </div>
         </fieldset>

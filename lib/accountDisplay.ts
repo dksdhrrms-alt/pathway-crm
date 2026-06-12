@@ -1,18 +1,17 @@
 /**
- * Account display helpers — auto-disambiguation for same-named accounts.
+ * Account display + dedup helpers — fallback chain across the three
+ * address fields the account can carry:
  *
- * As Pathway expanded out of the Midwest the rep team started hitting
- * legitimate same-name farms in different states ("Visser Dairy" in WI
- * and IA, "DeGroot Farms" in MN and SD, etc.). Showing the bare name in
- * dropdowns/lists/search hides that distinction and either looks like a
- * dup or risks routing emails / activities to the wrong farm.
+ *   Physical (state + location)      authoritative — actual farm location
+ *   Billing  (billingState + billingCity)
+ *   Shipping (shippingState + shippingCity)
  *
- * Strategy (no schema changes — uses existing state/city columns):
- *   1. Build a normalized-name → count map of all accounts.
- *   2. For any account whose normalized name collides with another,
- *      surface a small "subtitle" of state (and city when available).
- *   3. Unique names are returned with an empty subtitle so common-case
- *      lists stay clean.
+ * For both the "subtitle on collisions" rendering and the duplicate
+ * detection in the form, we look at Physical first, then fall back to
+ * Billing, then Shipping. This matches the rep mental model: same-named
+ * farms in different states are the most common ambiguity, and the
+ * Physical state is what tells you "this is the IA Visser, not the WI
+ * Visser."
  */
 
 import type { Account } from './data';
@@ -23,14 +22,33 @@ function normalize(name: string): string {
 }
 
 /**
- * Given the full account list, return a Map from accountId → subtitle.
- * Subtitle is an empty string for accounts whose name is unique;
- * otherwise it's "City, ST" (or just "ST" / "City" if only one piece
- * is present). Pass this map into list/search components so they can
- * render a small caption under or beside the account name.
+ * Best (state, city) pair for the account, using the fallback chain
+ * physical → billing → shipping. Empty string fields are skipped, so
+ * an account with only a shipping address still gets a useful answer.
  */
-export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 'state' | 'location' | 'country'>[]): Map<string, string> {
-  // Count how many accounts share each normalized name.
+export function bestStateCity(a: Pick<Account, 'state' | 'location' | 'billingState' | 'billingCity' | 'shippingState' | 'shippingCity'>): { state: string; city: string } {
+  const chain: { state?: string | null; city?: string | null }[] = [
+    { state: a.state,          city: a.location },     // physical (legacy column names)
+    { state: a.billingState,   city: a.billingCity },
+    { state: a.shippingState,  city: a.shippingCity },
+  ];
+  let state = '';
+  let city = '';
+  for (const entry of chain) {
+    if (!state && entry.state && entry.state.trim()) state = entry.state.trim();
+    if (!city && entry.city && entry.city.trim())    city = entry.city.trim();
+    if (state && city) break;
+  }
+  return { state, city };
+}
+
+/**
+ * Given the full account list, return a Map from accountId → subtitle.
+ * Subtitle is "" for accounts whose name is unique; otherwise it's
+ * "City, ST" (or fewer pieces if only one is present) using the
+ * fallback chain above.
+ */
+export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 'state' | 'location' | 'billingState' | 'billingCity' | 'shippingState' | 'shippingCity' | 'country'>[]): Map<string, string> {
   const counts = new Map<string, number>();
   for (const a of accounts) {
     const n = normalize(a.name);
@@ -45,14 +63,12 @@ export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 
       out.set(a.id, '');
       continue;
     }
-    // Collision — build a subtitle from state + location/city.
-    const st = (a.state || '').trim();
-    const city = (a.location || '').trim();
+    const { state, city } = bestStateCity(a);
     let sub: string;
-    if (city && st) sub = `${city}, ${st}`;
-    else if (st) sub = st;
+    if (city && state) sub = `${city}, ${state}`;
+    else if (state) sub = state;
     else if (city) sub = city;
-    else if (a.country) sub = a.country.trim(); // last-resort fallback
+    else if (a.country) sub = a.country.trim();
     else sub = '(no location)';
     out.set(a.id, sub);
   }
@@ -60,21 +76,22 @@ export function buildAccountSubtitleMap(accounts: Pick<Account, 'id' | 'name' | 
 }
 
 /**
- * Detect whether two accounts that share a name appear to actually
- * be the same record (vs. a same-named-different-location case).
- * Used by the duplicate-warning logic in AccountForm so it only
- * blocks the obvious dups and demotes far-away collisions to an
- * informational hint.
+ * Same-account heuristic — name AND best-effort state must match.
+ * The state on each side is resolved through the same fallback
+ * chain so it doesn't matter whether the rep typed it in Physical,
+ * Billing, or Shipping.
  */
 export function isLikelySameAccount(
-  a: Pick<Account, 'name' | 'state'>,
-  b: Pick<Account, 'name' | 'state'>,
+  a: Pick<Account, 'name' | 'state' | 'billingState' | 'shippingState'>,
+  b: Pick<Account, 'name' | 'state' | 'billingState' | 'shippingState'>,
 ): boolean {
   if (normalize(a.name) !== normalize(b.name)) return false;
-  const sa = (a.state || '').trim().toLowerCase();
-  const sb = (b.state || '').trim().toLowerCase();
-  // If either side has no state we err toward "could be a real dup"
-  // because we don't have evidence to prove they're different.
+  const sa = bestState(a);
+  const sb = bestState(b);
   if (!sa || !sb) return true;
   return sa === sb;
+}
+
+function bestState(a: Pick<Account, 'state' | 'billingState' | 'shippingState'>): string {
+  return (a.state || a.billingState || a.shippingState || '').trim().toLowerCase();
 }
