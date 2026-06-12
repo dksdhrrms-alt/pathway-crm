@@ -364,6 +364,40 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         </div>
       )}
 
+      {/* Billing + Shipping addresses. Two side-by-side fieldsets so
+          the rep can see the difference at a glance. Re-added after
+          an earlier truncated commit dropped the JSX — state/save
+          handlers were intact but the form had no inputs to populate
+          them, so the data never reached the DB. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <fieldset className="border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+          <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Billing Address</legend>
+          <input type="text" value={billingStreet} onChange={(e) => setBillingStreet(e.target.value)} placeholder="Street"
+            className="w-full mb-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" value={billingCity} onChange={(e) => setBillingCity(e.target.value)} placeholder="City"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={billingState} onChange={(e) => setBillingState(e.target.value)} placeholder="ST"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="ZIP"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </fieldset>
+        <fieldset className="border border-gray-200 dark:border-slate-700 rounded-lg p-3">
+          <legend className="px-1 text-sm font-semibold text-gray-700 dark:text-gray-200">Shipping Address</legend>
+          <input type="text" value={shippingStreet} onChange={(e) => setShippingStreet(e.target.value)} placeholder="Street"
+            className="w-full mb-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" value={shippingCity} onChange={(e) => setShippingCity(e.target.value)} placeholder="City"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={shippingState} onChange={(e) => setShippingState(e.target.value)} placeholder="ST"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input type="text" value={shippingZip} onChange={(e) => setShippingZip(e.target.value)} placeholder="ZIP"
+              className="col-span-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+          </div>
+        </fieldset>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Notes / Summary</label>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Background, key relationships, recent updates, strategic context..."
@@ -374,7 +408,7 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         <SubmitButton type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
           Cancel
         </SubmitButton>
-        <SubmitButton type="submit" pending={submitting} pendingText={mode === 'new' ? 'Creating...' : 'Saving...'}>
+        <SubmitButton type="submit" disabled={submitting} pending={submitting} pendingText={mode === 'new' ? 'Creating...' : 'Saving...'}>
           {mode === 'new' ? 'Create Account' : 'Save Changes'}
         </SubmitButton>
       </div>
