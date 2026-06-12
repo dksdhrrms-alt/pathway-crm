@@ -82,19 +82,44 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
   //   - substring match either direction ("Poulin" in "Poulin Grain"
   //     or "Cargill Mid-West" containing user-typed "Cargill")
   // Edit mode excludes the current row.
+  //
+  // Reps flagged that as Pathway expands across the country there are
+  // legitimately same-named farms in different states (Visser, DeGroot,
+  // North Side, etc.). We now split hits into two buckets:
+  //   - hardDupes:  same name AND same state → red "looks like a true
+  //                 duplicate, review before saving"
+  //   - softDupes:  same/overlapping name BUT different (known) state →
+  //                 informational blue "FYI, similar name in another
+  //                 state — fine to proceed if this is a different farm"
+  // If the user hasn't typed a state yet we play it safe and treat
+  // everything as a hard dup (no signal to prove they're different).
   const editingId = initialData?.id;
-  const dupes = useMemo(() => {
-    if (mode !== 'new') return [] as Account[];
+  const { hardDupes, softDupes } = useMemo(() => {
+    if (mode !== 'new') return { hardDupes: [] as Account[], softDupes: [] as Account[] };
     const n = name.trim().toLowerCase();
-    if (n.length < 4) return [];
-    const hits = accounts.filter((a) => {
-      if (a.id === editingId) return false;
+    if (n.length < 4) return { hardDupes: [], softDupes: [] };
+    const typedState = (stateVal || '').trim().toLowerCase();
+    const hard: Account[] = [];
+    const soft: Account[] = [];
+    for (const a of accounts) {
+      if (a.id === editingId) continue;
       const an = (a.name || '').trim().toLowerCase();
-      if (!an) return false;
-      return an === n || an.includes(n) || n.includes(an);
-    });
-    return hits.slice(0, 5);
-  }, [mode, name, accounts, editingId]);
+      if (!an) continue;
+      const nameMatches = an === n || an.includes(n) || n.includes(an);
+      if (!nameMatches) continue;
+      const otherState = (a.state || '').trim().toLowerCase();
+      // No state on either side → can't disambiguate → treat as hard.
+      if (!typedState || !otherState) hard.push(a);
+      else if (typedState === otherState) hard.push(a);
+      else soft.push(a);
+      if (hard.length + soft.length >= 8) break;
+    }
+    return { hardDupes: hard.slice(0, 5), softDupes: soft.slice(0, 5) };
+  }, [mode, name, stateVal, accounts, editingId]);
+  // Preserved for the existing JSX render below — composed of hardDupes
+  // only so the strong "review before saving" warning still feels
+  // strict. Soft (different-state) matches get their own gentler box.
+  const dupes = hardDupes;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -195,12 +220,43 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
                   {a.name}
                 </Link>
                 {a.industry ? <span className="text-amber-700 dark:text-amber-300"> · {a.industry}</span> : null}
+                {a.state ? <span className="text-amber-700 dark:text-amber-300"> · {a.state}</span> : null}
                 {a.country ? <span className="text-amber-600 dark:text-amber-400"> · {a.country}</span> : null}
               </li>
             ))}
           </ul>
           <div className="text-xs text-amber-700 dark:text-amber-300 mt-2">
             You can still save if this is a different company — but please check first to avoid splitting their data.
+          </div>
+        </div>
+      )}
+      {/* Soft duplicates — same name but explicitly different state.
+          Rendered in calm blue so the rep doesn't feel blocked; this
+          is purely informational ("there's a Visser Dairy in WI, but
+          you're entering IA — heads up, not a problem"). */}
+      {softDupes.length > 0 && (
+        <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm">
+          <div className="font-medium text-blue-900 dark:text-blue-200 mb-1">
+            ℹ️ Same name in another state — likely a different farm
+          </div>
+          <ul className="text-blue-900 dark:text-blue-100 space-y-1">
+            {softDupes.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/accounts/${a.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-700 dark:hover:text-blue-300"
+                >
+                  {a.name}
+                </Link>
+                {a.industry ? <span className="text-blue-700 dark:text-blue-300"> · {a.industry}</span> : null}
+                {a.state ? <span className="text-blue-700 dark:text-blue-300"> · {a.state}</span> : null}
+              </li>
+            ))}
+          </ul>
+          <div className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+            Fine to proceed — just confirming this isn&apos;t the same farm.
           </div>
         </div>
       )}

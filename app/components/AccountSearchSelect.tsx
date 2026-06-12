@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useCRM } from '@/lib/CRMContext';
+import { buildAccountSubtitleMap } from '@/lib/accountDisplay';
 
 const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
   'Dairy/Beef': { bg: '#E1F5EE', text: '#0F6E56' },
@@ -33,6 +34,10 @@ export default function AccountSearchSelect({ value, onChange, placeholder }: Pr
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Subtitle map for same-named accounts (e.g. "Visser Dairy - WI" vs "- IA").
+  // Recomputes when the account list updates; O(1) lookup per row.
+  const subtitleMap = useMemo(() => buildAccountSubtitleMap(accounts), [accounts]);
+
   const filtered = accounts.filter((a) => a.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20);
 
   return (
@@ -48,24 +53,40 @@ export default function AccountSearchSelect({ value, onChange, placeholder }: Pr
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50 dark:bg-slate-900 dark:border-slate-600">
           {filtered.map((a) => {
             const badge = SPECIES_BADGE[a.industry] || SPECIES_BADGE.Other;
+            const subtitle = subtitleMap.get(a.id) || '';
             return (
-              <button key={a.id} type="button"
+              <button
+                key={a.id}
+                type="button"
                 onClick={() => { setSearch(a.name); onChange(a.name, a.id); setIsOpen(false); }}
-                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors dark:hover:bg-slate-800">
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{a.name}</span>
-                {a.industry && (
-                  <span className="text-[11px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: badge.bg, color: badge.text }}>{a.industry}</span>
-                )}
+                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors dark:hover:bg-slate-800"
+              >
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{a.name}</span>
+                  {subtitle ? (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-400 whitespace-nowrap">
+                      {subtitle}
+                    </span>
+                  ) : null}
+                </div>
+                {a.industry ? (
+                  <span
+                    className="text-[11px] px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+                    style={{ backgroundColor: badge.bg, color: badge.text }}
+                  >
+                    {a.industry}
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
       )}
-      {isOpen && search && filtered.length === 0 && (
+      {isOpen && search && filtered.length === 0 ? (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50 dark:bg-slate-900 dark:border-slate-600">
           <p className="text-sm text-gray-400 dark:text-gray-500">No accounts found</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
