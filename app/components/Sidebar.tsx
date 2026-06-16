@@ -155,6 +155,9 @@ export default function Sidebar() {
   }, [mobileOpen]);
 
   const isAdminRole = ['admin', 'administrative_manager', 'ceo'].includes(role);
+  // Inventory is an operations / leadership tool. Same gate as the
+  // /inventory page itself — admin tier + COO can see the menu.
+  const canSeeInventory = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
 
   const isSalesDashActive = pathname.startsWith('/sales-dashboard');
 
@@ -333,6 +336,26 @@ export default function Sidebar() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Inventory — operations / leadership only. Replaces the
+            Monday board (current stock per product × location) and
+            the per-product Excel forecast workbook. */}
+        {canSeeInventory && (
+          <Link
+            href="/inventory"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+              pathname === '/inventory' || pathname.startsWith('/inventory/')
+                ? 'bg-white/15 text-white font-medium'
+                : 'text-white/70 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            Inventory
+          </Link>
         )}
 
         {/* Sales Dashboard — collapsible */}
