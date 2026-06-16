@@ -345,13 +345,13 @@ export default function Sidebar() {
           <Link
             href="/inventory"
             onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
               pathname === '/inventory' || pathname.startsWith('/inventory/')
-                ? 'bg-white/15 text-white font-medium'
-                : 'text-white/70 hover:text-white hover:bg-white/5'
+                ? 'bg-white/15 text-white'
+                : 'text-white/60 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             Inventory
