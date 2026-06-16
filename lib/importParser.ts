@@ -357,7 +357,12 @@ const ACCOUNT_FIELD_MAP: Record<string, string[]> = {
 };
 
 const CONTACT_FIELD_MAP: Record<string, string[]> = {
-  firstName: ['first name', 'first', 'firstname', 'given name', '이름'],
+  // 'name' / 'full name' are common single-column headers (e.g. iCloud
+  // exports, the Cornerstone Excel sheet sales reps brought in). The
+  // doImport loop already splits a full name into first/last when the
+  // last name is empty, so mapping to firstName is the right landing
+  // spot.
+  firstName: ['first name', 'first', 'firstname', 'given name', '이름', 'name', 'full name'],
   lastName: ['last name', 'last', 'lastname', 'surname', 'family name'],
   title: ['title', 'job title', 'position', 'role', 'designation'],
   accountName: ['company', 'account', 'account name', 'organization', 'company name', 'usa_company'],

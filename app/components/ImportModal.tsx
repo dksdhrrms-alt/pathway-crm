@@ -240,6 +240,14 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
           if (!firstName) { errors++; continue; }
           const email = getMapped(row, 'email');
           const accountName = getMapped(row, 'accountName');
+          // Account matching — exact (case-insensitive) first. If no
+          // exact hit, treat the typed Organization as authoritative
+          // text and leave accountId empty, but PRESERVE the raw name
+          // on the contact so the sales rep sees the company that
+          // came from the file instead of an empty cell. Previously
+          // this column was silently dropped on a miss, which is what
+          // made the Cornerstone batch look "company-less" after
+          // import and led to the wrong manual fix.
           const matchedAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase());
           if (isContactDuplicate(firstName, lastName, email, matchedAccount?.id ?? '')
               && dupMode === 'skip') { skipped++; continue; }
@@ -249,6 +257,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             id: generateId(), firstName, lastName,
             title: getMapped(row, 'title') || '',
             accountId: matchedAccount?.id ?? '',
+            accountName: matchedAccount?.name ?? accountName,
             phone: getMapped(row, 'phone') || '',
             email: email || '',
             linkedIn: getMapped(row, 'linkedIn') || undefined,
