@@ -24,7 +24,7 @@ import {
   upsertStockLot, deleteStockLot,
 } from '@/lib/inventory';
 
-type GroupBy = 'product' | 'location';
+type GroupBy = 'product' | 'location' | 'upcoming';
 
 function formatErr(e: unknown): string {
   if (!e) return 'Unknown error';
@@ -96,6 +96,25 @@ export default function StockSnapshot() {
         };
       });
     }
+    if (groupBy === 'upcoming') {
+      // Upcoming-only view: filter to status='upcoming' lots and
+      // group by product so the rep sees "what's en route per
+      // product". Empty groups are hidden so the screen only shows
+      // products with pending shipments.
+      return products
+        .map((p) => {
+          const groupLots = lots.filter((s) => s.productId === p.id && s.status === 'upcoming');
+          return {
+            key: p.id,
+            label: p.name,
+            chipColor: null,
+            lots: groupLots,
+            total: 0, // not in stock yet
+            upcoming: groupLots.reduce((s, x) => s + x.quantity, 0),
+          };
+        })
+        .filter((g) => g.lots.length > 0);
+    }
     return locations.map((l) => {
       const groupLots = lots.filter((s) => s.locationId === l.id);
       return {
@@ -148,9 +167,26 @@ export default function StockSnapshot() {
             onClick={() => setGroupBy('location')}
             className={`px-3 py-1 text-sm rounded ${groupBy === 'location' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium' : 'text-gray-500 dark:text-gray-400'}`}
           >By location</button>
+          <button
+            onClick={() => setGroupBy('upcoming')}
+            className={`px-3 py-1 text-sm rounded flex items-center gap-1.5 ${groupBy === 'upcoming' ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-sm font-medium' : 'text-gray-500 dark:text-gray-400'}`}
+            title="Show only Upcoming lots (in transit, not yet landed)"
+          >
+            Upcoming
+            {(() => {
+              const totalUpcoming = lots.filter((l) => l.status === 'upcoming').reduce((s, l) => s + l.quantity, 0);
+              return totalUpcoming > 0 ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-medium">
+                  {totalUpcoming.toLocaleString()}
+                </span>
+              ) : null;
+            })()}
+          </button>
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          Totals count In-stock only. Upcoming shown separately, Sold excluded.
+          {groupBy === 'upcoming'
+            ? 'Showing only Upcoming lots (in transit). These are excluded from the in-stock totals.'
+            : 'Totals count In-stock only. Upcoming shown separately, Sold excluded.'}
         </div>
       </div>
 
@@ -162,19 +198,28 @@ export default function StockSnapshot() {
 
       {/* Groups */}
       <div className="space-y-4">
-        {groups.map((g) => (
-          <GroupTable
-            key={g.key}
-            group={g}
-            groupBy={groupBy}
-            products={products}
-            locations={locations}
-            productById={productById}
-            locationById={locationById}
-            onSave={handleSave}
-            onDelete={handleDelete}
-          />
-        ))}
+        {groupBy === 'upcoming' && groups.length === 0 ? (
+          <div className="border border-dashed border-amber-300 dark:border-amber-700/60 rounded-lg p-8 text-center bg-amber-50/40 dark:bg-amber-900/10">
+            <div className="text-sm font-medium text-amber-700 dark:text-amber-300 mb-1">No Upcoming lots</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Nothing is currently marked as in transit. Switch to <span className="font-medium">By product</span> or <span className="font-medium">By location</span> to add a lot and set its status to Upcoming.
+            </div>
+          </div>
+        ) : (
+          groups.map((g) => (
+            <GroupTable
+              key={g.key}
+              group={g}
+              groupBy={groupBy}
+              products={products}
+              locations={locations}
+              productById={productById}
+              locationById={locationById}
+              onSave={handleSave}
+              onDelete={handleDelete}
+            />
+          ))
+        )}
       </div>
     </div>
   );
@@ -205,17 +250,29 @@ function GroupTable({
           <span className="text-xs text-gray-500 dark:text-gray-400">{group.lots.length} lot{group.lots.length === 1 ? '' : 's'}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {group.total.toLocaleString()} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">kg</span>
-          </span>
-          {/* Upcoming is shown as a separate chip so it stays visible
-              for planning without sneaking into the "available now"
-              number. Only renders when > 0 to keep the header clean
-              for groups with no in-transit lots. */}
-          {group.upcoming > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title="Lots marked Upcoming — not yet landed, excluded from the running total">
-              +{group.upcoming.toLocaleString()} kg upcoming
+          {/* In the Upcoming view the in-stock total is always 0 by
+              construction, so we promote the upcoming figure into the
+              main slot to avoid a confusing "0 kg" with an amber pill
+              next to it. */}
+          {groupBy === 'upcoming' ? (
+            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300" title="Total Upcoming (in transit, not yet landed)">
+              {group.upcoming.toLocaleString()} <span className="text-xs font-normal text-amber-600/80 dark:text-amber-400/80">kg upcoming</span>
             </span>
+          ) : (
+            <>
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {group.total.toLocaleString()} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">kg</span>
+              </span>
+              {/* Upcoming is shown as a separate chip so it stays visible
+                  for planning without sneaking into the "available now"
+                  number. Only renders when > 0 to keep the header clean
+                  for groups with no in-transit lots. */}
+              {group.upcoming > 0 && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title="Lots marked Upcoming — not yet landed, excluded from the running total">
+                  +{group.upcoming.toLocaleString()} kg upcoming
+                </span>
+              )}
+            </>
           )}
           <button
             onClick={() => setAdding(true)}
@@ -264,12 +321,12 @@ function GroupTable({
                 key="__new"
                 lot={{
                   id: '',
-                  productId: groupBy === 'product' ? group.key : (products[0]?.id || ''),
+                  productId: (groupBy === 'product' || groupBy === 'upcoming') ? group.key : (products[0]?.id || ''),
                   locationId: groupBy === 'location' ? group.key : (locations[0]?.id || ''),
                   manufacturer: '',
                   quantity: 0,
                   unit: 'kg',
-                  status: 'in_stock',
+                  status: groupBy === 'upcoming' ? 'upcoming' : 'in_stock',
                   etaDate: null,
                   containerNo: null,
                   poNumber: null,
@@ -323,9 +380,11 @@ function LotRow({
 
   // When grouped by the OTHER axis (e.g. By Product, then opposing
   // axis is Location), show that axis as a dropdown so the rep can
-  // move a lot between locations inline.
+  // move a lot between locations inline. In the Upcoming view we
+  // group by product, so Product is fixed per group and the editable
+  // axis is Location — same shape as "By product".
   const showProductPicker = groupBy === 'location';
-  const showLocationPicker = groupBy === 'product';
+  const showLocationPicker = groupBy === 'product' || groupBy === 'upcoming';
 
   const productLabel = productById.get(draft.productId)?.name ?? '—';
   const location = locationById.get(draft.locationId);
