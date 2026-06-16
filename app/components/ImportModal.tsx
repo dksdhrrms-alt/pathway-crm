@@ -6,6 +6,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { generateId, Account } from '@/lib/data';
 import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, generateContactTemplate, parseMondayCompanies, parseMondayContacts, ParsedAccount, ParsedContact, fuzzyMatchUser } from '@/lib/importParser';
+import { parseVCardFile } from '@/lib/vcardParser';
 import SubmitButton from './SubmitButton';
 import { useEscClose } from '@/lib/useEscClose';
 
@@ -56,7 +57,30 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
   const fields = type === 'accounts' ? ACCOUNT_FIELDS : CONTACT_FIELDS;
 
   function handleFile(f: File) {
-    if (!f.name.match(/\.(xlsx?|csv)$/i)) return;
+    if (!f.name.match(/\.(xlsx?|csv|vcf)$/i)) return;
+
+    // vCard branch — text-based, parse directly into RawRow shape and
+    // skip straight to the mapping step. iCloud / iOS Contacts exports
+    // come this way; one .vcf may hold many BEGIN/END VCARD blocks.
+    if (f.name.match(/\.vcf$/i) && type === 'contacts') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const { headers: h, rows: r } = parseVCardFile(text);
+        if (r.length === 0) {
+          console.warn('[Import] No vCard records found in file');
+          return;
+        }
+        setHeaders(h);
+        setRows(r);
+        setMapping(autoMapColumns(h, type));
+        setIsMondayMode(false);
+        setStep('mapping');
+      };
+      reader.readAsText(f);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const buf = e.target?.result as ArrayBuffer;
@@ -274,8 +298,10 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Drag & drop your file here, or click to browse</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Accepts .xlsx, .xls, .csv</p>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Accepts .xlsx, .xls, .csv{type === 'contacts' ? ', .vcf (iPhone / iCloud Contacts)' : ''}
+              </p>
+              <input ref={fileRef} type="file" accept={type === 'contacts' ? '.xlsx,.xls,.csv,.vcf' : '.xlsx,.xls,.csv'} className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
             <button onClick={downloadTemplate} className="mt-3 text-sm font-medium hover:underline" style={{ color: '#1a4731' }}>
               Download Template
