@@ -219,15 +219,21 @@ export default function ContactDetailPage() {
 
               {/* Quick actions */}
               <div className="flex gap-2">
-                <button
-                  onClick={() => setShowEmailModal(true)}
-                  disabled={!contact.email}
-                  title={!contact.email ? 'This contact has no email address on file' : 'Send email to this contact'}
-                  className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                {/* Reps prefer composing in Outlook (their normal
+                    workflow) rather than the CRM's in-app SendEmailModal,
+                    so the top-bar Email button is now a plain mailto:
+                    link. Browser hands it to the OS default mail client
+                    — Outlook on the team's Windows machines. */}
+                <a
+                  href={contact.email ? `mailto:${contact.email}` : undefined}
+                  aria-disabled={!contact.email}
+                  onClick={(e) => { if (!contact.email) e.preventDefault(); }}
+                  title={!contact.email ? 'This contact has no email address on file' : 'Open Outlook (or your default mail client) with this contact'}
+                  className={`px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 ${!contact.email ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                   Email
-                </button>
+                </a>
                 <button
                   onClick={() => setShowEditModal(true)}
                   className="px-3 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"

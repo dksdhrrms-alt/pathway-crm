@@ -321,10 +321,16 @@ export default function AccountDetailPage() {
                 >
                   + Log Activity
                 </button>
-                <button
-                  onClick={() => setShowEmailModal(true)}
-                  disabled={emailRecipients.length === 0}
-                  title={emailRecipients.length === 0 ? 'No contacts with an email address on this account' : 'Send email to a contact on this account'}
+                {/* Hand off to Outlook (or the OS default mail client)
+                    rather than the in-app SendEmailModal. Reps prefer
+                    composing in Outlook directly. All contacts on the
+                    account with an email get joined by comma — Outlook
+                    drops them into the To: line. */}
+                <a
+                  href={emailRecipients.length > 0 ? `mailto:${emailRecipients.map((r) => r.email).join(',')}` : undefined}
+                  aria-disabled={emailRecipients.length === 0}
+                  onClick={(e) => { if (emailRecipients.length === 0) e.preventDefault(); }}
+                  title={emailRecipients.length === 0 ? 'No contacts with an email address on this account' : `Open Outlook with ${emailRecipients.length} recipient${emailRecipients.length > 1 ? 's' : ''}`}
                   style={{
                     padding: '8px 16px', borderRadius: '8px',
                     border: '1px solid rgba(255,255,255,0.4)',
@@ -332,10 +338,12 @@ export default function AccountDetailPage() {
                     cursor: emailRecipients.length === 0 ? 'not-allowed' : 'pointer',
                     opacity: emailRecipients.length === 0 ? 0.5 : 1,
                     fontSize: '13px',
+                    textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }}
                 >
                   ✉️ Email
-                </button>
+                </a>
                 <button
                   onClick={() => setShowEditModal(true)}
                   style={{
