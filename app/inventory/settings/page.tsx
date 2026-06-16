@@ -27,6 +27,20 @@ import {
 
 const ALLOWED_ROLES = ['admin', 'administrative_manager', 'ceo', 'coo'];
 
+// Supabase errors are plain objects ({message, code, details, hint}),
+// not Error instances. Pulling `.message` off is what gives the rep an
+// actually-useful string instead of "[object Object]".
+function formatErr(e: unknown): string {
+  if (!e) return 'Unknown error';
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object') {
+    const o = e as { message?: string; details?: string; hint?: string; code?: string };
+    const parts = [o.message, o.details, o.hint, o.code].filter(Boolean);
+    if (parts.length > 0) return parts.join(' — ');
+  }
+  return String(e);
+}
+
 // Reasonable defaults to seed the color picker with — mirrors the
 // chip palette the Monday board was using.
 const LOCATION_COLOR_PRESETS = [
@@ -51,7 +65,7 @@ export default function InventorySettingsPage() {
       const [p, l] = await Promise.all([listProducts(), listLocations()]);
       setProducts(p); setLocations(l);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatErr(e));
     } finally { setLoading(false); }
   }
   useEffect(() => { if (allowed) load(); }, [allowed]);
@@ -136,18 +150,18 @@ function ProductsCard({
       });
       setDraftName(''); setDraftSku(''); setDraftCost('');
       await onChange();
-    } catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { onError(formatErr(e)); }
   }
 
   async function save(p: Product) {
     try { await upsertProduct(p); await onChange(); }
-    catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { onError(formatErr(e)); }
   }
 
   async function remove(id: string, name: string) {
     if (!confirm(`Delete product "${name}"? Existing stock lots / forecast rows referencing it will block this if any exist.`)) return;
     try { await deleteProduct(id); await onChange(); }
-    catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { onError(formatErr(e)); }
   }
 
   return (
@@ -258,18 +272,18 @@ function LocationsCard({
       });
       setDraftCode(''); setDraftName('');
       await onChange();
-    } catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { onError(formatErr(e)); }
   }
 
   async function save(l: Location) {
     try { await upsertLocation(l); await onChange(); }
-    catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { onError(formatErr(e)); }
   }
 
   async function remove(id: string, code: string) {
     if (!confirm(`Delete location "${code}"? Existing stock lots / forecast rows referencing it will block this if any exist.`)) return;
     try { await deleteLocation(id); await onChange(); }
-    catch (e) { onError(e instanceof Error ? e.message : String(e)); }
+    catch (e) { onError(formatErr(e)); }
   }
 
   return (
