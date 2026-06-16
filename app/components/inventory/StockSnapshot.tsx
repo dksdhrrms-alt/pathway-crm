@@ -196,11 +196,13 @@ function GroupTable({
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {group.total.toLocaleString()} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">pallets</span>
+            {group.total.toLocaleString()} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">kg</span>
           </span>
           <button
             onClick={() => setAdding(true)}
-            className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium"
+            disabled={products.length === 0 || locations.length === 0}
+            title={products.length === 0 ? 'Add a product first in Manage products / locations' : (locations.length === 0 ? 'Add a location first' : 'Add a new stock lot')}
+            className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >+ Add lot</button>
         </div>
       </div>
@@ -247,7 +249,7 @@ function GroupTable({
                   locationId: groupBy === 'location' ? group.key : (locations[0]?.id || ''),
                   manufacturer: '',
                   quantity: 0,
-                  unit: 'pallet',
+                  unit: 'kg',
                   status: 'in_stock',
                   etaDate: null,
                   containerNo: null,

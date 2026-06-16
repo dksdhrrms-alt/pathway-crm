@@ -191,7 +191,7 @@ function LocationForecastBlock({
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-slate-800/60">
         {location.color && <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: location.color }} />}
         <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{location.code}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">opening {opening.toLocaleString()} pallets</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">opening {opening.toLocaleString()} kg</span>
         <div className="ml-auto flex gap-1.5">
           <button onClick={() => add('in')} className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white">+ IN row</button>
           <button onClick={() => add('out')} className="text-xs px-2 py-1 rounded bg-amber-700 hover:bg-amber-800 text-white">+ OUT row</button>

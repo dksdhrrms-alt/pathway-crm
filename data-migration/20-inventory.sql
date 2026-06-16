@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS inventory_products (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name          text NOT NULL UNIQUE,
   sku           text,
-  unit          text NOT NULL DEFAULT 'pallet',
+  unit          text NOT NULL DEFAULT 'kg',
   cost_per_unit numeric(12, 2),
   display_order int NOT NULL DEFAULT 0,
   active        boolean NOT NULL DEFAULT true,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS inventory_stock_lots (
   location_id   uuid NOT NULL REFERENCES inventory_locations(id) ON DELETE RESTRICT,
   manufacturer  text,         -- 'GNC Bioferm', 'Pathway UK', 'EASYBIO'...
   quantity      numeric(12, 2) NOT NULL,
-  unit          text NOT NULL DEFAULT 'pallet',
+  unit          text NOT NULL DEFAULT 'kg',
   status        text NOT NULL DEFAULT 'in_stock'
                 CHECK (status IN ('in_stock', 'upcoming', 'sold')),
   eta_date      date,         -- For "upcoming" lots; null when already in stock

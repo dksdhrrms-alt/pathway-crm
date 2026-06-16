@@ -134,7 +134,7 @@ function ProductsCard({
 }) {
   const [draftName, setDraftName] = useState('');
   const [draftSku, setDraftSku] = useState('');
-  const [draftUnit, setDraftUnit] = useState('pallet');
+  const [draftUnit, setDraftUnit] = useState('kg');
   const [draftCost, setDraftCost] = useState('');
 
   async function add() {
@@ -143,7 +143,7 @@ function ProductsCard({
       await upsertProduct({
         name: draftName.trim(),
         sku: draftSku.trim() || null,
-        unit: draftUnit.trim() || 'pallet',
+        unit: draftUnit.trim() || 'kg',
         costPerUnit: draftCost ? Number(draftCost) : null,
         displayOrder: products.length,
         active: true,

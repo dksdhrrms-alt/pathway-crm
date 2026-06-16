@@ -25,7 +25,7 @@ export interface Product {
   id: string;
   name: string;
   sku: string | null;
-  unit: string;          // typically 'pallet'
+  unit: string;          // typically 'kg'
   costPerUnit: number | null;
   displayOrder: number;
   active: boolean;
@@ -141,7 +141,7 @@ export async function upsertProduct(p: Partial<Product> & { name: string }): Pro
   // an empty id is the same bug. Omitting lets the column default
   // gen_random_uuid() run.
   const payload: Record<string, unknown> = {
-    name: p.name.trim(), sku: p.sku || null, unit: p.unit || 'pallet',
+    name: p.name.trim(), sku: p.sku || null, unit: p.unit || 'kg',
     cost_per_unit: p.costPerUnit ?? null,
     display_order: p.displayOrder ?? 0, active: p.active ?? true,
   };
@@ -193,10 +193,16 @@ export async function listStockLots(): Promise<StockLot[]> {
   return (data as StockLotRow[]).map(asStockLot);
 }
 export async function upsertStockLot(s: Partial<StockLot> & { productId: string; locationId: string; quantity: number }): Promise<StockLot> {
+  // Postgres uuid columns reject "" (syntax 22P02). NOT NULL FK
+  // columns can't be null either — the caller has to supply a real
+  // product and location. Bail out with a clear message before the
+  // DB does it for us with the opaque "invalid input syntax" error.
+  if (!s.productId) throw new Error('Pick a product before saving the lot.');
+  if (!s.locationId) throw new Error('Pick a location before saving the lot.');
   const payload: Record<string, unknown> = {
     product_id: s.productId, location_id: s.locationId,
     manufacturer: s.manufacturer || null, quantity: s.quantity,
-    unit: s.unit || 'pallet', status: s.status || 'in_stock',
+    unit: s.unit || 'kg', status: s.status || 'in_stock',
     eta_date: s.etaDate || null, container_no: s.containerNo || null,
     po_number: s.poNumber || null, comment: s.comment || null,
     updated_at: new Date().toISOString(),
@@ -222,6 +228,8 @@ export async function listForecasts(): Promise<ForecastRow[]> {
   return (data as ForecastRowRaw[]).map(asForecast);
 }
 export async function upsertForecast(f: Partial<ForecastRow> & { productId: string; locationId: string; month: string; direction: ForecastDirection; quantity: number }): Promise<ForecastRow> {
+  if (!f.productId) throw new Error('Pick a product before saving the forecast row.');
+  if (!f.locationId) throw new Error('Pick a location before saving the forecast row.');
   const payload: Record<string, unknown> = {
     product_id: f.productId, location_id: f.locationId,
     month: f.month, direction: f.direction, party: f.party || null,
