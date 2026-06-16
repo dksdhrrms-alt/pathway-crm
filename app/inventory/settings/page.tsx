@@ -15,7 +15,6 @@
  * workflow.
  */
 
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import TopBar from '@/app/components/TopBar';
@@ -24,8 +23,7 @@ import {
   listProducts, upsertProduct, deleteProduct,
   listLocations, upsertLocation, deleteLocation,
 } from '@/lib/inventory';
-
-const ALLOWED_ROLES = ['admin', 'administrative_manager', 'ceo', 'coo'];
+import { useMenuAccess } from '@/hooks/useMenuAccess';
 
 // Supabase errors are plain objects ({message, code, details, hint}),
 // not Error instances. Pulling `.message` off is what gives the rep an
@@ -49,9 +47,10 @@ const LOCATION_COLOR_PRESETS = [
 ];
 
 export default function InventorySettingsPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as { role?: string })?.role ?? '';
-  const allowed = ALLOWED_ROLES.includes(role);
+  // Same gate as the Inventory landing page — if a user can open
+  // /inventory, they can also reach Manage products / locations.
+  const { canAccess, loaded } = useMenuAccess();
+  const allowed = canAccess('inventory');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -69,6 +68,10 @@ export default function InventorySettingsPage() {
     } finally { setLoading(false); }
   }
   useEffect(() => { if (allowed) load(); }, [allowed]);
+
+  if (!loaded) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-slate-950"><TopBar placeholder="Search CRM..." /></div>;
+  }
 
   if (!allowed) {
     return (

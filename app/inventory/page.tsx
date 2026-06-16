@@ -22,21 +22,29 @@
  * write access; if they need read-only later we'll relax.
  */
 
-import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import TopBar from '@/app/components/TopBar';
 import StockSnapshot from '@/app/components/inventory/StockSnapshot';
 import ForecastBoard from '@/app/components/inventory/ForecastBoard';
-
-const ALLOWED_ROLES = ['admin', 'administrative_manager', 'ceo', 'coo'];
+import { useMenuAccess } from '@/hooks/useMenuAccess';
 
 export default function InventoryPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as { role?: string })?.role ?? '';
-  const allowed = ALLOWED_ROLES.includes(role);
+  // Route gate uses the same canAccess() the sidebar uses, so a user
+  // who's been granted 'inventory' via the admin per-user permission
+  // page can actually open the route. Was previously hardcoded to
+  // admin / administrative_manager / ceo / coo which made the
+  // permission UI a no-op for sales reps. `loaded=false` means we
+  // haven't checked yet — render nothing rather than flashing the
+  // denied screen.
+  const { canAccess, loaded } = useMenuAccess();
+  const allowed = canAccess('inventory');
 
   const [tab, setTab] = useState<'snapshot' | 'forecast'>('snapshot');
+
+  if (!loaded) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-slate-950"><TopBar placeholder="Search CRM..." /></div>;
+  }
 
   if (!allowed) {
     return (
@@ -45,7 +53,7 @@ export default function InventoryPage() {
         <main className="pt-16 px-6 pb-10">
           <div className="max-w-3xl mx-auto mt-12 text-center text-gray-600 dark:text-gray-400">
             <h1 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Access denied</h1>
-            <p>Inventory is restricted to operations / leadership roles.</p>
+            <p>You don&apos;t have access to Inventory. Ask an admin to enable it for your account.</p>
             <Link href="/dashboard" className="inline-block mt-4 text-emerald-700 dark:text-emerald-400 hover:underline">← Back to Home</Link>
           </div>
         </main>
