@@ -26,6 +26,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import TopBar from '@/app/components/TopBar';
+import StockSnapshot from '@/app/components/inventory/StockSnapshot';
 
 const ALLOWED_ROLES = ['admin', 'administrative_manager', 'ceo', 'coo'];
 
@@ -98,7 +99,7 @@ export default function InventoryPage() {
           {/* Body — grids land in follow-up commits */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-8">
             {tab === 'snapshot' ? (
-              <SnapshotPlaceholder />
+              <StockSnapshot />
             ) : (
               <ForecastPlaceholder />
             )}
