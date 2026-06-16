@@ -263,6 +263,12 @@ function ForecastEditableRow({
     } catch (e) { onError(formatErr(e)); }
   }
 
+  async function deleteRow() {
+    if (!confirm(`Delete this ${row.direction === 'in' ? 'IN' : 'OUT'} row?`)) return;
+    try { await deleteForecast(row.id); await onReload(); }
+    catch (e) { onError(formatErr(e)); }
+  }
+
   async function commitCell(monthIso: string) {
     const v = parseFloat(editingQty);
     if (Number.isNaN(v)) { setEditingMonth(null); return; }
@@ -295,6 +301,11 @@ function ForecastEditableRow({
           <input value={draftParty} onChange={(e) => setDraftParty(e.target.value)} onBlur={saveParty}
             placeholder={label.includes('IN') ? 'supplier' : 'customer'}
             className="flex-1 min-w-0 border border-transparent hover:border-gray-300 dark:hover:border-slate-600 focus:border-emerald-500 dark:bg-slate-900 dark:text-gray-100 rounded px-1 py-0.5 text-xs focus:outline-none" />
+          <button
+            onClick={deleteRow}
+            title="Delete row"
+            className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded px-1 text-xs flex-shrink-0"
+          >×</button>
         </div>
       </td>
       {months.map((m) => {
