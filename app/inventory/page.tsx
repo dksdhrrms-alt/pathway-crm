@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import TopBar from '@/app/components/TopBar';
 import StockSnapshot from '@/app/components/inventory/StockSnapshot';
+import ForecastBoard from '@/app/components/inventory/ForecastBoard';
 
 const ALLOWED_ROLES = ['admin', 'administrative_manager', 'ceo', 'coo'];
 
@@ -101,35 +102,11 @@ export default function InventoryPage() {
             {tab === 'snapshot' ? (
               <StockSnapshot />
             ) : (
-              <ForecastPlaceholder />
+              <ForecastBoard />
             )}
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-function SnapshotPlaceholder() {
-  return (
-    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-      <p className="text-base font-medium text-gray-700 dark:text-gray-200 mb-2">Current stock grid — coming next</p>
-      <p className="text-sm">
-        Apply <code className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-emerald-700 dark:text-emerald-400">data-migration/20-inventory.sql</code> in Supabase,
-        then I&apos;ll wire up the product × location grid (like your Monday board) here.
-      </p>
-    </div>
-  );
-}
-
-
-function ForecastPlaceholder() {
-  return (
-    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-      <p className="text-base font-medium text-gray-700 dark:text-gray-200 mb-2">Forecast view — coming next</p>
-      <p className="text-sm">
-        Rolling 24-month IN / OUT / Balance per product × location, Best / Worst scenarios — same shape as your Excel planning workbook.
-      </p>
     </div>
   );
 }

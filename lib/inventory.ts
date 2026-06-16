@@ -136,11 +136,16 @@ export async function listProducts(): Promise<Product[]> {
   return (data as ProductRow[]).map(asProduct);
 }
 export async function upsertProduct(p: Partial<Product> & { name: string }): Promise<Product> {
-  const payload = {
-    id: p.id, name: p.name.trim(), sku: p.sku || null, unit: p.unit || 'pallet',
+  // id only goes in the payload when we actually have one — Postgres
+  // uuid columns reject "" (syntax 22P02), and Supabase upsert with
+  // an empty id is the same bug. Omitting lets the column default
+  // gen_random_uuid() run.
+  const payload: Record<string, unknown> = {
+    name: p.name.trim(), sku: p.sku || null, unit: p.unit || 'pallet',
     cost_per_unit: p.costPerUnit ?? null,
     display_order: p.displayOrder ?? 0, active: p.active ?? true,
   };
+  if (p.id) payload.id = p.id;
   const { data, error } = await sb()
     .from('inventory_products').upsert(payload).select('*').single();
   if (error) throw error;
@@ -162,11 +167,12 @@ export async function listLocations(): Promise<Location[]> {
   return (data as LocationRow[]).map(asLocation);
 }
 export async function upsertLocation(l: Partial<Location> & { code: string; name: string }): Promise<Location> {
-  const payload = {
-    id: l.id, code: l.code.trim(), name: l.name.trim(),
+  const payload: Record<string, unknown> = {
+    code: l.code.trim(), name: l.name.trim(),
     color: l.color || null,
     display_order: l.displayOrder ?? 0, active: l.active ?? true,
   };
+  if (l.id) payload.id = l.id;
   const { data, error } = await sb()
     .from('inventory_locations').upsert(payload).select('*').single();
   if (error) throw error;
@@ -187,14 +193,15 @@ export async function listStockLots(): Promise<StockLot[]> {
   return (data as StockLotRow[]).map(asStockLot);
 }
 export async function upsertStockLot(s: Partial<StockLot> & { productId: string; locationId: string; quantity: number }): Promise<StockLot> {
-  const payload = {
-    id: s.id, product_id: s.productId, location_id: s.locationId,
+  const payload: Record<string, unknown> = {
+    product_id: s.productId, location_id: s.locationId,
     manufacturer: s.manufacturer || null, quantity: s.quantity,
     unit: s.unit || 'pallet', status: s.status || 'in_stock',
     eta_date: s.etaDate || null, container_no: s.containerNo || null,
     po_number: s.poNumber || null, comment: s.comment || null,
     updated_at: new Date().toISOString(),
   };
+  if (s.id) payload.id = s.id;
   const { data, error } = await sb()
     .from('inventory_stock_lots').upsert(payload).select('*').single();
   if (error) throw error;
@@ -215,12 +222,13 @@ export async function listForecasts(): Promise<ForecastRow[]> {
   return (data as ForecastRowRaw[]).map(asForecast);
 }
 export async function upsertForecast(f: Partial<ForecastRow> & { productId: string; locationId: string; month: string; direction: ForecastDirection; quantity: number }): Promise<ForecastRow> {
-  const payload = {
-    id: f.id, product_id: f.productId, location_id: f.locationId,
+  const payload: Record<string, unknown> = {
+    product_id: f.productId, location_id: f.locationId,
     month: f.month, direction: f.direction, party: f.party || null,
     quantity: f.quantity, scenario: f.scenario || 'expected',
     note: f.note || null, updated_at: new Date().toISOString(),
   };
+  if (f.id) payload.id = f.id;
   const { data, error } = await sb()
     .from('inventory_forecasts').upsert(payload).select('*').single();
   if (error) throw error;
