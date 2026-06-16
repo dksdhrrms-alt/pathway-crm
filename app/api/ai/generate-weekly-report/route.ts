@@ -184,19 +184,35 @@ async function generateMonogastricReport(
     const taskCount = data.tasks?.length || 0;
     if (hasAI && (actCount > 0 || taskCount > 0)) {
       try {
-        // Structured format: User | Account | Contact | Content | Type | Date
-        // Empty fields are omitted entirely (no "—" filler).
+        // Two-line format per activity so the Director/CEO weekly report
+        // reads naturally instead of the prior over-condensed pipe row:
+        //   Line 1 (meta):  - MM/DD · Rep · Type · Contact @ Account · subject
+        //   Line 2 (body):    full description sentence, indented
+        // Reps complained that "follow up" alone hid the actual story; the
+        // description carries the real value (who said what, what action
+        // was taken). Empty fields skip cleanly so the meta line stays
+        // tight.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const actText = (data.activities || []).map((a: any) => {
-          const parts = [
-            a.ownerName || a.ownerId,
-            a.accountName,
-            a.contactName,
-            a.subject,
-            a.type || 'Note',
-            (a.date || '').slice(5).replace('-', '/'),
-          ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-          return `- ${parts.join(' | ')}`;
+          const dateLabel = (a.date || '').slice(5).replace('-', '/');
+          const who = a.ownerName || a.ownerId || '';
+          const type = a.type || 'Note';
+          const contact = (a.contactName || '').trim();
+          const account = (a.accountName || '').trim();
+          const subject = (a.subject || '').trim();
+          // "Contact @ Account" reads like a natural target; fall back to
+          // whichever side is present.
+          const target = contact && account ? `${contact} @ ${account}` : (contact || account);
+          const metaParts = [dateLabel, who, type, target, subject]
+            .filter((p) => p && String(p).trim())
+            .map((p) => sanitize(String(p)));
+          const line1 = `- ${metaParts.join(' · ')}`;
+          const description = (a.description || '').trim();
+          if (!description) return line1;
+          // Collapse internal line breaks to spaces so the description
+          // sits on a single indented line in the docx cell.
+          const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+          return `${line1}\n  ${safeDesc}`;
         }).join('\n') || 'None';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const taskText = (data.tasks || []).map((t: any) => {
@@ -209,7 +225,7 @@ async function generateMonogastricReport(
           return `- ${parts.join(' | ')}`;
         }).join('\n') || 'None';
         const teamLabel = team === 'poultry' ? 'Poultry' : team === 'swine' ? 'Swine' : 'B2B Distribution (distributor accounts)';
-        const prompt = sanitize(`Write ${teamLabel} team weekly summary for Pathway Intermediates USA.\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by" — the user is already the first column. Do NOT consolidate. If a field is missing, simply skip it (do NOT insert "—" or placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+        const prompt = sanitize(`Write ${teamLabel} team weekly summary for Pathway Intermediates USA.\nActivities (each item is up to 2 lines — meta bullet then an indented description):\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity exactly as-is, KEEPING BOTH LINES when a description is present. The meta line starts with "- " and uses " · " as the separator. The description follows on the next line, indented with two spaces, copied verbatim — do not paraphrase, summarize, or trim.\n- nextWeek: copy EACH task as its own bullet, same separator. No description line for tasks.\n- Do NOT consolidate or merge activities. Do NOT add "Logged by" or other prefixes. If a field is missing, simply skip it (no "—" placeholders).\nRespond ONLY JSON: {"thisWeek":"- meta1\\n  desc1\\n- meta2\\n  desc2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
         const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
         if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
         else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
@@ -437,18 +453,26 @@ async function generateRuminantReport(
 
   if (hasAI && (actCount > 0 || taskCount > 0)) {
     try {
-      // Structured format: User | Account | Contact | Content | Type | Date — empty fields skipped
+      // Two-line activity format — see the poultry/swine block above for
+      // the full rationale. Meta on line 1 ("- date · rep · type ·
+      // contact @ account · subject"), description verbatim on line 2.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const actText = (rumData.activities || []).map((a: any) => {
-        const parts = [
-          a.ownerName || a.ownerId,
-          a.accountName,
-          a.contactName,
-          a.subject,
-          a.type || 'Note',
-          (a.date || '').slice(5).replace('-', '/'),
-        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-        return `- ${parts.join(' | ')}`;
+        const dateLabel = (a.date || '').slice(5).replace('-', '/');
+        const who = a.ownerName || a.ownerId || '';
+        const type = a.type || 'Note';
+        const contact = (a.contactName || '').trim();
+        const account = (a.accountName || '').trim();
+        const subject = (a.subject || '').trim();
+        const target = contact && account ? `${contact} @ ${account}` : (contact || account);
+        const metaParts = [dateLabel, who, type, target, subject]
+          .filter((p) => p && String(p).trim())
+          .map((p) => sanitize(String(p)));
+        const line1 = `- ${metaParts.join(' · ')}`;
+        const description = (a.description || '').trim();
+        if (!description) return line1;
+        const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+        return `${line1}\n  ${safeDesc}`;
       }).join('\n') || 'None';
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const taskText = (rumData.tasks || []).map((t: any) => {
@@ -460,7 +484,7 @@ async function generateRuminantReport(
         ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
         return `- ${parts.join(' | ')}`;
       }).join('\n') || 'None';
-      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by". Do NOT consolidate. Skip missing fields (no "—" placeholder).\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
+      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities (each item is up to 2 lines — meta bullet then an indented description):\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity exactly as-is, KEEPING BOTH LINES when a description is present. The meta line starts with "- " and uses " · " as the separator. The description follows on the next line, indented with two spaces, copied verbatim — do not paraphrase, summarize, or trim.\n- nextWeek: copy EACH task as its own bullet, same separator. No description line for tasks.\n- Do NOT consolidate or merge activities. Do NOT add "Logged by". Skip missing fields (no "—" placeholders).\nRespond ONLY JSON: {"thisWeek":"- meta1\\n  desc1\\n- meta2\\n  desc2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
       const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
       if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); rumSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
       else { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
