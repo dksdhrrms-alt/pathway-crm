@@ -73,8 +73,16 @@ export default function StockSnapshot() {
   // Group rows so the snapshot reads like the Monday board: outer
   // group (product OR location), then a flat list of lots inside.
   // `key` is the grouping entity's id, used to prefill new-lot rows.
-  type Group = { key: string; label: string; chipColor: string | null; lots: StockLot[]; total: number };
+  //
+  // `total` is the actual landed stock (status='in_stock' only) — the
+  // forecast opening balance and "what's available to ship" both rely
+  // on this number being clean. `upcoming` is shown next to it so the
+  // ops team can still see what's in transit without it inflating
+  // current availability.
+  type Group = { key: string; label: string; chipColor: string | null; lots: StockLot[]; total: number; upcoming: number };
   const groups: Group[] = useMemo(() => {
+    const sumByStatus = (rows: StockLot[], target: StockStatus) =>
+      rows.reduce((s, x) => x.status === target ? s + x.quantity : s, 0);
     if (groupBy === 'product') {
       return products.map((p) => {
         const groupLots = lots.filter((s) => s.productId === p.id);
@@ -83,7 +91,8 @@ export default function StockSnapshot() {
           label: p.name,
           chipColor: null,
           lots: groupLots,
-          total: groupLots.reduce((s, x) => x.status !== 'sold' ? s + x.quantity : s, 0),
+          total: sumByStatus(groupLots, 'in_stock'),
+          upcoming: sumByStatus(groupLots, 'upcoming'),
         };
       });
     }
@@ -94,7 +103,8 @@ export default function StockSnapshot() {
         label: l.code,
         chipColor: l.color,
         lots: groupLots,
-        total: groupLots.reduce((s, x) => x.status !== 'sold' ? s + x.quantity : s, 0),
+        total: sumByStatus(groupLots, 'in_stock'),
+        upcoming: sumByStatus(groupLots, 'upcoming'),
       };
     });
   }, [groupBy, products, locations, lots]);
@@ -140,7 +150,7 @@ export default function StockSnapshot() {
           >By location</button>
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">
-          Quantities exclude lots marked Sold
+          Totals count In-stock only. Upcoming shown separately, Sold excluded.
         </div>
       </div>
 
@@ -173,7 +183,7 @@ export default function StockSnapshot() {
 function GroupTable({
   group, groupBy, products, locations, productById, locationById, onSave, onDelete,
 }: {
-  group: { key: string; label: string; chipColor: string | null; lots: StockLot[]; total: number };
+  group: { key: string; label: string; chipColor: string | null; lots: StockLot[]; total: number; upcoming: number };
   groupBy: GroupBy;
   products: Product[];
   locations: Location[];
@@ -198,6 +208,15 @@ function GroupTable({
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {group.total.toLocaleString()} <span className="text-xs font-normal text-gray-500 dark:text-gray-400">kg</span>
           </span>
+          {/* Upcoming is shown as a separate chip so it stays visible
+              for planning without sneaking into the "available now"
+              number. Only renders when > 0 to keep the header clean
+              for groups with no in-transit lots. */}
+          {group.upcoming > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title="Lots marked Upcoming — not yet landed, excluded from the running total">
+              +{group.upcoming.toLocaleString()} kg upcoming
+            </span>
+          )}
           <button
             onClick={() => setAdding(true)}
             disabled={products.length === 0 || locations.length === 0}
