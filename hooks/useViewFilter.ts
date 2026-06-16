@@ -9,10 +9,14 @@ export type ViewType = 'personal' | 'team' | 'company';
 
 // Role-based view permissions:
 //   - Admin tier (admin / administrative_manager / ceo): all 3 views
-//   - Director tier (sales_director / coo): personal + team only
+//   - Team-view tier (sales_director / coo / technical_manager):
+//     personal + team only. Technical Manager joined this tier so they
+//     can see their team's Activities and Opportunities (e.g. the
+//     Monogastrics Tech Manager sees what reps on that team are
+//     working on without exposing the rest of the company).
 //   - Staff tier (sales / marketing / others): personal only
 const ADMIN_ROLES = ['admin', 'administrative_manager', 'ceo'];
-const DIRECTOR_ROLES = ['sales_director', 'coo'];
+const DIRECTOR_ROLES = ['sales_director', 'coo', 'technical_manager'];
 
 export function useViewFilter() {
   const { data: session } = useSession();

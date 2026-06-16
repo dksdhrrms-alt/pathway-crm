@@ -52,22 +52,25 @@ export default function ArchivePage() {
   const me = users.find((u) => u.id === sessionUserId);
   // Admin-style roles: see anyone in the company.
   const isAdminLike = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
-  // Sales directors: see their own team only. `team` field on the user
-  // matches against teammates' team field. Directors without a team set
-  // are treated as having no extra access (fall back to "just me").
+  // Team-level viewers: see their own team only. Sales Directors and
+  // Technical Managers both fall in this tier — the `team` field on
+  // the user matches against teammates' team field. Members without a
+  // team set are treated as having no extra access (fall back to
+  // "just me").
   const isSalesDirector = role === 'sales_director';
+  const isTeamViewer = isSalesDirector || role === 'technical_manager';
   const myTeam = (me as { team?: string } | undefined)?.team ?? '';
-  const canPickOthers = isAdminLike || (isSalesDirector && !!myTeam);
+  const canPickOthers = isAdminLike || (isTeamViewer && !!myTeam);
 
   // Which users this viewer is *allowed* to inspect. Always includes
   // themselves so they can include their own activities in the multi-select.
   const allowedUsers = useMemo(() => {
     if (isAdminLike) return users;
-    if (isSalesDirector && myTeam) {
+    if (isTeamViewer && myTeam) {
       return users.filter((u) => (u as { team?: string }).team === myTeam || u.id === sessionUserId);
     }
     return users.filter((u) => u.id === sessionUserId);
-  }, [users, isAdminLike, isSalesDirector, myTeam, sessionUserId]);
+  }, [users, isAdminLike, isTeamViewer, myTeam, sessionUserId]);
 
   // Multi-select: a Set of user IDs whose archives we're merging into
   // the table. Default is "just me" — opens to a familiar view.
@@ -259,8 +262,8 @@ export default function ArchivePage() {
                 {isAdminLike && (
                   <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(Admin view — you can browse any user&apos;s archive)</span>
                 )}
-                {isSalesDirector && !isAdminLike && (
-                  <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(Director view — you can browse your team&apos;s archives)</span>
+                {isTeamViewer && !isAdminLike && (
+                  <span className="ml-1 text-xs text-amber-700 dark:text-amber-400">(Team view — you can browse your team&apos;s archives)</span>
                 )}
               </p>
             </div>

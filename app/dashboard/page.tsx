@@ -64,7 +64,10 @@ export default function DashboardPage() {
   const userName = session?.user?.name ?? '';
   const isAdminCeo = ['administrative_manager', 'admin', 'ceo'].includes(role);
   const canViewCompany = isAdminCeo;
-  const canViewTeam = isAdminCeo || ['sales_director', 'coo'].includes(role);
+  // Team view tier — see hooks/useViewFilter.ts for the canonical
+  // list. technical_manager joined so the per-team Tech Manager can
+  // see Activities/Opportunities for their team on the dashboard.
+  const canViewTeam = isAdminCeo || ['sales_director', 'coo', 'technical_manager'].includes(role);
 
   const { opportunities: allOpps, tasks: allTasks, activities: allActivities, accounts, contacts, toggleTask, loading } = useCRM();
   const { users } = useUsers();
