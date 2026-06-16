@@ -56,11 +56,19 @@ export default function InventoryPage() {
       <TopBar placeholder="Search CRM..." />
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
-          <div className="mt-6 mb-5">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Inventory</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Current stock by product × location, plus rolling forecast. Replaces the Monday board and the per-product planning Excel.
-            </p>
+          <div className="mt-6 mb-5 flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Inventory</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Current stock by product × location, plus rolling forecast. Replaces the Monday board and the per-product planning Excel.
+              </p>
+            </div>
+            <Link
+              href="/inventory/settings"
+              className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800"
+            >
+              Manage products / locations
+            </Link>
           </div>
 
           {/* Tabs */}
@@ -112,6 +120,7 @@ function SnapshotPlaceholder() {
     </div>
   );
 }
+
 
 function ForecastPlaceholder() {
   return (
