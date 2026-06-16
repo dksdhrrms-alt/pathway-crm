@@ -17,7 +17,7 @@
 
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TopBar from '@/app/components/TopBar';
 import {
   Product, Location,
@@ -354,18 +354,34 @@ function LocationRow({ location, onSave, onDelete }: {
   );
 }
 
-// Small palette picker — click a swatch to set the color. Falls through
-// to a free-form hex input for cases where the preset doesn't fit.
+// Color picker — clickable swatch palette in a popover plus a hex
+// input fallback. Click the preview square to open the palette;
+// click a swatch to apply. Closes on outside click.
 function ColorSwatchPicker({ value, onChange, className }: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
   return (
-    <div className={`flex items-center gap-1 ${className ?? ''}`}>
-      <span
-        className="inline-block w-5 h-5 rounded border border-gray-300 dark:border-slate-600 flex-shrink-0"
+    <div ref={ref} className={`relative flex items-center gap-1 ${className ?? ''}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-block w-5 h-5 rounded border border-gray-300 dark:border-slate-600 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-emerald-400 transition"
         style={{ backgroundColor: value }}
+        title="Pick a color"
+        aria-label="Pick a color"
       />
       <input
         value={value}
@@ -373,6 +389,23 @@ function ColorSwatchPicker({ value, onChange, className }: {
         className="flex-1 min-w-0 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-1.5 py-1 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
         title="Hex color"
       />
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-md shadow-lg p-2">
+          <div className="grid grid-cols-5 gap-1.5">
+            {LOCATION_COLOR_PRESETS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { onChange(c); setOpen(false); }}
+                className={`w-6 h-6 rounded border ${value.toLowerCase() === c.toLowerCase() ? 'border-gray-900 dark:border-white ring-2 ring-emerald-400' : 'border-gray-300 dark:border-slate-600'} hover:scale-110 transition`}
+                style={{ backgroundColor: c }}
+                title={c}
+                aria-label={c}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
