@@ -2,11 +2,25 @@ import { UserRole } from './users';
 
 export const MENU_ITEMS = [
   'Home', 'Accounts', 'Contacts', 'Opportunities', 'Tasks',
-  'Reports', 'Insights', 'Sales', 'Sales Dashboard', 'Admin',
+  'Reports', 'Insights', 'Sales', 'Sales Dashboard', 'R&D', 'Projects', 'Inventory', 'Admin',
 ] as const;
 
 export type MenuItem = (typeof MENU_ITEMS)[number];
 export type PermState = 'allow' | 'deny' | 'default';
+
+// ── Label → backend slug ────────────────────────────────────────────────────
+// Backend (Supabase `user_permissions.menu_item`) and the runtime gate
+// in hooks/useMenuAccess.ts both use slugified keys. Most labels survive
+// the naive `lowercase().replace(/ /g, '_')` transform, but 'R&D' would
+// produce 'r&d' which doesn't match the existing 'rnd' key. Centralizing
+// the slug rule here avoids the drift.
+const SLUG_OVERRIDES: Record<string, string> = {
+  'R&D': 'rnd',
+};
+
+export function menuItemToKey(label: string): string {
+  return SLUG_OVERRIDES[label] ?? label.toLowerCase().replace(/ /g, '_');
+}
 
 export type PermissionsMap = Record<string, Record<MenuItem, boolean>>;
 export type UserPermsMap = Record<string, Record<string, PermState>>;
@@ -17,19 +31,28 @@ const FULL_ACCESS_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo']
 const DEFAULT_PERMISSIONS: PermissionsMap = {
   sales: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: false, Insights: false, Sales: false, 'Sales Dashboard': false, Admin: false,
+    Tasks: true, Reports: false, Insights: false, Sales: false, 'Sales Dashboard': false,
+    'R&D': true, Projects: true, Inventory: false, Admin: false,
   },
   marketing: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false,
+    'R&D': true, Projects: true, Inventory: false, Admin: false,
   },
   sales_director: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true,
+    'R&D': true, Projects: true, Inventory: false, Admin: false,
   },
   coo: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
-    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true, Admin: false,
+    Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true,
+    'R&D': true, Projects: true, Inventory: true, Admin: false,
+  },
+  technical_manager: {
+    Home: true, Accounts: true, Contacts: true, Opportunities: true,
+    Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false,
+    'R&D': true, Projects: true, Inventory: false, Admin: false,
   },
 };
 

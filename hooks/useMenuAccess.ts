@@ -9,10 +9,10 @@ import { supabase, supabaseEnabled } from '@/lib/supabase';
 // Admin/CEO/etc. additionally get a user picker on the Archive page to
 // view other people's archives (gated server-side / page-side, not here).
 const ROLE_DEFAULTS: Record<string, Set<string>> = {
-  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'admin']),
-  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard']),
+  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'admin']),
+  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'admin']),
+  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'admin']),
+  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory']),
   sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard']),
   sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects']),
   marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights']),

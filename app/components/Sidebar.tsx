@@ -155,9 +155,6 @@ export default function Sidebar() {
   }, [mobileOpen]);
 
   const isAdminRole = ['admin', 'administrative_manager', 'ceo'].includes(role);
-  // Inventory is an operations / leadership tool. Same gate as the
-  // /inventory page itself — admin tier + COO can see the menu.
-  const canSeeInventory = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
 
   const isSalesDashActive = pathname.startsWith('/sales-dashboard');
 
@@ -341,7 +338,7 @@ export default function Sidebar() {
         {/* Inventory — operations / leadership only. Replaces the
             Monday board (current stock per product × location) and
             the per-product Excel forecast workbook. */}
-        {canSeeInventory && (
+        {canAccess('inventory') && (
           <Link
             href="/inventory"
             onClick={() => setMobileOpen(false)}

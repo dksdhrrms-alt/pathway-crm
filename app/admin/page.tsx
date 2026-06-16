@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { UserRole, UserStatus, getRoleLabel } from '@/lib/users';
-import { MENU_ITEMS, MenuItem, getUserPerms, saveUserPerms, getUserDataVisibility, saveUserDataVisibility, PermState } from '@/lib/permissions';
+import { MENU_ITEMS, MenuItem, menuItemToKey, getUserPerms, saveUserPerms, getUserDataVisibility, saveUserDataVisibility, PermState } from '@/lib/permissions';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import { formatPhone } from '@/lib/phone';
@@ -810,7 +810,7 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
       // Insert non-default permissions
       const toInsert = Object.entries(userPerms[userId] || {})
         .filter(([, perm]) => perm !== 'default')
-        .map(([menuItem, permission]) => ({ user_id: userId, menu_item: menuItem.toLowerCase().replace(/ /g, '_'), permission }));
+        .map(([menuItem, permission]) => ({ user_id: userId, menu_item: menuItemToKey(menuItem), permission }));
 
       console.log('[PERMS] Inserting', toInsert.length, 'rows:', toInsert);
 
