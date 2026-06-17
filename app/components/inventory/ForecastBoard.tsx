@@ -56,6 +56,8 @@ function buildMonths(start: Date): { iso: string; label: string }[] {
   return out;
 }
 
+type ViewMode = 'per_location' | 'consolidated';
+
 export default function ForecastBoard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -63,6 +65,10 @@ export default function ForecastBoard() {
   const [openingBalance, setOpeningBalance] = useState<Map<string, number>>(new Map()); // key = `${productId}|${locationId}`
   const [productId, setProductId] = useState<string>('');
   const [scenario, setScenario] = useState<ForecastScenario>('expected');
+  // Consolidated view mirrors the team's Excel: all locations folded
+  // into one table per product, single Balance row summing across all
+  // of them. Per-location is the original Phase-2 grid.
+  const [viewMode, setViewMode] = useState<ViewMode>('consolidated');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,6 +126,18 @@ export default function ForecastBoard() {
               </button>
             ))}
           </div>
+          <div className="inline-flex bg-gray-100 dark:bg-slate-800 p-1 rounded-md">
+            <button onClick={() => setViewMode('consolidated')}
+              className={`px-2.5 py-1 text-xs rounded ${viewMode === 'consolidated' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium' : 'text-gray-500 dark:text-gray-400'}`}
+              title="One table per product, all locations combined; bottom Balance = sum across all locations">
+              Consolidated
+            </button>
+            <button onClick={() => setViewMode('per_location')}
+              className={`px-2.5 py-1 text-xs rounded ${viewMode === 'per_location' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium' : 'text-gray-500 dark:text-gray-400'}`}
+              title="Separate IN/OUT/Balance block per location">
+              Per location
+            </button>
+          </div>
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">Opening balance from in-stock lots. {MONTHS_AHEAD}-month horizon.</div>
       </div>
@@ -128,7 +146,7 @@ export default function ForecastBoard() {
         <div className="p-3 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-sm text-red-700 dark:text-red-300">{error}</div>
       )}
 
-      {product && (
+      {product && viewMode === 'per_location' && (
         <div className="space-y-4">
           {locations.map((loc) => (
             <LocationForecastBlock
@@ -144,6 +162,19 @@ export default function ForecastBoard() {
             />
           ))}
         </div>
+      )}
+
+      {product && viewMode === 'consolidated' && (
+        <ConsolidatedForecastBlock
+          product={product}
+          locations={locations}
+          months={months}
+          scenario={scenario}
+          rows={forecasts.filter((r) => r.productId === product.id && r.scenario === scenario)}
+          openingByLocation={openingBalance}
+          onReload={load}
+          onError={setError}
+        />
       )}
     </div>
   );
@@ -238,12 +269,16 @@ function LocationForecastBlock({
 }
 
 function ForecastEditableRow({
-  row, months, label, accent, onReload, onError,
+  row, months, label, accent, locationChip, onReload, onError,
 }: {
   row: ForecastRow;
   months: { iso: string; label: string }[];
   label: string;
   accent: string;
+  // When set, render a small color swatch + code before the IN/OUT
+  // label. Used by the consolidated view so the rep can tell at a
+  // glance which warehouse the row belongs to.
+  locationChip?: { code: string; color: string | null };
   onReload: () => Promise<void>;
   onError: (e: string) => void;
 }) {
@@ -293,8 +328,14 @@ function ForecastEditableRow({
 
   return (
     <tr className={accent}>
-      <td className="px-2 py-1 sticky left-0 bg-inherit z-10 min-w-[180px]">
+      <td className="px-2 py-1 sticky left-0 bg-inherit z-10 min-w-[220px]">
         <div className="flex items-center gap-1">
+          {locationChip && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1 py-0.5 rounded bg-gray-200/70 dark:bg-slate-700/60 text-gray-700 dark:text-gray-200 flex-shrink-0">
+              {locationChip.color && <span className="inline-block w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: locationChip.color }} />}
+              {locationChip.code}
+            </span>
+          )}
           <span className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             {label.split(' · ')[0]}
           </span>
@@ -332,5 +373,141 @@ function ForecastEditableRow({
         );
       })}
     </tr>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Consolidated view: one table per product, every location folded
+// into the same grid. Mirrors the team's Excel "재고관리" sheet
+// where each row is a location/party and the bottom Balance row
+// sums across all of them.
+// ─────────────────────────────────────────────────────────────────
+function ConsolidatedForecastBlock({
+  product, locations, months, scenario, rows, openingByLocation, onReload, onError,
+}: {
+  product: Product;
+  locations: Location[];
+  months: { iso: string; label: string }[];
+  scenario: ForecastScenario;
+  rows: ForecastRow[];
+  openingByLocation: Map<string, number>;
+  onReload: () => Promise<void>;
+  onError: (e: string) => void;
+}) {
+  const [addLocationId, setAddLocationId] = useState<string>(locations[0]?.id || '');
+
+  // Total opening balance = sum across every location for this product.
+  const opening = useMemo(() => {
+    let sum = 0;
+    for (const loc of locations) {
+      sum += openingByLocation.get(`${product.id}|${loc.id}`) || 0;
+    }
+    return sum;
+  }, [product.id, locations, openingByLocation]);
+
+  const ins = rows.filter((r) => r.direction === 'in');
+  const outs = rows.filter((r) => r.direction === 'out');
+
+  // Sort rows by location then by row's earliest month so the grid
+  // reads top-to-bottom in roughly the order the team enters them.
+  const locOrder = new Map(locations.map((l, i) => [l.id, i]));
+  const byLocThenMonth = (a: ForecastRow, b: ForecastRow) => {
+    const la = locOrder.get(a.locationId) ?? 999;
+    const lb = locOrder.get(b.locationId) ?? 999;
+    if (la !== lb) return la - lb;
+    return a.month.localeCompare(b.month);
+  };
+  ins.sort(byLocThenMonth);
+  outs.sort(byLocThenMonth);
+
+  // Balance trail — same formula as per-location, but the deltas
+  // include every IN/OUT regardless of location.
+  const balance = useMemo(() => {
+    let b = opening;
+    return months.map((m) => {
+      const prefix = m.iso.slice(0, 7);
+      const inSum = ins.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
+      const outSum = outs.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
+      b = b + inSum - outSum;
+      return b;
+    });
+  }, [opening, months, ins, outs]);
+
+  const locById = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
+
+  async function add(direction: ForecastDirection) {
+    if (!addLocationId) { onError('Pick a location to attach the row to.'); return; }
+    try {
+      await upsertForecast({
+        productId: product.id, locationId: addLocationId,
+        month: months[0].iso, direction, party: direction === 'in' ? 'New supplier' : 'New customer',
+        quantity: 0, scenario,
+      });
+      await onReload();
+    } catch (e) { onError(formatErr(e)); }
+  }
+
+  return (
+    <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-slate-800/60 flex-wrap">
+        <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{product.name}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">all locations · opening {opening.toLocaleString()} kg</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 dark:text-gray-400">Add to:</span>
+          <select value={addLocationId} onChange={(e) => setAddLocationId(e.target.value)}
+            className="text-xs border border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 rounded px-1.5 py-1">
+            {locations.map((l) => <option key={l.id} value={l.id}>{l.code}</option>)}
+          </select>
+          <button onClick={() => add('in')} className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white">+ IN row</button>
+          <button onClick={() => add('out')} className="text-xs px-2 py-1 rounded bg-amber-700 hover:bg-amber-800 text-white">+ OUT row</button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="text-xs min-w-full">
+          <thead className="bg-gray-100/60 dark:bg-slate-800/30">
+            <tr>
+              <th className="px-2 py-1.5 text-left font-medium text-gray-500 dark:text-gray-400 sticky left-0 bg-gray-100/60 dark:bg-slate-800/60 z-10 min-w-[220px]">Row</th>
+              {months.map((m) => (
+                <th key={m.iso} className="px-1.5 py-1.5 text-right font-medium text-gray-500 dark:text-gray-400 min-w-[56px]">{m.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ins.map((r) => {
+              const loc = locById.get(r.locationId);
+              return (
+                <ForecastEditableRow key={r.id} row={r} months={months}
+                  label={`IN · ${r.party || 'supplier'}`}
+                  accent="bg-emerald-50/40 dark:bg-emerald-950/20"
+                  locationChip={loc ? { code: loc.code, color: loc.color } : undefined}
+                  onReload={onReload} onError={onError} />
+              );
+            })}
+            {outs.map((r) => {
+              const loc = locById.get(r.locationId);
+              return (
+                <ForecastEditableRow key={r.id} row={r} months={months}
+                  label={`OUT · ${r.party || 'customer'}`}
+                  accent="bg-amber-50/40 dark:bg-amber-950/20"
+                  locationChip={loc ? { code: loc.code, color: loc.color } : undefined}
+                  onReload={onReload} onError={onError} />
+              );
+            })}
+            {(ins.length === 0 && outs.length === 0) && (
+              <tr><td colSpan={months.length + 1} className="px-3 py-4 text-center text-gray-400 dark:text-gray-500 italic">No forecast rows yet — pick a location and click + IN row or + OUT row.</td></tr>
+            )}
+            <tr className="bg-gray-50 dark:bg-slate-800/40 font-semibold sticky bottom-0">
+              <td className="px-2 py-1.5 text-gray-700 dark:text-gray-200 sticky left-0 bg-gray-100 dark:bg-slate-800 z-10">Balance (all locations)</td>
+              {balance.map((b, i) => (
+                <td key={months[i].iso}
+                  className={`px-1.5 py-1.5 text-right ${b < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-100'}`}>
+                  {b.toLocaleString()}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
