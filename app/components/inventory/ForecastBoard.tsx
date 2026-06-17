@@ -207,10 +207,15 @@ function LocationForecastBlock({
   }, [opening, months, ins, outs]);
 
   async function add(direction: ForecastDirection) {
+    // Use a unique placeholder party name so the new row doesn't
+    // collapse into an existing group (we group by party). The rep
+    // then renames it inline.
+    const stamp = new Date().toISOString().slice(11, 19);
+    const placeholder = `${direction === 'in' ? 'New supplier' : 'New customer'} (${stamp})`;
     try {
       await upsertForecast({
         productId: product.id, locationId: location.id,
-        month: months[0].iso, direction, party: direction === 'in' ? 'New supplier' : 'New customer',
+        month: months[0].iso, direction, party: placeholder,
         quantity: 0, scenario,
       });
       await onReload();
@@ -239,14 +244,14 @@ function LocationForecastBlock({
             </tr>
           </thead>
           <tbody>
-            {ins.map((r) => (
-              <ForecastEditableRow key={r.id} row={r} months={months}
-                label={`IN · ${r.party || 'supplier'}`} accent="bg-emerald-50/40 dark:bg-emerald-950/20"
+            {groupForecastRows(ins).map((g) => (
+              <GroupedForecastRow key={g.key} group={g} months={months}
+                label={`IN · ${g.party || 'supplier'}`} accent="bg-emerald-50/40 dark:bg-emerald-950/20"
                 onReload={onReload} onError={onError} />
             ))}
-            {outs.map((r) => (
-              <ForecastEditableRow key={r.id} row={r} months={months}
-                label={`OUT · ${r.party || 'customer'}`} accent="bg-amber-50/40 dark:bg-amber-950/20"
+            {groupForecastRows(outs).map((g) => (
+              <GroupedForecastRow key={g.key} group={g} months={months}
+                label={`OUT · ${g.party || 'customer'}`} accent="bg-amber-50/40 dark:bg-amber-950/20"
                 onReload={onReload} onError={onError} />
             ))}
             {(ins.length === 0 && outs.length === 0) && (
@@ -268,10 +273,50 @@ function LocationForecastBlock({
   );
 }
 
-function ForecastEditableRow({
-  row, months, label, accent, locationChip, onReload, onError,
+// One logical row = (productId, locationId, direction, party). The
+// underlying DB row schema stores a separate record per month, so we
+// fold them together in JS and present a single editable row whose
+// cells map to each month. Adding a value in a new month edits the
+// SAME row instead of spawning a new one (which was the original
+// confusing behavior — see Excel parity).
+interface ForecastGroup {
+  key: string;            // `${locationId}|${direction}|${partyKey}`
+  productId: string;
+  locationId: string;
+  direction: ForecastDirection;
+  scenario: ForecastScenario;
+  party: string;          // canonical display value (first non-empty)
+  monthRows: Map<string, ForecastRow>; // monthIso → DB row
+}
+
+function groupForecastRows(rows: ForecastRow[]): ForecastGroup[] {
+  const groups = new Map<string, ForecastGroup>();
+  for (const r of rows) {
+    const partyKey = (r.party || '').trim().toLowerCase();
+    const key = `${r.locationId}|${r.direction}|${partyKey}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        key,
+        productId: r.productId,
+        locationId: r.locationId,
+        direction: r.direction,
+        scenario: r.scenario,
+        party: r.party || '',
+        monthRows: new Map(),
+      };
+      groups.set(key, g);
+    }
+    g.monthRows.set(r.month, r);
+    if (!g.party && r.party) g.party = r.party;
+  }
+  return Array.from(groups.values());
+}
+
+function GroupedForecastRow({
+  group, months, label, accent, locationChip, onReload, onError,
 }: {
-  row: ForecastRow;
+  group: ForecastGroup;
   months: { iso: string; label: string }[];
   label: string;
   accent: string;
@@ -282,46 +327,60 @@ function ForecastEditableRow({
   onReload: () => Promise<void>;
   onError: (e: string) => void;
 }) {
-  // The row carries one month's quantity. We render a cell per month
-  // in the timeline, but only the cell whose month matches `row.month`
-  // is non-empty. To support multi-month entries the rep adds extra
-  // rows. Editing in any cell creates / updates the row for that month.
-  const [draftParty, setDraftParty] = useState(row.party || '');
+  const [draftParty, setDraftParty] = useState(group.party);
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
   const [editingQty, setEditingQty] = useState<string>('');
 
+  // Bulk-rename: update every DB row in this group so the party stays
+  // in sync. Sequential awaits keep the optimistic UI simple — typical
+  // group size is 1-12 rows.
   async function saveParty() {
-    if (draftParty === (row.party || '')) return;
+    const next = draftParty.trim();
+    if (next === group.party.trim()) return;
     try {
-      await upsertForecast({ ...row, party: draftParty });
+      for (const r of group.monthRows.values()) {
+        await upsertForecast({ ...r, party: next });
+      }
       await onReload();
     } catch (e) { onError(formatErr(e)); }
   }
 
+  // Bulk-delete the whole logical row (all months).
   async function deleteRow() {
-    if (!confirm(`Delete this ${row.direction === 'in' ? 'IN' : 'OUT'} row?`)) return;
-    try { await deleteForecast(row.id); await onReload(); }
-    catch (e) { onError(formatErr(e)); }
+    if (!confirm(`Delete this ${group.direction === 'in' ? 'IN' : 'OUT'} row across all months?`)) return;
+    try {
+      for (const r of group.monthRows.values()) {
+        await deleteForecast(r.id);
+      }
+      await onReload();
+    } catch (e) { onError(formatErr(e)); }
   }
 
   async function commitCell(monthIso: string) {
-    const v = parseFloat(editingQty);
-    if (Number.isNaN(v)) { setEditingMonth(null); return; }
+    const raw = editingQty.trim();
+    const existing = group.monthRows.get(monthIso);
+    setEditingMonth(null);
     try {
-      if (monthIso === row.month) {
-        if (v === 0) {
-          await deleteForecast(row.id);
-        } else {
-          await upsertForecast({ ...row, quantity: v });
+      // Empty input = clear the cell
+      if (raw === '') {
+        if (existing) await deleteForecast(existing.id);
+      } else {
+        const v = parseFloat(raw);
+        if (Number.isNaN(v)) return;
+        if (existing) {
+          if (v === 0) await deleteForecast(existing.id);
+          else await upsertForecast({ ...existing, quantity: v });
+        } else if (v !== 0) {
+          // No DB row for that month yet — insert a fresh one carrying
+          // the group's identity. This is what makes "type a value into
+          // any month cell" land in the same logical row.
+          await upsertForecast({
+            productId: group.productId, locationId: group.locationId,
+            month: monthIso, direction: group.direction, party: group.party || null,
+            quantity: v, scenario: group.scenario,
+          });
         }
-      } else if (v !== 0) {
-        await upsertForecast({
-          productId: row.productId, locationId: row.locationId,
-          month: monthIso, direction: row.direction, party: row.party,
-          quantity: v, scenario: row.scenario,
-        });
       }
-      setEditingMonth(null);
       await onReload();
     } catch (e) { onError(formatErr(e)); }
   }
@@ -344,21 +403,22 @@ function ForecastEditableRow({
             className="flex-1 min-w-0 border border-transparent hover:border-gray-300 dark:hover:border-slate-600 focus:border-emerald-500 dark:bg-slate-900 dark:text-gray-100 rounded px-1 py-0.5 text-xs focus:outline-none" />
           <button
             onClick={deleteRow}
-            title="Delete row"
+            title="Delete row (all months)"
             className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded px-1 text-xs flex-shrink-0"
           >×</button>
         </div>
       </td>
       {months.map((m) => {
-        const isThisRowMonth = m.iso === row.month;
+        const dbRow = group.monthRows.get(m.iso);
+        const hasValue = dbRow !== undefined;
         const isEditing = editingMonth === m.iso;
         return (
           <td key={m.iso}
-            className={`px-1.5 py-1 text-right ${isThisRowMonth ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-600'} hover:bg-emerald-100/30 dark:hover:bg-emerald-900/20 cursor-text`}
+            className={`px-1.5 py-1 text-right ${hasValue ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-400 dark:text-gray-600'} hover:bg-emerald-100/30 dark:hover:bg-emerald-900/20 cursor-text`}
             onClick={() => {
               if (isEditing) return;
               setEditingMonth(m.iso);
-              setEditingQty(isThisRowMonth ? String(row.quantity) : '');
+              setEditingQty(hasValue ? String(dbRow!.quantity) : '');
             }}>
             {isEditing ? (
               <input autoFocus type="number" value={editingQty}
@@ -367,7 +427,7 @@ function ForecastEditableRow({
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } if (e.key === 'Escape') { setEditingMonth(null); } }}
                 className="w-14 text-right border border-emerald-500 dark:bg-slate-900 dark:text-gray-100 rounded px-1 py-0.5 text-xs focus:outline-none" />
             ) : (
-              isThisRowMonth ? row.quantity.toLocaleString() : '·'
+              hasValue ? dbRow!.quantity.toLocaleString() : '·'
             )}
           </td>
         );
@@ -408,17 +468,18 @@ function ConsolidatedForecastBlock({
   const ins = rows.filter((r) => r.direction === 'in');
   const outs = rows.filter((r) => r.direction === 'out');
 
-  // Sort rows by location then by row's earliest month so the grid
-  // reads top-to-bottom in roughly the order the team enters them.
+  // Group DB rows by (location, direction, party) so multi-month
+  // entries fold into a single visual row. Then sort the GROUPS by
+  // location order, then party — that's how the Excel reads top-down.
   const locOrder = new Map(locations.map((l, i) => [l.id, i]));
-  const byLocThenMonth = (a: ForecastRow, b: ForecastRow) => {
+  const sortGroups = (a: ForecastGroup, b: ForecastGroup) => {
     const la = locOrder.get(a.locationId) ?? 999;
     const lb = locOrder.get(b.locationId) ?? 999;
     if (la !== lb) return la - lb;
-    return a.month.localeCompare(b.month);
+    return a.party.localeCompare(b.party);
   };
-  ins.sort(byLocThenMonth);
-  outs.sort(byLocThenMonth);
+  const inGroups = groupForecastRows(ins).sort(sortGroups);
+  const outGroups = groupForecastRows(outs).sort(sortGroups);
 
   // Balance trail — same formula as per-location, but the deltas
   // include every IN/OUT regardless of location.
@@ -437,10 +498,12 @@ function ConsolidatedForecastBlock({
 
   async function add(direction: ForecastDirection) {
     if (!addLocationId) { onError('Pick a location to attach the row to.'); return; }
+    const stamp = new Date().toISOString().slice(11, 19);
+    const placeholder = `${direction === 'in' ? 'New supplier' : 'New customer'} (${stamp})`;
     try {
       await upsertForecast({
         productId: product.id, locationId: addLocationId,
-        month: months[0].iso, direction, party: direction === 'in' ? 'New supplier' : 'New customer',
+        month: months[0].iso, direction, party: placeholder,
         quantity: 0, scenario,
       });
       await onReload();
@@ -473,27 +536,27 @@ function ConsolidatedForecastBlock({
             </tr>
           </thead>
           <tbody>
-            {ins.map((r) => {
-              const loc = locById.get(r.locationId);
+            {inGroups.map((g) => {
+              const loc = locById.get(g.locationId);
               return (
-                <ForecastEditableRow key={r.id} row={r} months={months}
-                  label={`IN · ${r.party || 'supplier'}`}
+                <GroupedForecastRow key={g.key} group={g} months={months}
+                  label={`IN · ${g.party || 'supplier'}`}
                   accent="bg-emerald-50/40 dark:bg-emerald-950/20"
                   locationChip={loc ? { code: loc.code, color: loc.color } : undefined}
                   onReload={onReload} onError={onError} />
               );
             })}
-            {outs.map((r) => {
-              const loc = locById.get(r.locationId);
+            {outGroups.map((g) => {
+              const loc = locById.get(g.locationId);
               return (
-                <ForecastEditableRow key={r.id} row={r} months={months}
-                  label={`OUT · ${r.party || 'customer'}`}
+                <GroupedForecastRow key={g.key} group={g} months={months}
+                  label={`OUT · ${g.party || 'customer'}`}
                   accent="bg-amber-50/40 dark:bg-amber-950/20"
                   locationChip={loc ? { code: loc.code, color: loc.color } : undefined}
                   onReload={onReload} onError={onError} />
               );
             })}
-            {(ins.length === 0 && outs.length === 0) && (
+            {(inGroups.length === 0 && outGroups.length === 0) && (
               <tr><td colSpan={months.length + 1} className="px-3 py-4 text-center text-gray-400 dark:text-gray-500 italic">No forecast rows yet — pick a location and click + IN row or + OUT row.</td></tr>
             )}
             <tr className="bg-gray-50 dark:bg-slate-800/40 font-semibold sticky bottom-0">
