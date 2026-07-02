@@ -25,7 +25,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Product, Location, ForecastRow, ForecastDirection, ForecastScenario,
+  Product, Location, ForecastRow, ForecastDirection, ForecastScenario, StockLot,
   listProducts, listLocations, listForecasts, listStockLots,
   upsertForecast, deleteForecast,
 } from '@/lib/inventory';
@@ -58,10 +58,52 @@ function buildMonths(start: Date): { iso: string; label: string }[] {
 
 type ViewMode = 'per_location' | 'consolidated';
 
+// A synthetic (read-only) IN row derived from an upcoming stock lot.
+// One row per (locationId, manufacturer) group so multiple upcoming
+// containers from the same supplier at the same warehouse collapse
+// visually, mirroring how the team thinks about them.
+interface UpcomingGroup {
+  key: string;
+  locationId: string;
+  manufacturer: string;   // display value ('' → 'Upcoming')
+  monthQty: Map<string, number>; // monthIso → total kg landing that month
+  lotIds: string[];       // for the tooltip / debugging
+}
+
+function buildUpcomingGroups(lots: StockLot[]): UpcomingGroup[] {
+  const map = new Map<string, UpcomingGroup>();
+  for (const lot of lots) {
+    if (!lot.etaDate) continue;
+    // Bucket to first day of the ETA's month, matching how forecast
+    // rows are keyed.
+    const monthIso = `${lot.etaDate.slice(0, 7)}-01`;
+    const manu = (lot.manufacturer || '').trim();
+    const key = `${lot.locationId}|${manu.toLowerCase()}`;
+    let g = map.get(key);
+    if (!g) {
+      g = {
+        key,
+        locationId: lot.locationId,
+        manufacturer: manu || 'Upcoming',
+        monthQty: new Map(),
+        lotIds: [],
+      };
+      map.set(key, g);
+    }
+    g.monthQty.set(monthIso, (g.monthQty.get(monthIso) || 0) + lot.quantity);
+    g.lotIds.push(lot.id);
+  }
+  return Array.from(map.values());
+}
+
 export default function ForecastBoard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [forecasts, setForecasts] = useState<ForecastRow[]>([]);
+  // Upcoming stock lots (status='upcoming' + eta_date set). These
+  // auto-populate IN rows in the forecast board so the rep doesn't
+  // have to double-enter them. Editable only from the Snapshot tab.
+  const [upcomingLots, setUpcomingLots] = useState<StockLot[]>([]);
   const [openingBalance, setOpeningBalance] = useState<Map<string, number>>(new Map()); // key = `${productId}|${locationId}`
   const [productId, setProductId] = useState<string>('');
   const [scenario, setScenario] = useState<ForecastScenario>('expected');
@@ -89,6 +131,10 @@ export default function ForecastBoard() {
         bal.set(k, (bal.get(k) || 0) + lot.quantity);
       }
       setOpeningBalance(bal);
+      // Upcoming lots with an ETA go straight into the forecast IN
+      // side. Ones with no ETA are ignored here (can't place them
+      // on the timeline) — they still show on the Snapshot tab.
+      setUpcomingLots(lots.filter((lt) => lt.status === 'upcoming' && !!lt.etaDate));
       if (!productId && p.length > 0) setProductId(p[0].id);
     } catch (e) {
       setError(formatErr(e));
@@ -156,6 +202,7 @@ export default function ForecastBoard() {
               months={months}
               scenario={scenario}
               rows={forecasts.filter((r) => r.productId === product.id && r.locationId === loc.id && r.scenario === scenario)}
+              upcomingLots={upcomingLots.filter((lt) => lt.productId === product.id && lt.locationId === loc.id)}
               opening={openingBalance.get(`${product.id}|${loc.id}`) || 0}
               onReload={load}
               onError={setError}
@@ -171,6 +218,7 @@ export default function ForecastBoard() {
           months={months}
           scenario={scenario}
           rows={forecasts.filter((r) => r.productId === product.id && r.scenario === scenario)}
+          upcomingLots={upcomingLots.filter((lt) => lt.productId === product.id)}
           openingByLocation={openingBalance}
           onReload={load}
           onError={setError}
@@ -181,30 +229,34 @@ export default function ForecastBoard() {
 }
 
 function LocationForecastBlock({
-  product, location, months, scenario, rows, opening, onReload, onError,
+  product, location, months, scenario, rows, upcomingLots, opening, onReload, onError,
 }: {
   product: Product;
   location: Location;
   months: { iso: string; label: string }[];
   scenario: ForecastScenario;
   rows: ForecastRow[];
+  upcomingLots: StockLot[];
   opening: number;
   onReload: () => Promise<void>;
   onError: (e: string) => void;
 }) {
   const ins = rows.filter((r) => r.direction === 'in');
   const outs = rows.filter((r) => r.direction === 'out');
+  const upcomingGroups = useMemo(() => buildUpcomingGroups(upcomingLots), [upcomingLots]);
 
-  // Balance trail — opening + cumulative (sum(in) − sum(out)) per month.
+  // Balance trail — opening + cumulative (sum(in) + sum(upcoming) − sum(out)) per month.
   const balance = useMemo(() => {
     let b = opening;
     return months.map((m) => {
-      const inSum = ins.filter((r) => r.month.startsWith(m.iso.slice(0, 7))).reduce((s, r) => s + r.quantity, 0);
-      const outSum = outs.filter((r) => r.month.startsWith(m.iso.slice(0, 7))).reduce((s, r) => s + r.quantity, 0);
-      b = b + inSum - outSum;
+      const prefix = m.iso.slice(0, 7);
+      const inSum = ins.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
+      const outSum = outs.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
+      const upcomingSum = upcomingGroups.reduce((s, g) => s + (g.monthQty.get(m.iso) || 0), 0);
+      b = b + inSum + upcomingSum - outSum;
       return b;
     });
-  }, [opening, months, ins, outs]);
+  }, [opening, months, ins, outs, upcomingGroups]);
 
   async function add(direction: ForecastDirection) {
     // Use a unique placeholder party name so the new row doesn't
@@ -244,6 +296,9 @@ function LocationForecastBlock({
             </tr>
           </thead>
           <tbody>
+            {upcomingGroups.map((g) => (
+              <UpcomingSyntheticRow key={g.key} group={g} months={months} />
+            ))}
             {groupForecastRows(ins).map((g) => (
               <GroupedForecastRow key={g.key} group={g} months={months}
                 label={`IN · ${g.party || 'supplier'}`} accent="bg-emerald-50/40 dark:bg-emerald-950/20"
@@ -254,7 +309,7 @@ function LocationForecastBlock({
                 label={`OUT · ${g.party || 'customer'}`} accent="bg-amber-50/40 dark:bg-amber-950/20"
                 onReload={onReload} onError={onError} />
             ))}
-            {(ins.length === 0 && outs.length === 0) && (
+            {(ins.length === 0 && outs.length === 0 && upcomingGroups.length === 0) && (
               <tr><td colSpan={months.length + 1} className="px-3 py-4 text-center text-gray-400 dark:text-gray-500 italic">No forecast rows yet — click + IN row or + OUT row.</td></tr>
             )}
             <tr className="bg-gray-50 dark:bg-slate-800/40 font-semibold sticky bottom-0">
@@ -443,13 +498,14 @@ function GroupedForecastRow({
 // sums across all of them.
 // ─────────────────────────────────────────────────────────────────
 function ConsolidatedForecastBlock({
-  product, locations, months, scenario, rows, openingByLocation, onReload, onError,
+  product, locations, months, scenario, rows, upcomingLots, openingByLocation, onReload, onError,
 }: {
   product: Product;
   locations: Location[];
   months: { iso: string; label: string }[];
   scenario: ForecastScenario;
   rows: ForecastRow[];
+  upcomingLots: StockLot[];
   openingByLocation: Map<string, number>;
   onReload: () => Promise<void>;
   onError: (e: string) => void;
@@ -480,19 +536,34 @@ function ConsolidatedForecastBlock({
   };
   const inGroups = groupForecastRows(ins).sort(sortGroups);
   const outGroups = groupForecastRows(outs).sort(sortGroups);
+  // Auto-derived IN rows from upcoming stock lots. Sorted by location
+  // then manufacturer.
+  const upcomingGroups = useMemo(() => {
+    const gs = buildUpcomingGroups(upcomingLots);
+    gs.sort((a, b) => {
+      const la = locOrder.get(a.locationId) ?? 999;
+      const lb = locOrder.get(b.locationId) ?? 999;
+      if (la !== lb) return la - lb;
+      return a.manufacturer.localeCompare(b.manufacturer);
+    });
+    return gs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingLots]);
 
   // Balance trail — same formula as per-location, but the deltas
-  // include every IN/OUT regardless of location.
+  // include every IN/OUT regardless of location, plus upcoming lots
+  // landing that month.
   const balance = useMemo(() => {
     let b = opening;
     return months.map((m) => {
       const prefix = m.iso.slice(0, 7);
       const inSum = ins.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
       const outSum = outs.filter((r) => r.month.startsWith(prefix)).reduce((s, r) => s + r.quantity, 0);
-      b = b + inSum - outSum;
+      const upcomingSum = upcomingGroups.reduce((s, g) => s + (g.monthQty.get(m.iso) || 0), 0);
+      b = b + inSum + upcomingSum - outSum;
       return b;
     });
-  }, [opening, months, ins, outs]);
+  }, [opening, months, ins, outs, upcomingGroups]);
 
   const locById = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
@@ -536,6 +607,13 @@ function ConsolidatedForecastBlock({
             </tr>
           </thead>
           <tbody>
+            {upcomingGroups.map((g) => {
+              const loc = locById.get(g.locationId);
+              return (
+                <UpcomingSyntheticRow key={g.key} group={g} months={months}
+                  locationChip={loc ? { code: loc.code, color: loc.color } : undefined} />
+              );
+            })}
             {inGroups.map((g) => {
               const loc = locById.get(g.locationId);
               return (
@@ -556,7 +634,7 @@ function ConsolidatedForecastBlock({
                   onReload={onReload} onError={onError} />
               );
             })}
-            {(inGroups.length === 0 && outGroups.length === 0) && (
+            {(inGroups.length === 0 && outGroups.length === 0 && upcomingGroups.length === 0) && (
               <tr><td colSpan={months.length + 1} className="px-3 py-4 text-center text-gray-400 dark:text-gray-500 italic">No forecast rows yet — pick a location and click + IN row or + OUT row.</td></tr>
             )}
             <tr className="bg-gray-50 dark:bg-slate-800/40 font-semibold sticky bottom-0">
@@ -572,5 +650,57 @@ function ConsolidatedForecastBlock({
         </table>
       </div>
     </div>
+  );
+}
+
+// Read-only IN row rendered from an upcoming stock lot. Same layout
+// as GroupedForecastRow but with an amber "Upcoming" tag instead of
+// the party input and no delete button — you edit the underlying lot
+// from the Snapshot tab.
+function UpcomingSyntheticRow({
+  group, months, locationChip,
+}: {
+  group: UpcomingGroup;
+  months: { iso: string; label: string }[];
+  locationChip?: { code: string; color: string | null };
+}) {
+  return (
+    <tr className="bg-amber-50/40 dark:bg-amber-950/20">
+      <td className="px-2 py-1 sticky left-0 bg-inherit z-10 min-w-[220px]">
+        <div className="flex items-center gap-1">
+          {locationChip && (
+            <span className="inline-flex items-center gap-1 text-[10px] px-1 py-0.5 rounded bg-gray-200/70 dark:bg-slate-700/60 text-gray-700 dark:text-gray-200 flex-shrink-0">
+              {locationChip.color && <span className="inline-block w-1.5 h-1.5 rounded-sm" style={{ backgroundColor: locationChip.color }} />}
+              {locationChip.code}
+            </span>
+          )}
+          <span className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-300">IN</span>
+          <span
+            className="flex-1 min-w-0 text-xs text-gray-800 dark:text-gray-100 truncate"
+            title="Auto-populated from an Upcoming stock lot. Edit on the Current stock tab."
+          >
+            {group.manufacturer}
+          </span>
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex-shrink-0"
+            title="Sourced from Upcoming lots — read-only here"
+          >
+            upcoming
+          </span>
+        </div>
+      </td>
+      {months.map((m) => {
+        const qty = group.monthQty.get(m.iso) || 0;
+        const has = qty > 0;
+        return (
+          <td key={m.iso}
+            className={`px-1.5 py-1 text-right ${has ? 'text-amber-700 dark:text-amber-300 font-medium' : 'text-gray-400 dark:text-gray-600'}`}
+            title={has ? `${qty.toLocaleString()} kg landing this month (upcoming)` : undefined}
+          >
+            {has ? qty.toLocaleString() : '·'}
+          </td>
+        );
+      })}
+    </tr>
   );
 }
