@@ -65,6 +65,8 @@ export default function QuickLogFAB() {
   const [showLoggedBy, setShowLoggedBy] = useState(false);
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [showParticipants, setShowParticipants] = useState(false);
+  // Star flag → Weekly Report renders the full description verbatim.
+  const [isImportant, setIsImportant] = useState(false);
   function toggleParticipant(id: string) {
     setInternalParticipants((prev) => {
       const next = new Set(prev);
@@ -133,6 +135,7 @@ export default function QuickLogFAB() {
     setOwnerId(userId);
     setInternalParticipants(new Set());
     setShowParticipants(false);
+    setIsImportant(false);
   }
 
   function handleSave() {
@@ -151,6 +154,7 @@ export default function QuickLogFAB() {
         contactId: contactId || '',
         purpose: purpose || undefined,
         internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+        isImportant,
       });
       setSaved(true);
       setTimeout(resetAll, 1200);
@@ -515,6 +519,24 @@ export default function QuickLogFAB() {
                 />
               </div>
             </div>
+
+            {/* Star flag — Weekly Report renders the full description
+                verbatim when on. Mirrors QuickLogModal / LogActivityModal
+                / EditActivityModal so all four entry points behave the
+                same way. */}
+            <button
+              type="button"
+              onClick={() => setIsImportant((v) => !v)}
+              className={`w-full mb-2.5 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${
+                isImportant
+                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+              }`}
+              title="Star this activity so the full description shows up in the Weekly Report"
+            >
+              <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+              <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+            </button>
 
             {/* Internal Participants — collapsed by default */}
             <div style={{ marginBottom: '16px' }}>

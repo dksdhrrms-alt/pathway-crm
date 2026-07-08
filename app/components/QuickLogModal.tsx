@@ -42,6 +42,8 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const [showLoggedBy, setShowLoggedBy] = useState(false);
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
   const [showParticipants, setShowParticipants] = useState(false);
+  // Star flag → Weekly Report renders the full description verbatim.
+  const [isImportant, setIsImportant] = useState(false);
   function toggleParticipant(id: string) {
     setInternalParticipants((prev) => {
       const next = new Set(prev);
@@ -117,6 +119,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           contactId: cid || '',
           purpose: purpose || undefined,
           internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+          isImportant,
         });
       });
       setSaved(true);
@@ -439,6 +442,23 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             />
           </div>
         </div>
+
+        {/* Star flag — mirrors LogActivityModal / EditActivityModal.
+            When on, Weekly Report renders the full description verbatim
+            instead of just the meta bullet. */}
+        <button
+          type="button"
+          onClick={() => setIsImportant((v) => !v)}
+          className={`w-full mb-2.5 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${
+            isImportant
+              ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+              : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+          }`}
+          title="Star this activity so the full description shows up in the Weekly Report"
+        >
+          <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+          <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+        </button>
 
         {/* Logged By — admin only, collapsed by default. Defaults to the
             current user; only worth exposing when the admin is logging
