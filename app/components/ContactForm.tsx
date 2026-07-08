@@ -30,6 +30,7 @@ export const CONTACT_TYPES = [
   'Industry Contact - Beef',
   'Industry Contact - Poultry',
   'Industry Contact - Swine',
+  'Veterinarian',
 ];
 
 interface Props {
