@@ -47,6 +47,8 @@ export default function EditActivityModal({ activity, onClose }: Props) {
   const [accountId, setAccountId] = useState(activity.accountId ?? '');
   const [contactId, setContactId] = useState(activity.contactId ?? '');
   const [contactSearch, setContactSearch] = useState('');
+  // Star flag — Weekly Report renders full description when true.
+  const [isImportant, setIsImportant] = useState(!!activity.isImportant);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +93,7 @@ export default function EditActivityModal({ activity, onClose }: Props) {
       purpose: purpose || undefined,
       accountId: accountId || undefined,
       contactId: contactId || undefined,
+      isImportant,
     });
     setTimeout(() => { onClose(); }, 150);
   }
@@ -238,6 +241,20 @@ export default function EditActivityModal({ activity, onClose }: Props) {
               rows={4}
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
+            {/* Weekly Report star flag — mirror of the LogActivityModal toggle. */}
+            <button
+              type="button"
+              onClick={() => setIsImportant((v) => !v)}
+              className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition ${
+                isImportant
+                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+              }`}
+              title="Star this activity so the full description shows up in the Weekly Report"
+            >
+              <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+              <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+            </button>
           </div>
 
           {error && (

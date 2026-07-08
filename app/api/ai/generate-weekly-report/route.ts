@@ -172,9 +172,18 @@ async function generateMonogastricReport(
   const annBudget = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && (b.category === 'monogastrics' || b.category === 'swine')).reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
 
-  // AI summaries for poultry + swine
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const hasAI = apiKey && !apiKey.includes('placeholder');
+  // Weekly summaries for poultry + swine + b2b Distribution.
+  //
+  // We used to send actText/taskText through Claude and ask it to
+  // "copy verbatim". That added latency, cost, and a failure surface
+  // — when the API call errored the report fell back to a useless
+  // "5 activities logged". Since the whole point is a verbatim copy,
+  // we build the strings directly and skip the AI hop.
+  //
+  //   Line 1 (meta):  - MM/DD · Rep · Type · Contact @ Account · subject
+  //   Line 2 (body):    full description sentence, indented 2 spaces
+  //
+  // Empty fields skip cleanly so the meta line stays tight.
   const aiSummaries: Record<string, { thisWeek: string; nextWeek: string }> = {};
 
   for (const team of ['poultry', 'swine', 'b2bDistribution']) {
@@ -182,55 +191,44 @@ async function generateMonogastricReport(
     const data = (teamSummaries?.[team] || { activities: [], tasks: [], opportunities: [] }) as any;
     const actCount = data.activities?.length || 0;
     const taskCount = data.tasks?.length || 0;
-    if (hasAI && (actCount > 0 || taskCount > 0)) {
-      try {
-        // Two-line format per activity so the Director/CEO weekly report
-        // reads naturally instead of the prior over-condensed pipe row:
-        //   Line 1 (meta):  - MM/DD · Rep · Type · Contact @ Account · subject
-        //   Line 2 (body):    full description sentence, indented
-        // Reps complained that "follow up" alone hid the actual story; the
-        // description carries the real value (who said what, what action
-        // was taken). Empty fields skip cleanly so the meta line stays
-        // tight.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const actText = (data.activities || []).map((a: any) => {
-          const dateLabel = (a.date || '').slice(5).replace('-', '/');
-          const who = a.ownerName || a.ownerId || '';
-          const type = a.type || 'Note';
-          const contact = (a.contactName || '').trim();
-          const account = (a.accountName || '').trim();
-          const subject = (a.subject || '').trim();
-          // "Contact @ Account" reads like a natural target; fall back to
-          // whichever side is present.
-          const target = contact && account ? `${contact} @ ${account}` : (contact || account);
-          const metaParts = [dateLabel, who, type, target, subject]
-            .filter((p) => p && String(p).trim())
-            .map((p) => sanitize(String(p)));
-          const line1 = `- ${metaParts.join(' · ')}`;
-          const description = (a.description || '').trim();
-          if (!description) return line1;
-          // Collapse internal line breaks to spaces so the description
-          // sits on a single indented line in the docx cell.
-          const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
-          return `${line1}\n  ${safeDesc}`;
-        }).join('\n') || 'None';
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const taskText = (data.tasks || []).map((t: any) => {
-          const parts = [
-            t.ownerName || t.ownerId,
-            t.accountName,
-            t.subject,
-            t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
-          ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-          return `- ${parts.join(' | ')}`;
-        }).join('\n') || 'None';
-        const teamLabel = team === 'poultry' ? 'Poultry' : team === 'swine' ? 'Swine' : 'B2B Distribution (distributor accounts)';
-        const prompt = sanitize(`Write ${teamLabel} team weekly summary for Pathway Intermediates USA.\nActivities (each item is up to 2 lines — meta bullet then an indented description):\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity exactly as-is, KEEPING BOTH LINES when a description is present. The meta line starts with "- " and uses " · " as the separator. The description follows on the next line, indented with two spaces, copied verbatim — do not paraphrase, summarize, or trim.\n- nextWeek: copy EACH task as its own bullet, same separator. No description line for tasks.\n- Do NOT consolidate or merge activities. Do NOT add "Logged by" or other prefixes. If a field is missing, simply skip it (no "—" placeholders).\nRespond ONLY JSON: {"thisWeek":"- meta1\\n  desc1\\n- meta2\\n  desc2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
-        const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
-        if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); aiSummaries[team] = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
-        else { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-      } catch { aiSummaries[team] = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-    } else { aiSummaries[team] = { thisWeek: actCount > 0 ? `- ${actCount} activities logged` : '- No activities', nextWeek: taskCount > 0 ? `- ${taskCount} tasks pending` : '- No tasks' }; }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const actText = (data.activities || []).map((a: any) => {
+      const dateLabel = (a.date || '').slice(5).replace('-', '/');
+      const who = a.ownerName || a.ownerId || '';
+      const type = a.type || 'Note';
+      const contact = (a.contactName || '').trim();
+      const account = (a.accountName || '').trim();
+      const subject = (a.subject || '').trim();
+      const target = contact && account ? `${contact} @ ${account}` : (contact || account);
+      const metaParts = [dateLabel, who, type, target, subject]
+        .filter((p) => p && String(p).trim())
+        .map((p) => sanitize(String(p)));
+      // Star prefix so leadership can eyeball which items the rep
+      // flagged as worth reading closely.
+      const starred = !!a.isImportant;
+      const line1 = `- ${starred ? '★ ' : ''}${metaParts.join(' · ')}`;
+      const description = (a.description || '').trim();
+      // Full description only for starred rows — the leadership view
+      // otherwise blew up to 15+ pages. Reps opt in per activity via
+      // the star toggle on the Log/Edit Activity modals.
+      if (!starred || !description) return line1;
+      const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+      return `${line1}\n  ${safeDesc}`;
+    }).join('\n');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const taskText = (data.tasks || []).map((t: any) => {
+      const parts = [
+        t.ownerName || t.ownerId,
+        t.accountName,
+        t.subject,
+        t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+      ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+      return `- ${parts.join(' | ')}`;
+    }).join('\n');
+    aiSummaries[team] = {
+      thisWeek: actCount > 0 ? actText : '- No activities',
+      nextWeek: taskCount > 0 ? taskText : '- No tasks',
+    };
   }
 
   // Build Word document
@@ -442,54 +440,46 @@ async function generateRuminantReport(
   const annBdg = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && b.category === 'ruminants').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const teamTotal = { prev: acctList.reduce((s, a) => s + a.prev, 0), v1: acctList.reduce((s, a) => s + a.v1, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
 
-  // AI summary
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const hasAI = apiKey && !apiKey.includes('placeholder');
+  // Weekly summary for Ruminants — built directly from activities /
+  // tasks (no AI hop; same rationale as the poultry/swine block).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rumData = (teamSummaries?.ruminants || { activities: [], tasks: [], opportunities: [] }) as any;
   const actCount = rumData.activities?.length || 0;
   const taskCount = rumData.tasks?.length || 0;
-  let rumSummary = { thisWeek: '- No activities recorded', nextWeek: '- No tasks scheduled' };
-
-  if (hasAI && (actCount > 0 || taskCount > 0)) {
-    try {
-      // Two-line activity format — see the poultry/swine block above for
-      // the full rationale. Meta on line 1 ("- date · rep · type ·
-      // contact @ account · subject"), description verbatim on line 2.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actText = (rumData.activities || []).map((a: any) => {
-        const dateLabel = (a.date || '').slice(5).replace('-', '/');
-        const who = a.ownerName || a.ownerId || '';
-        const type = a.type || 'Note';
-        const contact = (a.contactName || '').trim();
-        const account = (a.accountName || '').trim();
-        const subject = (a.subject || '').trim();
-        const target = contact && account ? `${contact} @ ${account}` : (contact || account);
-        const metaParts = [dateLabel, who, type, target, subject]
-          .filter((p) => p && String(p).trim())
-          .map((p) => sanitize(String(p)));
-        const line1 = `- ${metaParts.join(' · ')}`;
-        const description = (a.description || '').trim();
-        if (!description) return line1;
-        const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
-        return `${line1}\n  ${safeDesc}`;
-      }).join('\n') || 'None';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const taskText = (rumData.tasks || []).map((t: any) => {
-        const parts = [
-          t.ownerName || t.ownerId,
-          t.accountName,
-          t.subject,
-          t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
-        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-        return `- ${parts.join(' | ')}`;
-      }).join('\n') || 'None';
-      const prompt = sanitize(`Write Ruminant team weekly summary for Pathway Intermediates USA (dairy/beef cattle nutrition).\nActivities (each item is up to 2 lines — meta bullet then an indented description):\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity exactly as-is, KEEPING BOTH LINES when a description is present. The meta line starts with "- " and uses " · " as the separator. The description follows on the next line, indented with two spaces, copied verbatim — do not paraphrase, summarize, or trim.\n- nextWeek: copy EACH task as its own bullet, same separator. No description line for tasks.\n- Do NOT consolidate or merge activities. Do NOT add "Logged by". Skip missing fields (no "—" placeholders).\nRespond ONLY JSON: {"thisWeek":"- meta1\\n  desc1\\n- meta2\\n  desc2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
-      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
-      if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); rumSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
-      else { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-    } catch { rumSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rumActText = (rumData.activities || []).map((a: any) => {
+    const dateLabel = (a.date || '').slice(5).replace('-', '/');
+    const who = a.ownerName || a.ownerId || '';
+    const type = a.type || 'Note';
+    const contact = (a.contactName || '').trim();
+    const account = (a.accountName || '').trim();
+    const subject = (a.subject || '').trim();
+    const target = contact && account ? `${contact} @ ${account}` : (contact || account);
+    const metaParts = [dateLabel, who, type, target, subject]
+      .filter((p) => p && String(p).trim())
+      .map((p) => sanitize(String(p)));
+    const starred = !!a.isImportant;
+    const line1 = `- ${starred ? '★ ' : ''}${metaParts.join(' · ')}`;
+    const description = (a.description || '').trim();
+    // Full description only for starred rows (see poultry/swine block).
+    if (!starred || !description) return line1;
+    const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+    return `${line1}\n  ${safeDesc}`;
+  }).join('\n');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rumTaskText = (rumData.tasks || []).map((t: any) => {
+    const parts = [
+      t.ownerName || t.ownerId,
+      t.accountName,
+      t.subject,
+      t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+    ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+    return `- ${parts.join(' | ')}`;
+  }).join('\n');
+  const rumSummary = {
+    thisWeek: actCount > 0 ? rumActText : '- No activities recorded',
+    nextWeek: taskCount > 0 ? rumTaskText : '- No tasks scheduled',
+  };
 
   // Build Word doc
   const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -675,46 +665,42 @@ async function generateLATAMReport(
   const annBdg = acctList.reduce((s, a) => s + a.annBgt, 0) || budgets.filter((b: { year?: number; category?: string }) => Number(b.year) === curYear && b.category === 'latam').reduce((s: number, b: { budget_amount?: number }) => s + (Number(b.budget_amount) || 0), 0);
   const teamTot = { ytd: acctList.reduce((s, a) => s + a.ytd, 0), v2: acctList.reduce((s, a) => s + a.v2, 0), v3: acctList.reduce((s, a) => s + a.v3, 0), cum: acctList.reduce((s, a) => s + a.cum, 0) };
 
-  // AI summary
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  const hasAI = apiKey && !apiKey.includes('placeholder');
+  // Weekly summary for LATAM — direct build, no AI (verbatim copy).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const latData = (teamSummaries?.latam || { activities: [], tasks: [], opportunities: [] }) as any;
   const actCount = latData.activities?.length || 0;
   const taskCount = latData.tasks?.length || 0;
-  let latSummary = { thisWeek: '- No activities recorded', nextWeek: '- No tasks scheduled' };
-
-  if (hasAI && (actCount > 0 || taskCount > 0)) {
-    try {
-      // Structured format: User | Account | Contact | Content | Type | Date — empty fields skipped
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const actText = (latData.activities || []).map((a: any) => {
-        const parts = [
-          a.ownerName || a.ownerId,
-          a.accountName,
-          a.contactName,
-          a.subject,
-          a.type || 'Note',
-          (a.date || '').slice(5).replace('-', '/'),
-        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-        return `- ${parts.join(' | ')}`;
-      }).join('\n') || 'None';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const taskText = (latData.tasks || []).map((t: any) => {
-        const parts = [
-          t.ownerName || t.ownerId,
-          t.accountName,
-          t.subject,
-          t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
-        ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-        return `- ${parts.join(' | ')}`;
-      }).join('\n') || 'None';
-      const prompt = sanitize(`Write LATAM team weekly summary for Pathway Intermediates USA (Latin America distributors: Mexico, Colombia, Peru, Chile, Venezuela, etc.).\nActivities:\n${actText}\nTasks:\n${taskText}\nRules:\n- thisWeek: copy EACH activity verbatim as its own bullet, preserving the pipe-separated format. Do NOT add "Logged by". Do NOT consolidate. Skip missing fields. Organize by country when possible.\n- nextWeek: copy EACH task verbatim as its own bullet, same rules.\nRespond ONLY JSON: {"thisWeek":"- bullet1\\n- bullet2\\n...","nextWeek":"- bullet1\\n- bullet2\\n..."}`);
-      const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey!, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] }) });
-      if (res.ok) { const d = await res.json(); const p = JSON.parse((d.content?.[0]?.text || '{}').replace(/```json|```/g, '').trim()); latSummary = { thisWeek: p.thisWeek || '- No data', nextWeek: p.nextWeek || '- No tasks' }; }
-      else { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-    } catch { latSummary = { thisWeek: `- ${actCount} activities logged`, nextWeek: `- ${taskCount} tasks pending` }; }
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const latActText = (latData.activities || []).map((a: any) => {
+    const parts = [
+      a.ownerName || a.ownerId,
+      a.accountName,
+      a.contactName,
+      a.subject,
+      a.type || 'Note',
+      (a.date || '').slice(5).replace('-', '/'),
+    ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+    const starred = !!a.isImportant;
+    const line1 = `- ${starred ? '★ ' : ''}${parts.join(' | ')}`;
+    const description = (a.description || '').trim();
+    if (!starred || !description) return line1;
+    const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+    return `${line1}\n  ${safeDesc}`;
+  }).join('\n');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const latTaskText = (latData.tasks || []).map((t: any) => {
+    const parts = [
+      t.ownerName || t.ownerId,
+      t.accountName,
+      t.subject,
+      t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
+    ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
+    return `- ${parts.join(' | ')}`;
+  }).join('\n');
+  const latSummary = {
+    thisWeek: actCount > 0 ? latActText : '- No activities recorded',
+    nextWeek: taskCount > 0 ? latTaskText : '- No tasks scheduled',
+  };
 
   // Build Word doc
   const reportDate = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

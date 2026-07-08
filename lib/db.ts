@@ -51,6 +51,9 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   isSystem: 'is_system',
   lastLoginAt: 'last_login_at',
   lastSeenAt: 'last_seen_at',
+  // Activities.is_important — per-activity "star" flag for the
+  // Weekly Report (data-migration/21-activity-important-flag.sql).
+  isImportant: 'is_important',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};

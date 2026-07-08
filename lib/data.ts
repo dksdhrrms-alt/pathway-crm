@@ -169,6 +169,10 @@ export interface Activity {
   contactId?: string;
   purpose?: string;
   internalParticipants?: string[];  // user IDs of internal team members who joined
+  // Reps toggle this ON when the activity is meaningful enough for
+  // the Weekly Report to carry the full description. Default false =
+  // report shows just the meta bullet.
+  isImportant?: boolean;
 }
 
 export const ACTIVITY_PURPOSES = [

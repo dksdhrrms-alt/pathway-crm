@@ -48,6 +48,10 @@ export default function LogActivityModal({
   );
   const [contactSearch, setContactSearch] = useState('');
   const [internalParticipants, setInternalParticipants] = useState<Set<string>>(new Set());
+  // Star flag → Weekly Report renders the full description verbatim.
+  // Off by default so the report stays scannable; reps opt in per
+  // activity when the meeting notes are worth surfacing to leadership.
+  const [isImportant, setIsImportant] = useState(false);
   const [error, setError] = useState('');
   // Guards against double-submit (button still visible during the brief
   // window between click and the parent closing the modal via onSave).
@@ -108,6 +112,7 @@ export default function LogActivityModal({
           contactId: cid,
           purpose: purpose || undefined,
           internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
+          isImportant,
         };
         addActivity(newActivity);
         last = newActivity;
@@ -274,6 +279,22 @@ export default function LogActivityModal({
               rows={4}
               className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
             />
+            {/* Star flag — one click marks the activity so leadership's
+                Weekly Report carries the full description verbatim
+                instead of just the meta bullet. */}
+            <button
+              type="button"
+              onClick={() => setIsImportant((v) => !v)}
+              className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition ${
+                isImportant
+                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+              }`}
+              title="Star this activity so the full description shows up in the Weekly Report"
+            >
+              <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+              <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+            </button>
           </div>
 
           <div>

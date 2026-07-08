@@ -98,6 +98,14 @@ export default function ActivityTimeline({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <div>
+                      {activity.isImportant && (
+                        <span
+                          className="mr-1.5 text-amber-500 dark:text-amber-400"
+                          title="Marked as important — full description will appear in Weekly Report"
+                        >
+                          ★
+                        </span>
+                      )}
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{activity.subject}</span>
                       <span
                         className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${typeColor[activity.type]}`}
