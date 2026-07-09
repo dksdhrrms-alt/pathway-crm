@@ -13,7 +13,7 @@ import { formatPhone } from '@/lib/phone';
 
 const INDUSTRIES = [
   'Dairy/Beef', 'Poultry', 'Swine', 'Feed Mill / Premix', 'Aquaculture',
-  'Multi-Species', 'Research / Trials', 'University', 'Other',
+  'Multi-Species', 'Research / Trials', 'University', 'Distributor', 'Other',
 ];
 
 interface Props {

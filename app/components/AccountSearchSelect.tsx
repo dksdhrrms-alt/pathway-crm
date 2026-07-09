@@ -9,6 +9,7 @@ const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
   Poultry: { bg: '#E6F1FB', text: '#185FA5' },
   Swine: { bg: '#FAEEDA', text: '#854F0B' },
   'Feed Mill': { bg: '#EEEDFE', text: '#534AB7' },
+  Distributor: { bg: '#FCE7F3', text: '#9D174D' },
   Other: { bg: '#F1EFE8', text: '#5F5E5A' },
 };
 

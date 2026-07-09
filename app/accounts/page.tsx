@@ -51,6 +51,7 @@ const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
   'Multi-Species': { bg: '#F1EFE8', text: '#5F5E5A' },
   Research: { bg: '#F1EFE8', text: '#5F5E5A' },
   University: { bg: '#F1EFE8', text: '#5F5E5A' },
+  Distributor: { bg: '#FCE7F3', text: '#9D174D' },
   Other: { bg: '#F1EFE8', text: '#5F5E5A' },
 };
 
