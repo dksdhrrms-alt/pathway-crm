@@ -46,7 +46,10 @@ export async function POST(request: Request) {
       phone: phone || '',
       role: 'sales',
       initials: userInitials,
-      status: 'active',
+      // Sign-ups land as `pending` — an admin / CEO has to flip them
+      // to `active` on /admin (Users tab → Activate) before the user
+      // can sign in. auth.ts blocks any user whose status !== 'active'.
+      status: 'pending',
       profile_photo: null,
     });
 
@@ -66,7 +69,8 @@ export async function POST(request: Request) {
     phone: phone || '',
     role: 'sales',
     initials: userInitials,
-    status: 'active',
+    // Match the Supabase branch — pending until an admin approves.
+    status: 'pending',
     profilePhoto: null,
   });
 

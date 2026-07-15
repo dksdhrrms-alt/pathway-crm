@@ -28,7 +28,27 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError('Invalid email or password.');
+        // signIn just tells us "credentials rejected" — it doesn't
+        // distinguish wrong password from a pending / inactive
+        // account. Ask the server to explain the state so the user
+        // knows whether to fix their password or wait for approval.
+        try {
+          const statusRes = await fetch('/api/auth/account-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim().toLowerCase() }),
+          });
+          const { status } = statusRes.ok ? await statusRes.json() : { status: 'unknown' };
+          if (status === 'pending') {
+            setError('Your account is waiting for admin approval. You will be able to sign in once an administrator activates it.');
+          } else if (status === 'inactive') {
+            setError('This account has been deactivated. Please contact an administrator.');
+          } else {
+            setError('Invalid email or password.');
+          }
+        } catch {
+          setError('Invalid email or password.');
+        }
       } else if (result?.ok) {
         router.push('/dashboard');
         router.refresh();
@@ -57,9 +77,9 @@ function LoginForm() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enter your credentials to access the CRM</p>
 
           {registered && (
-            <div className="flex items-center gap-2 px-3.5 py-2.5 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-lg mb-4">
-              <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              <p className="text-sm text-green-700 dark:text-green-300">Account created successfully. You can now sign in.</p>
+            <div className="flex items-start gap-2 px-3.5 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
+              <svg className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M4.93 19h14.14a2 2 0 001.75-3L13.75 4a2 2 0 00-3.5 0L3.18 16a2 2 0 001.75 3z" /></svg>
+              <p className="text-sm text-amber-800 dark:text-amber-200">Account created. Your access is pending — an administrator will approve your account shortly, and you&apos;ll be able to sign in after that.</p>
             </div>
           )}
 
