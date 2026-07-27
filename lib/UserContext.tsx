@@ -9,7 +9,7 @@ import { cacheGet, cacheSet, CACHE_KEYS } from './cache';
 interface UserContextType {
   users: AppUser[];
   currentUser: AppUser | null;
-  updateCurrentUser: (updates: Partial<Pick<AppUser, 'name' | 'phone' | 'profilePhoto' | 'password'>>) => void;
+  updateCurrentUser: (updates: Partial<Pick<AppUser, 'name' | 'phone' | 'profilePhoto' | 'password' | 'dailyEmail'>>) => void;
   updateUserById: (id: string, updates: Partial<Pick<AppUser, 'role' | 'status' | 'name' | 'phone' | 'profilePhoto'>>) => void;
   addUser: (user: AppUser) => void;
 }
@@ -53,7 +53,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const currentUser = users.find((u) => u.id === (session?.user?.id ?? '')) ?? null;
 
-  function updateCurrentUser(updates: Partial<Pick<AppUser, 'name' | 'phone' | 'profilePhoto' | 'password'>>) {
+  function updateCurrentUser(updates: Partial<Pick<AppUser, 'name' | 'phone' | 'profilePhoto' | 'password' | 'dailyEmail'>>) {
     const currentId = session?.user?.id;
     if (!currentId) return;
     setUsers((prev) => prev.map((u) => (u.id === currentId ? { ...u, ...updates } : u)));

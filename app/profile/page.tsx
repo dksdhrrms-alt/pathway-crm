@@ -281,6 +281,28 @@ export default function ProfilePage() {
             </form>
           </div>
 
+          {/* Section: Notifications — opt-in for the weekday morning
+              daily brief. Users can turn this on/off themselves; the
+              cron only emails users where daily_email = true. Admins
+              can also flip it from Admin → Users → Daily Brief. */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Notifications</h2>
+            <label className="flex items-center justify-between gap-4 cursor-pointer">
+              <span>
+                <span className="block text-sm font-medium text-gray-800 dark:text-gray-100">Daily brief email</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  A weekday morning email with your focus, open tasks, open deals, feed market prices and industry news.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={!!currentUser?.dailyEmail}
+                onChange={(e) => updateCurrentUser({ dailyEmail: e.target.checked })}
+                className="w-5 h-5 shrink-0 cursor-pointer rounded border-gray-300 dark:border-slate-600"
+              />
+            </label>
+          </div>
+
           {/* Section C: Change Password */}
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-6">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Change Password</h2>

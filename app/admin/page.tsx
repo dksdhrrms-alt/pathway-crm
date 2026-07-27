@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
-import { UserRole, UserStatus, getRoleLabel } from '@/lib/users';
+import { AppUser, UserRole, UserStatus, getRoleLabel } from '@/lib/users';
 import { MENU_ITEMS, MenuItem, menuItemToKey, getUserPerms, saveUserPerms, getUserDataVisibility, saveUserDataVisibility, PermState } from '@/lib/permissions';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
@@ -539,6 +539,7 @@ export default function AdminPage() {
                     <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Team</th>
                     <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Role</th>
                     <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Status</th>
+                    <th className="text-center px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide" title="Weekday morning brief email">Daily Brief</th>
                     <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Actions</th>
                   </tr>
                 </thead>
@@ -608,6 +609,15 @@ export default function AdminPage() {
                             {badge.label}
                           </span>
                         </td>
+                        <td className="px-5 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={!!(user as { dailyEmail?: boolean }).dailyEmail}
+                            onChange={(e) => updateUserById(user.id, { dailyEmail: e.target.checked } as Partial<AppUser>)}
+                            className="rounded border-gray-300 dark:border-slate-600 cursor-pointer"
+                            title="Send this user the weekday morning brief email"
+                          />
+                        </td>
                         <td className="px-5 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {user.status === 'pending' && (
@@ -649,7 +659,7 @@ export default function AdminPage() {
                   })}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                      <td colSpan={6} className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                         No users match this filter.
                       </td>
                     </tr>

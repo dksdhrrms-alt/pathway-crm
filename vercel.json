@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/industry-news",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/daily-brief",
+      "schedule": "0 13 * * *"
     }
   ]
 }

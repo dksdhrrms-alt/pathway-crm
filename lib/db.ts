@@ -54,6 +54,9 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // Activities.is_important — per-activity "star" flag for the
   // Weekly Report (data-migration/21-activity-important-flag.sql).
   isImportant: 'is_important',
+  // Users.daily_email — opt-in flag for the weekday morning brief
+  // (data-migration/22-daily-email-flag.sql).
+  dailyEmail: 'daily_email',
 };
 
 const CAMEL_OVERRIDES: Record<string, string> = {};
@@ -94,7 +97,7 @@ export async function dbGetUsers(): Promise<AppUser[]> {
   // to every client through the UserContext fetch.
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, email, role, status, initials, team, phone, profile_photo, created_at, last_login_at, last_seen_at')
+    .select('id, name, email, role, status, initials, team, phone, profile_photo, daily_email, created_at, last_login_at, last_seen_at')
     .order('name')
     .range(0, 9999);
   if (error) throw error;

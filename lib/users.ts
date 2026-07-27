@@ -27,6 +27,10 @@ export interface AppUser {
    *  tab is visible). More useful than lastLoginAt for "is this rep
    *  actively using the CRM this week?" in the admin overview. */
   lastSeenAt?: string | null;
+  /** Opt-in for the weekday morning daily brief email (7am US
+   *  Central). Admins toggle from the Users tab; users can toggle
+   *  their own on Profile → Notifications. */
+  dailyEmail?: boolean;
 }
 
 /**
