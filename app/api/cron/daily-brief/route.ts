@@ -15,7 +15,7 @@
  * and RESEND_OUTBOUND_FROM_OVERRIDE (falls back to a sane default).
  *
  * Auth: Authorization: Bearer ${CRON_SECRET} (Vercel Cron sends it).
- * Schedule (vercel.json): `0 13 * * *` = 13:00 UTC daily
+ * Schedule (vercel.json): `0 13 * * 1-5` = 13:00 UTC Mon–Fri (weekdays)
  *   = 8am US Central during CDT (summer) / 7am during CST (winter).
  *   Vercel cron is UTC and does not follow DST. Switch to `0 12 * * *`
  *   if you need 7am year-round.
