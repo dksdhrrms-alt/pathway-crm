@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -53,7 +53,7 @@ export default function AdminPage() {
   const { opportunities, tasks, activities, accounts, saleRecords } = useCRM();
   const { users: allUsers, updateUserById } = useUsers();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'productLibrary' | 'health'>('overview');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -326,6 +326,14 @@ export default function AdminPage() {
               }`}
             >
               User Permissions
+            </button>
+            <button
+              onClick={() => setActiveTab('productLibrary')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'productLibrary' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              Product Library
             </button>
             <button
               onClick={() => setActiveTab('health')}
@@ -673,6 +681,10 @@ export default function AdminPage() {
             <UserPermissionsPanel users={allUsers} onSave={(msg) => setToast(msg)} />
           )}
 
+          {activeTab === 'productLibrary' && (
+            <ProductLibraryPanel onSave={(msg) => setToast(msg)} />
+          )}
+
           {activeTab === 'health' && (
             <div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -1015,6 +1027,181 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// ── Product Library Panel ──────────────────────────────────────────
+// CRUD for the product_library_links table
+// (data-migration/23-product-library-links.sql). Everything the
+// sidebar's "Products" expandable group renders comes from this
+// panel — admins add / rename / re-URL / reorder / delete links
+// here and the sidebar picks them up on next page load.
+function ProductLibraryPanel({ onSave }: { onSave: (msg: string) => void }) {
+  type Link = { id: string; label: string; url: string; displayOrder: number };
+  const [links, setLinks] = React.useState<Link[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [newLabel, setNewLabel] = React.useState('');
+  const [newUrl, setNewUrl] = React.useState('');
+
+  function formatErr(e: unknown): string {
+    if (!e) return 'Unknown error';
+    if (e instanceof Error) return e.message;
+    if (typeof e === 'object') {
+      const o = e as { message?: string; details?: string; hint?: string; code?: string };
+      const parts = [o.message, o.details, o.hint, o.code].filter(Boolean);
+      if (parts.length > 0) return parts.join(' — ');
+    }
+    return String(e);
+  }
+
+  async function load() {
+    setLoading(true); setError(null);
+    try {
+      const { listProductLinks } = await import('@/lib/productLinks');
+      const rows = await listProductLinks();
+      setLinks(rows.map((r) => ({ id: r.id, label: r.label, url: r.url, displayOrder: r.displayOrder })));
+    } catch (e) { setError(formatErr(e)); }
+    finally { setLoading(false); }
+  }
+  React.useEffect(() => { load(); }, []);
+
+  async function saveRow(row: Link) {
+    if (!row.label.trim() || !row.url.trim()) {
+      onSave('Label and URL are required.');
+      return;
+    }
+    try {
+      const { upsertProductLink } = await import('@/lib/productLinks');
+      await upsertProductLink({
+        id: row.id || undefined,
+        label: row.label, url: row.url, displayOrder: row.displayOrder,
+      });
+      await load();
+      onSave(`Saved "${row.label}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function removeRow(id: string, label: string) {
+    if (!confirm(`Delete link "${label}"?`)) return;
+    try {
+      const { deleteProductLink } = await import('@/lib/productLinks');
+      await deleteProductLink(id);
+      await load();
+      onSave(`Deleted "${label}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function addNew() {
+    const label = newLabel.trim(), url = newUrl.trim();
+    if (!label || !url) { onSave('Label and URL are required.'); return; }
+    try {
+      const { upsertProductLink } = await import('@/lib/productLinks');
+      const nextOrder = links.length > 0 ? Math.max(...links.map((l) => l.displayOrder)) + 10 : 0;
+      await upsertProductLink({ label, url, displayOrder: nextOrder });
+      setNewLabel(''); setNewUrl('');
+      await load();
+      onSave(`Added "${label}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Product Library</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          Curate the shortcuts that appear under the sidebar&apos;s <span className="font-medium">Products</span> group.
+          Each link opens the Pathway USA Library in a new tab.
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-3 p-3 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-sm text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800">
+                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase w-20">Order</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Label</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">URL</th>
+                <th className="px-4 py-2 w-28" />
+              </tr>
+            </thead>
+            <tbody>
+              {links.map((row) => (
+                <tr key={row.id} className="border-b border-gray-50 dark:border-slate-800">
+                  <td className="px-4 py-2">
+                    <input type="number" value={row.displayOrder}
+                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, displayOrder: Number(e.target.value) || 0 } : r))}
+                      className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input value={row.label}
+                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, label: e.target.value } : r))}
+                      placeholder="Product name"
+                      className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input value={row.url}
+                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, url: e.target.value } : r))}
+                      placeholder="https://pathway-library-flame.vercel.app/..."
+                      className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm font-mono text-xs" />
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button onClick={() => saveRow(row)}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
+                      <button onClick={() => removeRow(row.id, row.label)}
+                        className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium">×</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+              {/* New-row form as the last table row so it always sits
+                  under the existing links. */}
+              <tr className="bg-gray-50/60 dark:bg-slate-800/30">
+                <td className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">new</td>
+                <td className="px-4 py-2">
+                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder="e.g. Lipidol Prime"
+                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
+                </td>
+                <td className="px-4 py-2">
+                  <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="https://pathway-library-flame.vercel.app/lipidol-prime"
+                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm font-mono text-xs" />
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <button onClick={addNew}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">+ Add</button>
+                </td>
+              </tr>
+
+              {links.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-500 italic">
+                    No links yet — add the first one above.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
+        Tip: paste the exact URL of the library page (e.g. a specific product page).
+        Lower &quot;Order&quot; numbers appear first in the sidebar.
+      </p>
     </div>
   );
 }

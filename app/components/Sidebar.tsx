@@ -94,6 +94,15 @@ function RndIcon() {
     </svg>
   );
 }
+function ProductsIcon() {
+  // Boxed shopping-bag glyph — mirrors "Products / Library" language.
+  return (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7h16l-1.5 12a2 2 0 01-2 1.8H7.5a2 2 0 01-2-1.8L4 7z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 7V5a3 3 0 016 0v2" />
+    </svg>
+  );
+}
 function AdminIcon() {
   return (
     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,6 +139,20 @@ export default function Sidebar() {
   const [rndMarketingOpen, setRndMarketingOpen] = useState(
     pathname.startsWith('/rnd') || pathname.startsWith('/projects'),
   );
+  // Products parent menu — expandable, admin-curated list of external
+  // shortcuts into the Pathway USA Library. Links load from Supabase
+  // so admin edits propagate everywhere without a redeploy.
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [productLinks, setProductLinks] = useState<{ id: string; label: string; url: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    import('@/lib/productLinks').then(({ listProductLinks }) =>
+      listProductLinks()
+        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, label: r.label, url: r.url }))); })
+        .catch(() => { /* silent — sidebar just hides the section */ }),
+    );
+    return () => { cancelled = true; };
+  }, []);
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const userId = session?.user?.id ?? '';
@@ -330,6 +353,42 @@ export default function Sidebar() {
                     Project Tracker
                   </Link>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Products — expandable list of Pathway USA Library
+            shortcuts. Everyone can see it (no permission gate); the
+            list is curated by admins via Admin → Product Library.
+            Each item opens the library in a new tab (external site). */}
+        {productLinks.length > 0 && (
+          <div>
+            <button
+              onClick={() => setProductsOpen(!productsOpen)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-white/60 hover:bg-white/10 hover:text-white"
+            >
+              <ProductsIcon />
+              <span>Products</span>
+              <svg className={`w-4 h-4 ml-auto transition-transform ${productsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {productsOpen && (
+              <div className="ml-8 mt-1 space-y-0.5">
+                {productLinks.map((link) => (
+                  <a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-1.5 rounded-md text-sm transition-all text-white/50 hover:text-white hover:bg-white/5"
+                    title={link.url}
+                  >
+                    {link.label}
+                  </a>
+                ))}
               </div>
             )}
           </div>
