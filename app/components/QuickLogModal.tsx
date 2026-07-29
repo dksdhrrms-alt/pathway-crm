@@ -414,7 +414,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Notes (optional) — or click 🎤 to dictate"
-            rows={3}
+            rows={7}
             style={{
               width: '100%',
               padding: '10px 12px',
@@ -422,7 +422,7 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               fontSize: '13px',
               border: '1px solid #e5e7eb',
               borderRadius: '8px',
-              resize: 'none',
+              resize: 'vertical',
               boxSizing: 'border-box',
               fontFamily: 'inherit',
               display: 'block',

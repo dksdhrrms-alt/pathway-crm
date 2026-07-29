@@ -276,8 +276,8 @@ export default function LogActivityModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Detailed notes... (or click 🎤 to dictate)"
-              rows={4}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              rows={7}
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
             />
             {/* Star flag — one click marks the activity so leadership's
                 Weekly Report carries the full description verbatim
