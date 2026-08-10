@@ -15,6 +15,7 @@ import Toast from '@/app/components/Toast';
 import EmptyState from '@/app/components/EmptyState';
 import QuickLogModal from '@/app/components/QuickLogModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
+import ProspectingPaceCard from '@/app/components/dashboard/ProspectingPaceCard';
 import NewOpportunityModal from '@/app/components/NewOpportunityModal';
 import NewAccountModal from '@/app/components/NewAccountModal';
 import NewContactModal from '@/app/components/NewContactModal';
@@ -493,6 +494,20 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Prospecting Pace — sales-director-requested self-coaching
+              mirror. Shows Call/Email/Meeting rates per business week
+              over 1/2/4 week windows so a rep can spot a sustained
+              slowdown. Managers get a per-teammate + Team-total
+              picker. Placed right below My Focus / My Deals so it
+              lands above the fold on first login. */}
+          <ProspectingPaceCard
+            activities={allActivities}
+            currentUserId={userId}
+            currentUserName={userName}
+            isManager={canViewTeam}
+            teamMembers={teamMembers}
+          />
 
           {/* Activity Leaderboard — DISABLED per redesign. Set to `true` to re-enable. */}
           {false && leaderboard.length > 0 && (

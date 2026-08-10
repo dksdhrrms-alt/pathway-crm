@@ -23,6 +23,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest } from 'next/server';
 import { COMMODITIES, fmtPrice, pctDelta } from '@/lib/commodities';
+import { computePace, fmtRate, trendGlyph } from '@/lib/prospectingPace';
+import type { Activity } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -56,6 +58,7 @@ function buildHtml(
   focus: EmailTask[],
   tasks: EmailTask[],
   opps: EmailOpp[],
+  paceHtml: string,
   marketHtml: string,
   newsHtml: string,
   today: string,
@@ -101,6 +104,7 @@ function buildHtml(
         ${section('My Focus', focusHtml)}
         ${section('My Tasks', tasksHtml)}
         ${section('My Open Deals', oppsHtml)}
+        ${section('Prospecting Pace', paceHtml)}
         ${section("Today's Feed Market", marketHtml)}
         ${section('Industry News', newsHtml)}
         <div style="text-align:center;margin-top:8px;">
@@ -212,6 +216,17 @@ export async function GET(request: NextRequest) {
     openByOwner.set(t.owner_id, arr);
   }
 
+  // ── Activities (raw list, we compute the pace per owner below) ──
+  // Pull the last ~35 days so the 30-day window has full coverage and
+  // we still leave slack for TZ / weekend edges.
+  const paceSince = new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0];
+  const { data: activityRows } = await sb.from('activities')
+    .select('id, type, owner_id, date').gte('date', paceSince);
+  const activitiesForPace: Activity[] = (activityRows || []).map((a) => ({
+    id: a.id, type: a.type, subject: '', description: '',
+    date: a.date, ownerId: a.owner_id, accountId: '',
+  }));
+
   // ── Opportunities (open by owner) ──
   // "Open" = anything not Closed Won / Closed Lost. Pipeline-only so
   // the brief celebrates what's in flight, not what's already done.
@@ -243,7 +258,36 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => (b.amount || 0) - (a.amount || 0))
       .slice(0, 5);
 
-    const html = buildHtml(u.name || 'there', focus, upcoming, myOpps, marketHtml, newsHtml, today);
+    // Prospecting pace table (per-user). Same math as the dashboard
+    // card so a rep sees the same numbers in email and in the app.
+    const paceRows = computePace(activitiesForPace, u.id);
+    const paceRowsHtml = paceRows.map((r) => {
+      const color = r.trend === 'up' ? '#0f6e56' : r.trend === 'down' ? '#dc2626' : '#6b7280';
+      return `<tr>
+        <td style="padding:4px 0;font-size:13px;color:#111;">${esc(r.type)}s</td>
+        <td style="padding:4px 8px;font-size:13px;color:#111;text-align:right;font-weight:600;">${esc(fmtRate(r.week1))} <span style="color:#9ca3af;font-size:11px;">/wk</span></td>
+        <td style="padding:4px 8px;font-size:13px;color:#374151;text-align:right;">${esc(fmtRate(r.week2))} <span style="color:#9ca3af;font-size:11px;">/wk</span></td>
+        <td style="padding:4px 8px;font-size:13px;color:#374151;text-align:right;">${esc(fmtRate(r.week4))} <span style="color:#9ca3af;font-size:11px;">/wk</span></td>
+        <td style="padding:4px 0;text-align:center;font-size:14px;font-weight:700;color:${color};">${trendGlyph(r.trend)}</td>
+      </tr>`;
+    }).join('');
+    const paceHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:4px 0;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">Activity</th>
+            <th style="text-align:right;padding:4px 8px;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">This week</th>
+            <th style="text-align:right;padding:4px 8px;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">2-wk avg</th>
+            <th style="text-align:right;padding:4px 8px;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">4-wk avg</th>
+            <th style="text-align:center;padding:4px 0;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">Trend</th>
+          </tr>
+        </thead>
+        <tbody>${paceRowsHtml}</tbody>
+      </table>
+      <p style="font-size:11px;color:#6b7280;margin:8px 0 0;">Events per business week (M-F). If all three columns trend the same way, that&apos;s your signal.</p>
+    `;
+
+    const html = buildHtml(u.name || 'there', focus, upcoming, myOpps, paceHtml, marketHtml, newsHtml, today);
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
