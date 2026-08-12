@@ -271,18 +271,28 @@ export async function GET(request: NextRequest) {
     stageBucketsByOwner.set(o.owner_id, buckets);
   }
 
-  // ── YTD closed-won by owner ──
+  // ── YTD actual sales from sale_records (invoiced, not Closed Won) ──
+  // sale_records.owner_name is a plain text column (no owner_id link),
+  // so we bucket by normalized name and match to each recipient's
+  // name at send time. sale_records.date is TEXT (YYYY-MM-DD) which
+  // sorts lexicographically, so a string gte works.
   const yearStart = `${new Date().getFullYear()}-01-01`;
-  const { data: wonRows } = await sb.from('opportunities')
-    .select('amount, close_date, owner_id')
-    .eq('stage', 'Closed Won')
-    .gte('close_date', yearStart);
-  const ytdByOwner = new Map<string, { amount: number; count: number }>();
-  for (const w of wonRows || []) {
-    const cur = ytdByOwner.get(w.owner_id) || { amount: 0, count: 0 };
-    cur.amount += Number(w.amount) || 0;
+  // Fetch in pages — the weekly report already does this because the
+  // table can hit ~3k rows. Two ranges cover the common case; the
+  // gte year filter cuts a lot down.
+  const [sr1, sr2] = await Promise.all([
+    sb.from('sale_records').select('owner_name, amount, date').gte('date', yearStart).range(0, 1499),
+    sb.from('sale_records').select('owner_name, amount, date').gte('date', yearStart).range(1500, 2999),
+  ]);
+  const ytdRecords = [...(sr1.data || []), ...(sr2.data || [])];
+  const ytdByName = new Map<string, { amount: number; count: number }>();
+  for (const r of ytdRecords) {
+    const key = ((r as { owner_name?: string | null }).owner_name || '').trim().toLowerCase();
+    if (!key) continue;
+    const cur = ytdByName.get(key) || { amount: 0, count: 0 };
+    cur.amount += Number((r as { amount?: number | null }).amount) || 0;
     cur.count += 1;
-    ytdByOwner.set(w.owner_id, cur);
+    ytdByName.set(key, cur);
   }
 
   // ── Send ──
@@ -330,7 +340,8 @@ export async function GET(request: NextRequest) {
     const buckets = stageBucketsByOwner.get(u.id) || {};
     const totalOpenCount = STAGE_GROUPS.reduce((s, g) => s + (buckets[g.label]?.count || 0), 0);
     const totalOpenAmount = STAGE_GROUPS.reduce((s, g) => s + (buckets[g.label]?.amount || 0), 0);
-    const ytd = ytdByOwner.get(u.id) || { amount: 0, count: 0 };
+    const nameKey = (u.name || '').trim().toLowerCase();
+    const ytd = ytdByName.get(nameKey) || { amount: 0, count: 0 };
     const stageRowsHtml = STAGE_GROUPS.map((g) => {
       const b = buckets[g.label] || { count: 0, amount: 0 };
       const dim = b.count === 0 ? 'color:#9ca3af;' : 'color:#111;';
@@ -358,7 +369,7 @@ export async function GET(request: NextRequest) {
           </tr>
           <tr>
             <td style="padding:2px 0 4px;font-size:13px;font-weight:700;color:#0f6e56;">YTD Sales (${new Date().getFullYear()})</td>
-            <td style="padding:2px 8px 4px;font-size:13px;font-weight:700;color:#0f6e56;text-align:right;">${ytd.count} won</td>
+            <td style="padding:2px 8px 4px;font-size:13px;font-weight:700;color:#0f6e56;text-align:right;">${ytd.count} sales records</td>
             <td style="padding:2px 0 4px;font-size:13px;font-weight:700;color:#0f6e56;text-align:right;">${esc(fmtCurrency(ytd.amount))}</td>
           </tr>
         </tbody>

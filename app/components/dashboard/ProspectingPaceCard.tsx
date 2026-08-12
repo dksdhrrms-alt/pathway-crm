@@ -11,7 +11,8 @@
  * layout, tabs, and colored trend arrows.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import type { Activity, Opportunity } from '@/lib/data';
 import type { AppUser } from '@/lib/users';
 import { computePace, fmtRate, trendGlyph, type PaceRow } from '@/lib/prospectingPace';
@@ -55,6 +56,33 @@ export default function ProspectingPaceCard({
   const isTeamAggregate = selected === '__team__';
   const memberIds = useMemo(() => new Set(teamMembers.map((u) => u.id)), [teamMembers]);
 
+  // YTD actual sales pulled from sale_records (the invoiced sales
+  // table the weekly report already uses) — NOT Closed Won
+  // opportunities. sale_records.owner_name is a plain text column so
+  // we key everything by normalized name.
+  const [ytdRecords, setYtdRecords] = useState<{ ownerName: string; amount: number }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return;
+    const sb = createClient(url, key, { auth: { persistSession: false } });
+    const yearStart = `${new Date().getFullYear()}-01-01`;
+    // sale_records.date is stored as TEXT (YYYY-MM-DD) — string
+    // comparison works because the format is lexicographic.
+    sb.from('sale_records')
+      .select('owner_name, amount, date')
+      .gte('date', yearStart)
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setYtdRecords(data.map((r: { owner_name?: string | null; amount?: number | null }) => ({
+          ownerName: (r.owner_name || '').trim().toLowerCase(),
+          amount: Number(r.amount) || 0,
+        })));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   // Owner filter shared by pace + pipeline + YTD panels so a manager
   // flipping the picker sees a consistent view.
   const ownerMatch = (ownerId: string) =>
@@ -72,6 +100,22 @@ export default function ProspectingPaceCard({
     return computePace(activities, selected);
   }, [activities, selected, isTeamAggregate, memberIds]);
 
+  // Names to match against sale_records.owner_name (which is text).
+  // For "Team total" we accept every team member's name; for a single
+  // rep we accept just theirs. All comparisons are lowercase-trimmed.
+  const ownerNames = useMemo(() => {
+    const names = new Set<string>();
+    if (isTeamAggregate) {
+      for (const u of teamMembers) if (u.name) names.add(u.name.trim().toLowerCase());
+    } else if (selected === currentUserId) {
+      if (currentUserName) names.add(currentUserName.trim().toLowerCase());
+    } else {
+      const u = teamMembers.find((m) => m.id === selected);
+      if (u?.name) names.add(u.name.trim().toLowerCase());
+    }
+    return names;
+  }, [selected, isTeamAggregate, teamMembers, currentUserId, currentUserName]);
+
   // Pipeline breakdown by canonical stage group + running totals.
   const pipeline = useMemo(() => {
     const mine = opportunities.filter((o) => ownerMatch(o.ownerId));
@@ -87,19 +131,17 @@ export default function ProspectingPaceCard({
       (acc, r) => ({ count: acc.count + r.count, amount: acc.amount + r.amount }),
       { count: 0, amount: 0 },
     );
-    // YTD sales = sum of Closed Won opportunities that CLOSED this
-    // calendar year. Falls back to opportunity.closeDate if present,
-    // otherwise we skip that row (can't be sure it belongs to YTD).
-    const yearStart = new Date(new Date().getFullYear(), 0, 1);
-    const ytdWon = mine.filter((o) => {
-      if (o.stage !== 'Closed Won') return false;
-      if (!o.closeDate) return false;
-      const d = new Date(o.closeDate);
-      return !Number.isNaN(d.getTime()) && d >= yearStart;
-    });
-    const ytdSales = ytdWon.reduce((s, o) => s + (Number(o.amount) || 0), 0);
-    return { perStage, totalOpen, ytdSales, ytdCount: ytdWon.length };
-  }, [opportunities, selected, isTeamAggregate, memberIds]); // eslint-disable-line react-hooks/exhaustive-deps
+    // YTD sales = sum of actual invoiced amounts from sale_records
+    // where the record's owner_name matches this rep (or any team
+    // member for Team total). This is the number the sales team
+    // reports to leadership — Closed Won opps was too optimistic and
+    // never matched the sale records the team uploads monthly.
+    const ytdSales = ytdRecords
+      .filter((r) => ownerNames.has(r.ownerName))
+      .reduce((s, r) => s + r.amount, 0);
+    const ytdCount = ytdRecords.filter((r) => ownerNames.has(r.ownerName)).length;
+    return { perStage, totalOpen, ytdSales, ytdCount };
+  }, [opportunities, selected, isTeamAggregate, memberIds, ytdRecords, ownerNames]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const trendColor = (t: PaceRow['trend']) =>
     t === 'up' ? 'text-emerald-600 dark:text-emerald-400'
@@ -198,7 +240,7 @@ export default function ProspectingPaceCard({
             <div className="text-right pl-4 border-l border-gray-200 dark:border-slate-700">
               <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">YTD Sales</div>
               <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                {fmtCompact(pipeline.ytdSales)} <span className="text-[11px] font-normal text-emerald-600/70 dark:text-emerald-500/70">· {pipeline.ytdCount} won</span>
+                {fmtCompact(pipeline.ytdSales)} <span className="text-[11px] font-normal text-emerald-600/70 dark:text-emerald-500/70">· {pipeline.ytdCount} sales records</span>
               </div>
             </div>
           </div>
