@@ -508,12 +508,13 @@ export default function DashboardPage() {
             currentUserName={userName}
             isManager={canViewTeam}
             // Company-wide viewers (admin / administrative_manager /
-            // ceo) rarely have a `team` set, which used to leave the
-            // picker empty and show only their own (usually zero)
-            // numbers. Fall back to every active sales-oriented user
-            // so they can pick anyone to inspect.
+            // ceo) get EVERY active sales-oriented user in their
+            // picker regardless of their own team. Their own team
+            // (usually "management") has no sales activities to look
+            // at, so filtering to it hid the reps we actually want to
+            // inspect. Non-admin managers keep their scoped team list.
             teamMembers={
-              canViewCompany && teamMembers.length === 0
+              canViewCompany
                 ? users.filter((u) => u.status === 'active' && ['sales', 'sales_director', 'marketing', 'technical_manager', 'coo'].includes(u.role))
                 : teamMembers
             }

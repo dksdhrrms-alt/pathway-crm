@@ -51,7 +51,14 @@ export default function ProspectingPaceCard({
   activities, opportunities, currentUserId, currentUserName, isManager, teamMembers,
 }: Props) {
   // Default to viewing self; manager can flip between self / team member / Team.
+  // useState only captures the initial value, so if `currentUserId`
+  // arrives after the first render (session hydrates async) we'd get
+  // stuck on an empty string and every filter would return zero.
+  // Sync it in an effect so we always land on the real user id.
   const [selected, setSelected] = useState<string>(currentUserId);
+  useEffect(() => {
+    if (!selected && currentUserId) setSelected(currentUserId);
+  }, [currentUserId, selected]);
 
   const isTeamAggregate = selected === '__team__';
   const memberIds = useMemo(() => new Set(teamMembers.map((u) => u.id)), [teamMembers]);
