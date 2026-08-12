@@ -149,6 +149,14 @@ export default function ProspectingPaceCard({
       : 'text-gray-400 dark:text-gray-500';
 
   const anyDecliningStreak = rows.some((r) => r.trend === 'down' && r.week4 >= 1);
+  // Zero-state hint. If everything is 0 we probably picked a viewer
+  // who owns no activities / opps / sales (e.g. an admin looking at
+  // themselves) — nudge them toward the rep picker instead of
+  // leaving them staring at rows of zeros.
+  const allZero = rows.every((r) => r.week1 === 0 && r.week2 === 0 && r.week4 === 0)
+    && pipeline.totalOpen.count === 0
+    && pipeline.ytdSales === 0;
+  const viewingSelf = selected === currentUserId && !isTeamAggregate;
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden mb-6">
@@ -279,6 +287,17 @@ export default function ProspectingPaceCard({
           </table>
         </div>
       </div>
+
+      {allZero && (
+        <div className="px-5 py-2.5 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-100 dark:border-blue-900/40 text-[12px] text-blue-800 dark:text-blue-200">
+          {isManager && teamMembers.length > 0 ? (
+            <>No activities or deals for <span className="font-medium">{viewingSelf ? 'you' : 'this rep'}</span> in the window.
+            {viewingSelf && ' Try picking a teammate or Team total above.'}</>
+          ) : (
+            <>No activities or deals logged yet in the tracked window. Once you start logging calls / emails / meetings, this card will fill in.</>
+          )}
+        </div>
+      )}
 
       {anyDecliningStreak && !isTeamAggregate && selected === currentUserId && (
         <div className="px-5 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-900/40 text-[12px] text-amber-800 dark:text-amber-200">

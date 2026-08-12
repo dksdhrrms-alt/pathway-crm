@@ -507,7 +507,16 @@ export default function DashboardPage() {
             currentUserId={userId}
             currentUserName={userName}
             isManager={canViewTeam}
-            teamMembers={teamMembers}
+            // Company-wide viewers (admin / administrative_manager /
+            // ceo) rarely have a `team` set, which used to leave the
+            // picker empty and show only their own (usually zero)
+            // numbers. Fall back to every active sales-oriented user
+            // so they can pick anyone to inspect.
+            teamMembers={
+              canViewCompany && teamMembers.length === 0
+                ? users.filter((u) => u.status === 'active' && ['sales', 'sales_director', 'marketing', 'technical_manager', 'coo'].includes(u.role))
+                : teamMembers
+            }
           />
 
           {/* Activity Leaderboard — DISABLED per redesign. Set to `true` to re-enable. */}
