@@ -503,6 +503,7 @@ export default function DashboardPage() {
               lands above the fold on first login. */}
           <ProspectingPaceCard
             activities={allActivities}
+            opportunities={allOpps}
             currentUserId={userId}
             currentUserName={userName}
             isManager={canViewTeam}

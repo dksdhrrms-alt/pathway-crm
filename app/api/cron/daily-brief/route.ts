@@ -59,6 +59,7 @@ function buildHtml(
   tasks: EmailTask[],
   opps: EmailOpp[],
   paceHtml: string,
+  pipelineHtml: string,
   marketHtml: string,
   newsHtml: string,
   today: string,
@@ -105,6 +106,7 @@ function buildHtml(
         ${section('My Tasks', tasksHtml)}
         ${section('My Open Deals', oppsHtml)}
         ${section('Prospecting Pace', paceHtml)}
+        ${section('Pipeline & YTD', pipelineHtml)}
         ${section("Today's Feed Market", marketHtml)}
         ${section('Industry News', newsHtml)}
         <div style="text-align:center;margin-top:8px;">
@@ -234,6 +236,20 @@ export async function GET(request: NextRequest) {
     .select('name, stage, amount, close_date, owner_id, account_id')
     .not('stage', 'in', '("Closed Won","Closed Lost")');
   const oppsByOwner = new Map<string, EmailOpp[]>();
+  // Per-stage bucketed counts + amounts, for the "Pipeline & YTD"
+  // section. Same canonical groups as the dashboard card.
+  const stageBucketsByOwner = new Map<string, Record<string, { count: number; amount: number }>>();
+  const STAGE_GROUPS: { label: string; stages: string[] }[] = [
+    { label: 'Prospect',      stages: ['Prospect', 'Prospecting'] },
+    { label: 'Qualified',     stages: ['Qualified', 'Qualification'] },
+    { label: 'Trial Started', stages: ['Trial Started'] },
+    { label: 'Proposal',      stages: ['Proposal'] },
+    { label: 'Negotiation',   stages: ['Negotiation'] },
+  ];
+  function groupFor(stage: string): string | null {
+    for (const g of STAGE_GROUPS) if (g.stages.includes(stage)) return g.label;
+    return null;
+  }
   for (const o of opps || []) {
     const arr = oppsByOwner.get(o.owner_id) || [];
     arr.push({
@@ -244,6 +260,29 @@ export async function GET(request: NextRequest) {
       account: o.account_id ? acctName.get(o.account_id) : '',
     });
     oppsByOwner.set(o.owner_id, arr);
+
+    const g = groupFor(o.stage);
+    if (!g) continue;
+    const buckets = stageBucketsByOwner.get(o.owner_id) || {};
+    const cur = buckets[g] || { count: 0, amount: 0 };
+    cur.count += 1;
+    cur.amount += Number(o.amount) || 0;
+    buckets[g] = cur;
+    stageBucketsByOwner.set(o.owner_id, buckets);
+  }
+
+  // ── YTD closed-won by owner ──
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const { data: wonRows } = await sb.from('opportunities')
+    .select('amount, close_date, owner_id')
+    .eq('stage', 'Closed Won')
+    .gte('close_date', yearStart);
+  const ytdByOwner = new Map<string, { amount: number; count: number }>();
+  for (const w of wonRows || []) {
+    const cur = ytdByOwner.get(w.owner_id) || { amount: 0, count: 0 };
+    cur.amount += Number(w.amount) || 0;
+    cur.count += 1;
+    ytdByOwner.set(w.owner_id, cur);
   }
 
   // ── Send ──
@@ -287,7 +326,46 @@ export async function GET(request: NextRequest) {
       <p style="font-size:11px;color:#6b7280;margin:8px 0 0;">Events per business week (M-F). If all three columns trend the same way, that&apos;s your signal.</p>
     `;
 
-    const html = buildHtml(u.name || 'there', focus, upcoming, myOpps, paceHtml, marketHtml, newsHtml, today);
+    // Pipeline breakdown + YTD closed sales for the recipient.
+    const buckets = stageBucketsByOwner.get(u.id) || {};
+    const totalOpenCount = STAGE_GROUPS.reduce((s, g) => s + (buckets[g.label]?.count || 0), 0);
+    const totalOpenAmount = STAGE_GROUPS.reduce((s, g) => s + (buckets[g.label]?.amount || 0), 0);
+    const ytd = ytdByOwner.get(u.id) || { amount: 0, count: 0 };
+    const stageRowsHtml = STAGE_GROUPS.map((g) => {
+      const b = buckets[g.label] || { count: 0, amount: 0 };
+      const dim = b.count === 0 ? 'color:#9ca3af;' : 'color:#111;';
+      return `<tr>
+        <td style="padding:4px 0;font-size:13px;${dim}">${esc(g.label)}</td>
+        <td style="padding:4px 8px;font-size:13px;text-align:right;font-weight:600;${dim}">${b.count}</td>
+        <td style="padding:4px 0;font-size:13px;text-align:right;${dim}">${esc(fmtCurrency(b.amount))}</td>
+      </tr>`;
+    }).join('');
+    const pipelineHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:4px 0;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">Stage</th>
+            <th style="text-align:right;padding:4px 8px;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">Deals</th>
+            <th style="text-align:right;padding:4px 0;font-size:10px;text-transform:uppercase;color:#9ca3af;font-weight:600;letter-spacing:.5px;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${stageRowsHtml}
+          <tr style="border-top:1px solid #e5e7eb;">
+            <td style="padding:6px 0 2px;font-size:13px;font-weight:700;color:#111;">Total Open</td>
+            <td style="padding:6px 8px 2px;font-size:13px;font-weight:700;color:#111;text-align:right;">${totalOpenCount}</td>
+            <td style="padding:6px 0 2px;font-size:13px;font-weight:700;color:#111;text-align:right;">${esc(fmtCurrency(totalOpenAmount))}</td>
+          </tr>
+          <tr>
+            <td style="padding:2px 0 4px;font-size:13px;font-weight:700;color:#0f6e56;">YTD Sales (${new Date().getFullYear()})</td>
+            <td style="padding:2px 8px 4px;font-size:13px;font-weight:700;color:#0f6e56;text-align:right;">${ytd.count} won</td>
+            <td style="padding:2px 0 4px;font-size:13px;font-weight:700;color:#0f6e56;text-align:right;">${esc(fmtCurrency(ytd.amount))}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+    const html = buildHtml(u.name || 'there', focus, upcoming, myOpps, paceHtml, pipelineHtml, marketHtml, newsHtml, today);
     try {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',

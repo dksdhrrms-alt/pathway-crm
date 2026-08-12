@@ -12,40 +12,94 @@
  */
 
 import { useMemo, useState } from 'react';
-import type { Activity } from '@/lib/data';
+import type { Activity, Opportunity } from '@/lib/data';
 import type { AppUser } from '@/lib/users';
 import { computePace, fmtRate, trendGlyph, type PaceRow } from '@/lib/prospectingPace';
 
 const TYPE_EMOJI: Record<string, string> = { Call: '📞', Email: '📧', Meeting: '🤝' };
 
+// Sales-cycle stages surfaced in the "Pipeline" panel. We fold the
+// duplicate labels ('Prospect'/'Prospecting', 'Qualified'/'Qualification')
+// into a single canonical bucket so a rep doesn't see the same stage
+// twice on their scorecard.
+const STAGE_GROUPS: { label: string; stages: string[] }[] = [
+  { label: 'Prospect',      stages: ['Prospect', 'Prospecting'] },
+  { label: 'Qualified',     stages: ['Qualified', 'Qualification'] },
+  { label: 'Trial Started', stages: ['Trial Started'] },
+  { label: 'Proposal',      stages: ['Proposal'] },
+  { label: 'Negotiation',   stages: ['Negotiation'] },
+];
+
 interface Props {
   activities: Activity[];
+  opportunities: Opportunity[];
   currentUserId: string;
   currentUserName: string;
   isManager: boolean;      // if true, tabs for each team member + Team total
   teamMembers: AppUser[];  // ignored when !isManager
 }
 
+function fmtCompact(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '$0';
+  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
 export default function ProspectingPaceCard({
-  activities, currentUserId, currentUserName, isManager, teamMembers,
+  activities, opportunities, currentUserId, currentUserName, isManager, teamMembers,
 }: Props) {
   // Default to viewing self; manager can flip between self / team member / Team.
   const [selected, setSelected] = useState<string>(currentUserId);
 
   const isTeamAggregate = selected === '__team__';
+  const memberIds = useMemo(() => new Set(teamMembers.map((u) => u.id)), [teamMembers]);
+
+  // Owner filter shared by pace + pipeline + YTD panels so a manager
+  // flipping the picker sees a consistent view.
+  const ownerMatch = (ownerId: string) =>
+    isTeamAggregate ? memberIds.has(ownerId) : ownerId === selected;
 
   const rows: PaceRow[] = useMemo(() => {
     if (isTeamAggregate) {
       // Aggregate = sum every teammate's counts. Easiest path: fake a
       // synthetic owner id, rewrite ownerId on the fly for the reducer.
-      const memberIds = new Set(teamMembers.map((u) => u.id));
       const mapped: Activity[] = activities
         .filter((a) => memberIds.has(a.ownerId))
         .map((a) => ({ ...a, ownerId: '__team__' }));
       return computePace(mapped, '__team__');
     }
     return computePace(activities, selected);
-  }, [activities, selected, isTeamAggregate, teamMembers]);
+  }, [activities, selected, isTeamAggregate, memberIds]);
+
+  // Pipeline breakdown by canonical stage group + running totals.
+  const pipeline = useMemo(() => {
+    const mine = opportunities.filter((o) => ownerMatch(o.ownerId));
+    const perStage = STAGE_GROUPS.map((grp) => {
+      const inGroup = mine.filter((o) => grp.stages.includes(o.stage));
+      return {
+        label: grp.label,
+        count: inGroup.length,
+        amount: inGroup.reduce((s, o) => s + (Number(o.amount) || 0), 0),
+      };
+    });
+    const totalOpen = perStage.reduce(
+      (acc, r) => ({ count: acc.count + r.count, amount: acc.amount + r.amount }),
+      { count: 0, amount: 0 },
+    );
+    // YTD sales = sum of Closed Won opportunities that CLOSED this
+    // calendar year. Falls back to opportunity.closeDate if present,
+    // otherwise we skip that row (can't be sure it belongs to YTD).
+    const yearStart = new Date(new Date().getFullYear(), 0, 1);
+    const ytdWon = mine.filter((o) => {
+      if (o.stage !== 'Closed Won') return false;
+      if (!o.closeDate) return false;
+      const d = new Date(o.closeDate);
+      return !Number.isNaN(d.getTime()) && d >= yearStart;
+    });
+    const ytdSales = ytdWon.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+    return { perStage, totalOpen, ytdSales, ytdCount: ytdWon.length };
+  }, [opportunities, selected, isTeamAggregate, memberIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const trendColor = (t: PaceRow['trend']) =>
     t === 'up' ? 'text-emerald-600 dark:text-emerald-400'
@@ -120,6 +174,68 @@ export default function ProspectingPaceCard({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pipeline & YTD panel — the second half of the sales-director
+          requested "complete picture". Uses the same rep picker as
+          the pace table above so managers see one holistic view per
+          person. */}
+      <div className="border-t border-gray-100 dark:border-slate-800">
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">📊 Pipeline &amp; YTD</h3>
+            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+              Open deals by stage plus this year&apos;s closed sales.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="text-right">
+              <div className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total Open</div>
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                {pipeline.totalOpen.count} <span className="text-[11px] font-normal text-gray-400">deals · {fmtCompact(pipeline.totalOpen.amount)}</span>
+              </div>
+            </div>
+            <div className="text-right pl-4 border-l border-gray-200 dark:border-slate-700">
+              <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">YTD Sales</div>
+              <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                {fmtCompact(pipeline.ytdSales)} <span className="text-[11px] font-normal text-emerald-600/70 dark:text-emerald-500/70">· {pipeline.ytdCount} won</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto pb-1">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-y border-gray-100 dark:border-slate-800 bg-gray-50/60 dark:bg-slate-800/60">
+                <th className="text-left px-5 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stage</th>
+                <th className="text-right px-4 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Deals</th>
+                <th className="text-right px-4 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Value</th>
+                <th className="text-right px-5 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">% of pipeline</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pipeline.perStage.map((s) => {
+                const pct = pipeline.totalOpen.amount > 0 ? (s.amount / pipeline.totalOpen.amount) * 100 : 0;
+                const dim = s.count === 0;
+                return (
+                  <tr key={s.label} className="border-b border-gray-50 dark:border-slate-800 last:border-b-0">
+                    <td className={`px-5 py-2 ${dim ? 'text-gray-400 dark:text-gray-600' : 'text-gray-800 dark:text-gray-100'}`}>{s.label}</td>
+                    <td className={`text-right px-4 py-2 font-medium ${dim ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'}`}>{s.count}</td>
+                    <td className={`text-right px-4 py-2 ${dim ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}>{fmtCompact(s.amount)}</td>
+                    <td className="text-right px-5 py-2">
+                      <div className="inline-flex items-center gap-2">
+                        <div className="w-20 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
+                          <div className="h-full bg-[#1a4731] dark:bg-emerald-500" style={{ width: `${Math.min(100, pct)}%` }} />
+                        </div>
+                        <span className={`text-[11px] tabular-nums ${dim ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400'}`}>{pct.toFixed(0)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {anyDecliningStreak && !isTeamAggregate && selected === currentUserId && (
