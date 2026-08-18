@@ -161,10 +161,20 @@ export function parseExcelFile(buffer: ArrayBuffer): ParseResult {
 }
 
 function makeDupKey(r: SaleRecord): string {
-  // Use PO + product + volume + amount for exact match
-  if (r.poNumber) return `${r.poNumber}|${r.productName}|${r.volumeKg}|${r.amount}`;
-  // Fallback if no PO: date + account + product + amount
-  return `${r.date}|${r.accountName}|${r.productName}|${r.amount}`;
+  // A real re-order gets a NEW customer PO from the customer, so it
+  // uniquely identifies each purchase transaction. Prefer that first
+  // so two legit re-buys of the same product don't collapse into one.
+  const cpo = (r.customerPO || '').trim();
+  if (cpo) return `cpo|${cpo}|${r.productName}|${r.amount}`;
+  // Fall back to Pathway's internal PO if the customer's PO isn't in
+  // the file. Also uniquely identifies an order line but is more
+  // likely to be blank on older records.
+  if (r.poNumber) return `po|${r.poNumber}|${r.productName}|${r.volumeKg}|${r.amount}`;
+  // Last resort: date + account + product + amount. This is the
+  // loose key that used to cause false positives — reorders on the
+  // same day for the same amount matched here. Kept only for rows
+  // that have no PO at all.
+  return `loose|${r.date}|${r.accountName}|${r.productName}|${r.amount}`;
 }
 
 export function findDuplicates(

@@ -38,6 +38,12 @@ export default function SalesUploadPage() {
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [showSkipped, setShowSkipped] = useState(false);
   const [skippedRecords, setSkippedRecords] = useState<SaleRecord[]>([]);
+  // Per-row override for the skipped panel. Sometimes a "duplicate"
+  // is actually a real re-order (customer buys the same product
+  // again). Users tick the checkbox next to any such row and click
+  // "Import selected" to force-insert them as separate orders.
+  const [overrideIds, setOverrideIds] = useState<Set<string>>(new Set());
+  const [overriding, setOverriding] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +56,48 @@ export default function SalesUploadPage() {
       });
     } else {
       try { localStorage.setItem('sales_records', JSON.stringify(data)); } catch { /* */ }
+    }
+  }
+
+  // Force-import the rows the user ticked in the skipped panel.
+  // Records get a fresh id so the DB doesn't complain, and a new
+  // batchId so they show up separately in Upload History as an
+  // "override" batch. Records also get removed from the skipped
+  // list to reflect the outcome in the UI.
+  function handleImportOverrides() {
+    const chosen = skippedRecords.filter((r) => overrideIds.has(r.id));
+    if (chosen.length === 0) return;
+    setOverriding(true);
+    const batchId = `batch-override-${Date.now()}`;
+    const tagged = chosen.map((r) => ({
+      ...r,
+      id: `sale-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}-${r.id.slice(-4)}`,
+      uploadBatchId: batchId,
+    }));
+    try {
+      saveSalesData([...salesData, ...tagged]);
+      addActivity({
+        id: generateId(), type: 'Note',
+        subject: `[SYSTEM] Sales override — ${tagged.length} record(s) imported as separate orders`,
+        description: `Force-imported from the skipped list (customer re-orders that the dup check flagged).`,
+        date: new Date().toISOString().split('T')[0],
+        ownerId: session?.user?.id ?? '', accountId: '',
+      });
+      // Drop them from the visible skipped list; also update the
+      // counter shown in the header.
+      const remaining = skippedRecords.filter((r) => !overrideIds.has(r.id));
+      setSkippedRecords(remaining);
+      setOverrideIds(new Set());
+      if (importResult) {
+        setImportResult({
+          ...importResult,
+          imported: importResult.imported + tagged.length,
+          skipped: remaining.length,
+        });
+      }
+      setToast(`Imported ${tagged.length} record${tagged.length === 1 ? '' : 's'} as separate orders`);
+    } finally {
+      setOverriding(false);
     }
   }
 
@@ -311,18 +359,78 @@ export default function SalesUploadPage() {
               )}
               {skippedRecords.length > 0 && (
                 <div className="mb-4 text-left">
-                  <button onClick={() => setShowSkipped(!showSkipped)} className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline">
-                    {importResult.skipped} skipped — {showSkipped ? 'hide' : 'click to view'}
-                  </button>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <button onClick={() => setShowSkipped(!showSkipped)} className="text-sm font-medium text-amber-600 dark:text-amber-400 hover:underline">
+                      {importResult.skipped} skipped — {showSkipped ? 'hide' : 'click to view'}
+                    </button>
+                    {showSkipped && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setOverrideIds((prev) => prev.size === skippedRecords.length ? new Set() : new Set(skippedRecords.map((r) => r.id)))}
+                          className="text-xs text-gray-500 dark:text-gray-400 hover:underline"
+                        >
+                          {overrideIds.size === skippedRecords.length ? 'Clear' : 'Select all'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleImportOverrides}
+                          disabled={overrideIds.size === 0 || overriding}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Force-import the checked rows as separate real orders (customer re-buys, not data-entry duplicates)"
+                        >
+                          {overriding ? 'Importing…' : `Import ${overrideIds.size || ''} as separate orders`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   {showSkipped && (
-                    <div className="mt-2 max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg">
-                      <table className="w-full text-xs">
-                        <thead><tr className="bg-gray-50 dark:bg-slate-800 border-b dark:border-slate-700"><th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Date</th><th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Account</th><th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Product</th><th className="px-3 py-1.5 text-right text-gray-500 dark:text-gray-400">Amount</th><th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Reason</th></tr></thead>
-                        <tbody>{skippedRecords.map((r, i) => (
-                          <tr key={i} className="border-b border-gray-50 dark:border-slate-700"><td className="px-3 py-1 dark:text-gray-300">{r.date}</td><td className="px-3 py-1 dark:text-gray-300">{r.accountName}</td><td className="px-3 py-1 dark:text-gray-300">{r.productName}</td><td className="px-3 py-1 text-right dark:text-gray-300">${r.amount.toLocaleString()}</td><td className="px-3 py-1 text-amber-600 dark:text-amber-400">Duplicate</td></tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
+                    <>
+                      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        Tick the rows that are actually <span className="font-medium">separate real orders</span> (re-buys) and click <span className="font-medium">Import</span>. Leave unchecked the ones that really are accidental duplicates.
+                      </p>
+                      <div className="mt-2 max-h-56 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-slate-800 border-b dark:border-slate-700">
+                              <th className="w-8 px-3 py-1.5"></th>
+                              <th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Date</th>
+                              <th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Account</th>
+                              <th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Product</th>
+                              <th className="px-3 py-1.5 text-right text-gray-500 dark:text-gray-400">Amount</th>
+                              <th className="px-3 py-1.5 text-left text-gray-500 dark:text-gray-400">Reason</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {skippedRecords.map((r) => {
+                              const checked = overrideIds.has(r.id);
+                              return (
+                                <tr key={r.id} className={`border-b border-gray-50 dark:border-slate-700 ${checked ? 'bg-emerald-50/60 dark:bg-emerald-950/20' : ''}`}>
+                                  <td className="px-3 py-1 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={(e) => setOverrideIds((prev) => {
+                                        const next = new Set(prev);
+                                        if (e.target.checked) next.add(r.id); else next.delete(r.id);
+                                        return next;
+                                      })}
+                                      className="rounded border-gray-300 dark:border-slate-600 text-emerald-600"
+                                      title="Import this row as a separate real order"
+                                    />
+                                  </td>
+                                  <td className="px-3 py-1 dark:text-gray-300">{r.date}</td>
+                                  <td className="px-3 py-1 dark:text-gray-300">{r.accountName}</td>
+                                  <td className="px-3 py-1 dark:text-gray-300">{r.productName}</td>
+                                  <td className="px-3 py-1 text-right dark:text-gray-300">${r.amount.toLocaleString()}</td>
+                                  <td className="px-3 py-1 text-amber-600 dark:text-amber-400">Duplicate</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
