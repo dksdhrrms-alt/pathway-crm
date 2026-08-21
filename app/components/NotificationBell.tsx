@@ -91,7 +91,7 @@ export default function NotificationBell() {
     // 2. Deals closing within 7 days
     const opps = isAdmin ? opportunities : opportunities.filter((o) => o.ownerId === userId);
     opps
-      .filter((o) => o.closeDate && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost')
+      .filter((o) => o.closeDate && o.stage !== 'Won' && o.stage !== 'Stalled or Lost')
       .filter((o) => {
         const days = Math.floor((new Date(o.closeDate + 'T00:00:00').getTime() - todayMs) / 86400000);
         return days >= 0 && days <= 7;
@@ -115,7 +115,7 @@ export default function NotificationBell() {
     //     Owner-scoped for non-admins; admins see everyone's so they can
     //     coach. We cap at 5 to keep the bell list focused.
     opps
-      .filter((o) => o.closeDate && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost')
+      .filter((o) => o.closeDate && o.stage !== 'Won' && o.stage !== 'Stalled or Lost')
       .filter((o) => {
         const days = Math.floor((todayMs - new Date(o.closeDate + 'T00:00:00').getTime()) / 86400000);
         return days >= 14;  // 14+ days past closeDate

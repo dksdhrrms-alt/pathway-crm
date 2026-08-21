@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
-import { Opportunity, Stage, generateId, annualizedRevenue } from '@/lib/data';
+import { Opportunity, Stage, STAGES_ORDER, STAGE_PROBABILITY, generateId, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import SubmitButton from './SubmitButton';
@@ -14,19 +14,10 @@ interface NewOpportunityModalProps {
   onSave: (opportunity: Opportunity) => void;
 }
 
-const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-
-const DEFAULT_PROBABILITY: Record<Stage, number> = {
-  Prospect: 5,
-  Prospecting: 10,
-  Qualified: 20,
-  Qualification: 25,
-  'Trial Started': 40,
-  Proposal: 50,
-  Negotiation: 75,
-  'Closed Won': 100,
-  'Closed Lost': 0,
-};
+// Stage list and default probabilities live in lib/data.ts so every
+// screen sees the same values.
+const STAGES = STAGES_ORDER;
+const DEFAULT_PROBABILITY = STAGE_PROBABILITY;
 
 export default function NewOpportunityModal({ defaultAccountId = '', defaultStage, onClose, onSave }: NewOpportunityModalProps) {
   const { data: session } = useSession();

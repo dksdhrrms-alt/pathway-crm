@@ -68,8 +68,8 @@ export default function AdminPage() {
   const [migrateConfirm, setMigrateConfirm] = useState(false);
   const [migrateDone, setMigrateDone] = useState(false);
 
-  const totalOpenDeals = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length;
-  const totalPipeline = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + o.amount, 0);
+  const totalOpenDeals = opportunities.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').length;
+  const totalPipeline = opportunities.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').reduce((s, o) => s + o.amount, 0);
   const totalOverdue = tasks.filter((t) => t.status === 'Open' && t.dueDate < TODAY).length;
 
   const repStats = useMemo(
@@ -78,8 +78,8 @@ export default function AdminPage() {
         const userOpps = opportunities.filter((o) => o.ownerId === user.id);
         const userTasks = tasks.filter((t) => t.ownerId === user.id);
         const userActs = activities.filter((a) => a.ownerId === user.id);
-        const openDeals = userOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length;
-        const pipelineValue = userOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + o.amount, 0);
+        const openDeals = userOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').length;
+        const pipelineValue = userOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').reduce((s, o) => s + o.amount, 0);
         const openTaskCount = userTasks.filter((t) => t.status === 'Open').length;
         const overdueTaskCount = userTasks.filter((t) => t.status === 'Open' && t.dueDate < TODAY).length;
         const sortedActs = [...userActs].sort((a, b) => b.date.localeCompare(a.date));

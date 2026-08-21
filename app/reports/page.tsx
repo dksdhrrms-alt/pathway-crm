@@ -211,7 +211,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
       const teamActs = filteredActivities.filter((a) => teamIds.has(a.ownerId));
       const teamTasks = allTasks.filter((t) => teamIds.has(t.ownerId));
       const teamOpps = allOpps.filter((o) => teamIds.has(o.ownerId));
-      const openPipeline = teamOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + (o.amount || 0), 0);
+      const openPipeline = teamOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').reduce((s, o) => s + (o.amount || 0), 0);
       const calls = teamActs.filter((a) => a.type === 'Call').length;
       const meetings = teamActs.filter((a) => a.type === 'Meeting').length;
       const emails = teamActs.filter((a) => a.type === 'Email').length;
@@ -274,7 +274,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           .filter((t) => !t.dueDate || ((!fromDate || t.dueDate >= fromDate) && t.dueDate <= toDate))
           .map(enrichTask),
         opportunities: allOpps
-          .filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost')
+          .filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Stalled or Lost')
           .map(enrichOpp),
       };
     });
@@ -341,7 +341,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
           teamName: label,
           activities: allActivities.filter((a) => memberIds.has(a.ownerId)).filter((a) => a.date >= fromIso && a.date <= toIso).map(enrichA),
           tasks: allTasks.filter((t) => memberIds.has(t.ownerId) && isNextWeekTask(t)).map(enrichT),
-          opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Closed Lost').map(enrichO),
+          opportunities: allOpps.filter((o) => memberIds.has(o.ownerId) && o.stage !== 'Stalled or Lost').map(enrichO),
         };
       });
 
@@ -900,7 +900,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                         const uActs = filteredActivities.filter((a) => a.ownerId === u.id);
                         const uTasks = allTasks.filter((tk) => tk.ownerId === u.id);
                         const uOpps = allOpps.filter((o) => o.ownerId === u.id);
-                        const uPipeline = uOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').reduce((s, o) => s + (o.amount || 0), 0);
+                        const uPipeline = uOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').reduce((s, o) => s + (o.amount || 0), 0);
                         const uOverdue = uTasks.filter((tk) => tk.status === 'Open' && tk.dueDate < TODAY_STR).length;
                         const isMemberOpen = expandedMembers.has(u.id);
                         const detailTab = memberDetailTab[u.id] || 'activities';
@@ -915,7 +915,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                               <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-gray-100 text-gray-600">{getRoleLabel(u.role)}</span>
                               <span className="text-xs text-gray-500 ml-2">Acts: {uActs.length}</span>
                               <span className="text-xs text-gray-500">Tasks: {uTasks.filter((tk) => tk.status === 'Open').length}{uOverdue > 0 ? ` (${uOverdue} overdue)` : ''}</span>
-                              <span className="text-xs text-gray-500">Opps: {uOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost').length} · ${(uPipeline / 1000).toFixed(0)}K</span>
+                              <span className="text-xs text-gray-500">Opps: {uOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost').length} · ${(uPipeline / 1000).toFixed(0)}K</span>
                               <button onClick={() => toggleMember(u.id)} className="ml-auto text-xs px-3 py-1 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
                                 {isMemberOpen ? '▲ Hide' : '▶ Details'}
                               </button>
@@ -1017,8 +1017,8 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                                               <td className="p-2 text-gray-500">{accounts.find((a) => a.id === op.accountId)?.name || '—'}</td>
                                               <td className="p-2">
                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                                  op.stage === 'Closed Won' ? 'bg-green-100 text-green-700' : op.stage === 'Closed Lost' ? 'bg-gray-100 text-gray-500' :
-                                                  op.stage === 'Negotiation' ? 'bg-purple-100 text-purple-700' : op.stage === 'Proposal' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                  op.stage === 'Won' ? 'bg-green-100 text-green-700' : op.stage === 'Stalled or Lost' ? 'bg-gray-100 text-gray-500' :
+                                                  op.stage === 'Results Successful' ? 'bg-purple-100 text-purple-700' : op.stage === 'Trial Ended' ? 'bg-blue-100 text-blue-700' : 'bg-teal-100 text-teal-700'
                                                 }`}>{op.stage}</span>
                                               </td>
                                               <td className="p-2 text-right font-medium">${(op.amount || 0).toLocaleString()}</td>

@@ -42,7 +42,7 @@ export default function ContactDetailPage() {
   const account = contact ? accounts.find((a) => a.id === contact.accountId) : undefined;
 
   const relatedOpps = opportunities.filter(
-    (o) => o.contactIds.includes(contactId) && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost'
+    (o) => o.contactIds.includes(contactId) && o.stage !== 'Won' && o.stage !== 'Stalled or Lost'
   );
 
   const openTasks = tasks.filter(

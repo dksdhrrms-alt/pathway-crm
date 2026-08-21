@@ -55,7 +55,7 @@ function fmtDate(d?: string): string {
 }
 
 function isOpen(stage: string): boolean {
-  return stage !== 'Closed Won' && stage !== 'Closed Lost';
+  return stage !== 'Won' && stage !== 'Stalled or Lost';
 }
 
 // ─────────────────────────────────────────────────────────────────────────

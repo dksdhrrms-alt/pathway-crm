@@ -27,10 +27,10 @@ const STAGES: Stage[] = [
   'Prospect',
   'Qualified',
   'Trial Started',
-  'Proposal',
-  'Negotiation',
-  'Closed Won',
-  'Closed Lost',
+  'Trial Ended',
+  'Results Successful',
+  'Won',
+  'Stalled or Lost',
 ];
 
 function formatCurrency(n: number): string {
@@ -57,26 +57,22 @@ function daysUntil(dateStr: string): number {
 
 const columnHeaderStyle: Record<Stage, string> = {
   Prospect: 'bg-slate-50 border-slate-200',
-  Prospecting: 'bg-gray-50 border-gray-200',
   Qualified: 'bg-cyan-50 border-cyan-200',
-  Qualification: 'bg-blue-50 border-blue-200',
   'Trial Started': 'bg-teal-50 border-teal-200',
-  Proposal: 'bg-amber-50 border-amber-200',
-  Negotiation: 'bg-purple-50 border-purple-200',
-  'Closed Won': 'bg-green-100 border-green-300',
-  'Closed Lost': 'bg-gray-100 border-gray-300',
+  'Trial Ended': 'bg-blue-50 border-blue-200',
+  'Results Successful': 'bg-purple-50 border-purple-200',
+  Won: 'bg-green-100 border-green-300',
+  'Stalled or Lost': 'bg-gray-100 border-gray-300',
 };
 
 const columnTitleStyle: Record<Stage, string> = {
   Prospect: 'text-slate-700',
-  Prospecting: 'text-gray-700',
   Qualified: 'text-cyan-700',
-  Qualification: 'text-blue-700',
   'Trial Started': 'text-teal-700',
-  Proposal: 'text-amber-700',
-  Negotiation: 'text-purple-700',
-  'Closed Won': 'text-green-800',
-  'Closed Lost': 'text-gray-600',
+  'Trial Ended': 'text-blue-700',
+  'Results Successful': 'text-purple-700',
+  Won: 'text-green-800',
+  'Stalled or Lost': 'text-gray-600',
 };
 
 export default function OpportunitiesPage() {
@@ -107,11 +103,11 @@ export default function OpportunitiesPage() {
   }, [filteredOpps]);
 
   // Stats for current view
-  const openOpps = filteredOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+  const openOpps = filteredOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost');
   const totalPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-  const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
+  const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Won': 100, 'Stalled or Lost': 0 };
   const weightedPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0) * ((STAGE_PROB[o.stage] || 0) / 100), 0);
-  const closedWonCount = filteredOpps.filter((o) => o.stage === 'Closed Won').length;
+  const closedWonCount = filteredOpps.filter((o) => o.stage === 'Won').length;
 
   // Annualized revenue projection (this year + next year) — based on Expected Start Date
   const currentYear = new Date().getFullYear();
@@ -311,7 +307,7 @@ export default function OpportunitiesPage() {
                             {formatCurrency(stageTotal)}
                           </p>
                         )}
-                        {stage !== 'Closed Won' && stage !== 'Closed Lost' && (
+                        {stage !== 'Won' && stage !== 'Stalled or Lost' && (
                           <button
                             onClick={() => setQuickAddStage(stage)}
                             className={`mt-1.5 w-full text-center text-[10px] font-medium py-0.5 rounded border border-dashed opacity-60 hover:opacity-100 transition-opacity ${columnTitleStyle[stage]}`}

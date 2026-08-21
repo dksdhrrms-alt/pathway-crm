@@ -234,17 +234,17 @@ export async function GET(request: NextRequest) {
   // the brief celebrates what's in flight, not what's already done.
   const { data: opps } = await sb.from('opportunities')
     .select('name, stage, amount, close_date, owner_id, account_id')
-    .not('stage', 'in', '("Closed Won","Closed Lost")');
+    .not('stage', 'in', '("Won","Stalled or Lost")');
   const oppsByOwner = new Map<string, EmailOpp[]>();
   // Per-stage bucketed counts + amounts, for the "Pipeline & YTD"
   // section. Same canonical groups as the dashboard card.
   const stageBucketsByOwner = new Map<string, Record<string, { count: number; amount: number }>>();
   const STAGE_GROUPS: { label: string; stages: string[] }[] = [
-    { label: 'Prospect',      stages: ['Prospect', 'Prospecting'] },
-    { label: 'Qualified',     stages: ['Qualified', 'Qualification'] },
-    { label: 'Trial Started', stages: ['Trial Started'] },
-    { label: 'Proposal',      stages: ['Proposal'] },
-    { label: 'Negotiation',   stages: ['Negotiation'] },
+    { label: 'Prospect',           stages: ['Prospect', 'Prospecting'] },
+    { label: 'Qualified',          stages: ['Qualified', 'Qualification'] },
+    { label: 'Trial Started',      stages: ['Trial Started'] },
+    { label: 'Trial Ended',        stages: ['Trial Ended', 'Proposal'] },
+    { label: 'Results Successful', stages: ['Results Successful', 'Negotiation'] },
   ];
   function groupFor(stage: string): string | null {
     for (const g of STAGE_GROUPS) if (g.stages.includes(stage)) return g.label;

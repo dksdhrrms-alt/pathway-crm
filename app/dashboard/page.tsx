@@ -32,16 +32,24 @@ const typeIcon: Record<ActivityType, string> = {
   Call: '📞', Meeting: '🤝', Email: '📧', Note: '📝',
 };
 
+// Fallback color palette that covers both the refined stages and any
+// legacy labels still living in the DB (rewritten on migrate but old
+// tabs cached in memory can still hold them briefly).
 const stageColors: Record<string, string> = {
+  // Refined 7-stage set (STAGE_COLORS in lib/data.ts stays the source
+  // of truth; duplicated here so this file doesn't need extra imports).
   Prospect: '#94a3b8',
-  Prospecting: '#6366f1',
   Qualified: '#06b6d4',
-  Qualification: '#f59e0b',
   'Trial Started': '#14b8a6',
+  'Trial Ended': '#3b82f6',
+  'Results Successful': '#8b5cf6',
+  Won: '#22c55e',
+  'Stalled or Lost': '#ef4444',
+  // Legacy — same colors as their remapped equivalents.
+  Prospecting: '#94a3b8',
+  Qualification: '#06b6d4',
   Proposal: '#3b82f6',
-  Negotiation: '#f97316',
-  'Closed Won': '#22c55e',
-  'Closed Lost': '#ef4444',
+  Negotiation: '#8b5cf6',
 };
 
 function formatDate(dateStr: string): string {
@@ -144,7 +152,7 @@ export default function DashboardPage() {
     return allActivities.filter((a) => a.ownerId === userId);
   }, [allActivities, activeTab, teamMemberIds, userId]);
 
-  const openOpps = opportunities.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+  const openOpps = opportunities.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost');
   const pipelineValue = openOpps.reduce((sum, o) => sum + o.amount, 0);
   const dueTodayCount = scopedTasks.filter((t) => t.dueDate === TODAY && t.status === 'Open').length;
   const overdueCount = scopedTasks.filter((t) => t.dueDate < TODAY && t.status === 'Open').length;
@@ -154,7 +162,7 @@ export default function DashboardPage() {
 
   // Charts
   const pipelineByStage = useMemo(() => {
-    const stages: Stage[] = ['Prospect', 'Prospecting', 'Qualified', 'Qualification', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won'];
+    const stages: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Trial Ended', 'Results Successful', 'Won'];
     return stages.map((stage) => ({
       stage, amount: opportunities.filter((o) => o.stage === stage).reduce((s, o) => s + o.amount, 0), fill: stageColors[stage],
     }));
@@ -225,8 +233,8 @@ export default function DashboardPage() {
   }, [allActivities, allTasks, allOpps, users]);
 
   // ── Quota ───────────────────────────────────────────────────────────────
-  const wonThisMonth = opportunities.filter((o) => o.stage === 'Closed Won' && o.closeDate?.startsWith(CURRENT_MONTH));
-  const lostThisMonth = opportunities.filter((o) => o.stage === 'Closed Lost' && o.closeDate?.startsWith(CURRENT_MONTH));
+  const wonThisMonth = opportunities.filter((o) => o.stage === 'Won' && o.closeDate?.startsWith(CURRENT_MONTH));
+  const lostThisMonth = opportunities.filter((o) => o.stage === 'Stalled or Lost' && o.closeDate?.startsWith(CURRENT_MONTH));
   const wonAmount = wonThisMonth.reduce((s, o) => s + o.amount, 0);
   const quotaPct = quotaTarget > 0 ? Math.round((wonAmount / quotaTarget) * 100) : 0;
   const quotaColor = quotaPct >= 80 ? '#22c55e' : quotaPct >= 50 ? '#f59e0b' : '#ef4444';
@@ -249,7 +257,7 @@ export default function DashboardPage() {
     (t) => t.ownerId === userId && t.status !== 'Completed' && t.dueDate && new Date(t.dueDate + 'T00:00:00') < new Date(),
   ).length;
   const closingTodayCount = allOpps.filter((o) => {
-    if (!o.closeDate || o.stage === 'Closed Won' || o.stage === 'Closed Lost') return false;
+    if (!o.closeDate || o.stage === 'Won' || o.stage === 'Stalled or Lost') return false;
     if (o.ownerId !== userId) return false;
     const days = Math.floor((new Date(o.closeDate + 'T00:00:00').getTime() - new Date().getTime()) / 86400000);
     return days >= 0 && days <= 1;
@@ -382,7 +390,7 @@ export default function DashboardPage() {
                   if (myDueToday.length > 0) items.push({ icon: '📋', label: 'Tasks due today', sub: 'Wrap up by end of day', count: myDueToday.length, link: '/tasks', color: '#d97706' });
                   // Closing within 7 days (own)
                   const myClosing = allOpps.filter((o) => {
-                    if (o.ownerId !== userId || !o.closeDate || o.stage === 'Closed Won' || o.stage === 'Closed Lost') return false;
+                    if (o.ownerId !== userId || !o.closeDate || o.stage === 'Won' || o.stage === 'Stalled or Lost') return false;
                     const days = Math.floor((new Date(o.closeDate + 'T00:00:00').getTime() - todayMs) / 86400000);
                     return days >= 0 && days <= 7;
                   });
@@ -474,7 +482,7 @@ export default function DashboardPage() {
               <div className="px-5 py-3 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-800">
                 <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Stage Distribution</p>
                 <div className="flex gap-1 h-3 rounded-full overflow-hidden bg-gray-200 dark:bg-slate-700">
-                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
+                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Won').map((s) => (
                     <div
                       key={s.stage}
                       style={{ width: `${pipelineValue > 0 ? (s.amount / pipelineValue) * 100 : 0}%`, backgroundColor: s.fill }}
@@ -483,7 +491,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Closed Won').map((s) => (
+                  {pipelineByStage.filter((s) => s.amount > 0 && s.stage !== 'Won').map((s) => (
                     <div key={s.stage} className="flex items-center gap-1 text-[11px]">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill }} />
                       <span className="text-gray-600 dark:text-gray-300">{s.stage}</span>

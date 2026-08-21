@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Opportunity, Stage, annualizedRevenue } from '@/lib/data';
+import { Opportunity, Stage, STAGES_ORDER, STAGE_PROBABILITY, normalizeStage, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
@@ -9,8 +9,9 @@ import AccountSearchSelect from './AccountSearchSelect';
 import SubmitButton from './SubmitButton';
 import { useEscClose } from '@/lib/useEscClose';
 
-const STAGES: Stage[] = ['Prospect', 'Qualified', 'Trial Started', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Closed Won': 100, 'Closed Lost': 0 };
+// Shared with NewOpportunityModal + dashboard via lib/data.ts.
+const STAGES = STAGES_ORDER;
+const STAGE_PROB: Record<string, number> = STAGE_PROBABILITY;
 
 interface Props { opportunity: Opportunity; onClose: () => void; onSaved: () => void; }
 
@@ -24,7 +25,9 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
 
   const [name, setName] = useState(opportunity.name);
   const [accountId, setAccountId] = useState(opportunity.accountId || '');
-  const [stage, setStage] = useState<Stage>(opportunity.stage);
+  // Normalize legacy stage names (Prospecting/Proposal/etc.) into the
+  // refined set so the dropdown always renders a real option.
+  const [stage, setStage] = useState<Stage>(normalizeStage(opportunity.stage as unknown as string));
   const [amount, setAmount] = useState(String(opportunity.amount || ''));
   const [expectedStartDate, setExpectedStartDate] = useState(opportunity.expectedStartDate || '');
   const [closeDate, setCloseDate] = useState(opportunity.closeDate || '');

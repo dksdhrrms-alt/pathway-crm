@@ -33,22 +33,20 @@ interface BuildArgs {
 
 const OPEN_STAGES_ORDER: Stage[] = [
   'Prospect',
-  'Prospecting',
   'Qualified',
-  'Qualification',
   'Trial Started',
-  'Proposal',
-  'Negotiation',
+  'Trial Ended',
+  'Results Successful',
 ];
 
 const ALL_STAGES_ORDER: Stage[] = [
   ...OPEN_STAGES_ORDER,
-  'Closed Won',
-  'Closed Lost',
+  'Won',
+  'Stalled or Lost',
 ];
 
 function isOpen(stage: Stage): boolean {
-  return stage !== 'Closed Won' && stage !== 'Closed Lost';
+  return stage !== 'Won' && stage !== 'Stalled or Lost';
 }
 
 function fmtUSD(n: number): string {
@@ -108,8 +106,8 @@ function buildSummarySheet(
   scopeLabel: string,
 ): XLSX.WorkSheet {
   const open = opps.filter((o) => isOpen(o.stage));
-  const wonAll = opps.filter((o) => o.stage === 'Closed Won');
-  const lostAll = opps.filter((o) => o.stage === 'Closed Lost');
+  const wonAll = opps.filter((o) => o.stage === 'Won');
+  const lostAll = opps.filter((o) => o.stage === 'Stalled or Lost');
   const wonYTD = wonAll.filter((o) => (o.closeDate || '').startsWith(String(CURRENT_YEAR)));
   const lostYTD = lostAll.filter((o) => (o.closeDate || '').startsWith(String(CURRENT_YEAR)));
 
@@ -318,9 +316,9 @@ function buildClosedHistorySheet(
   accountById: Map<string, string>,
   userById: Map<string, string>,
 ): XLSX.WorkSheet {
-  const won = opps.filter((o) => o.stage === 'Closed Won')
+  const won = opps.filter((o) => o.stage === 'Won')
     .sort((a, b) => (b.closeDate || '').localeCompare(a.closeDate || ''));
-  const lost = opps.filter((o) => o.stage === 'Closed Lost')
+  const lost = opps.filter((o) => o.stage === 'Stalled or Lost')
     .sort((a, b) => (b.closeDate || '').localeCompare(a.closeDate || ''));
 
   const rows: (string | number)[][] = [

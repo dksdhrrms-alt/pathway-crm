@@ -38,8 +38,8 @@ const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
   Qualification: { bg: '#E6F1FB', text: '#185FA5' },
   Proposal: { bg: '#FAEEDA', text: '#854F0B' },
   Negotiation: { bg: '#EEEDFE', text: '#534AB7' },
-  'Closed Won': { bg: '#E1F5EE', text: '#0F6E56' },
-  'Closed Lost': { bg: '#FEE2E2', text: '#991B1B' },
+  'Won': { bg: '#E1F5EE', text: '#0F6E56' },
+  'Stalled or Lost': { bg: '#FEE2E2', text: '#991B1B' },
 };
 
 export default function AccountDetailPage() {
@@ -105,7 +105,7 @@ export default function AccountDetailPage() {
     [opportunities, aggregateAccountIds],
   );
   const openDeals = useMemo(
-    () => allAccountOpps.filter((o) => o.stage !== 'Closed Won' && o.stage !== 'Closed Lost'),
+    () => allAccountOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost'),
     [allAccountOpps],
   );
   const accountActivities = useMemo(
@@ -588,7 +588,7 @@ export default function AccountDetailPage() {
                 const lastMs = lastDateStr ? new Date(lastDateStr + 'T00:00:00').getTime() : 0;
                 const daysSince = lastMs > 0 ? Math.floor((todayMs - lastMs) / (1000 * 60 * 60 * 24)) : -1;
                 const recentActivityCount = acts.filter((a) => new Date(a.date + 'T00:00:00').getTime() >= THIRTY_DAYS_AGO).length;
-                const openDeals = opportunities.filter((o) => o.accountId === c.id && o.stage !== 'Closed Won' && o.stage !== 'Closed Lost');
+                const openDeals = opportunities.filter((o) => o.accountId === c.id && o.stage !== 'Won' && o.stage !== 'Stalled or Lost');
                 const pipeline = openDeals.reduce((s, o) => s + (Number(o.amount) || 0), 0);
                 const sales = saleRecords.filter((r) => r.accountName === c.name).reduce((s, r) => s + (Number(r.amount) || 0), 0);
                 return { c, lastDateStr, daysSince, recentActivityCount, openDealsCount: openDeals.length, pipeline, sales };

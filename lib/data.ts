@@ -8,7 +8,73 @@ export type Industry =
   | 'Veterinary Hospital'
   | 'Veterinary Clinic'
   | 'Distributor';
-export type Stage = 'Prospect' | 'Prospecting' | 'Qualified' | 'Qualification' | 'Trial Started' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+// Sales pipeline stages — refined per sales team feedback so each
+// bucket reflects the actual trial-driven cycle for feed additives.
+// Old stages (Prospecting / Qualification / Proposal / Negotiation /
+// Closed Won / Closed Lost) live on as `LegacyStage` and are remapped
+// at read time / via the DB migration in
+// data-migration/24-refine-opportunity-stages.sql.
+export type Stage =
+  | 'Prospect'
+  | 'Qualified'
+  | 'Trial Started'
+  | 'Trial Ended'
+  | 'Results Successful'
+  | 'Won'
+  | 'Stalled or Lost';
+
+export const STAGES_ORDER: Stage[] = [
+  'Prospect', 'Qualified', 'Trial Started', 'Trial Ended',
+  'Results Successful', 'Won', 'Stalled or Lost',
+];
+
+// Default probability per stage. Used by the Opportunity modals to
+// auto-fill the probability field when the rep changes stage, and by
+// the dashboard weighted-pipeline calc when a row has no explicit
+// probability set.
+export const STAGE_PROBABILITY: Record<Stage, number> = {
+  Prospect: 5,
+  Qualified: 15,
+  'Trial Started': 40,
+  'Trial Ended': 65,
+  'Results Successful': 80,
+  Won: 100,
+  'Stalled or Lost': 0,
+};
+
+// Colors for the pipeline strip / badges. Tuned so open-cycle stages
+// warm as they progress and terminal states pop.
+export const STAGE_COLORS: Record<Stage, string> = {
+  Prospect: '#94a3b8',
+  Qualified: '#06b6d4',
+  'Trial Started': '#14b8a6',
+  'Trial Ended': '#3b82f6',
+  'Results Successful': '#8b5cf6',
+  Won: '#22c55e',
+  'Stalled or Lost': '#ef4444',
+};
+
+// Legacy stage names still living in the DB. Kept so any string
+// comparison that used the old labels keeps compiling; the migration
+// SQL rewrites the actual rows on next deploy.
+export type LegacyStage = 'Prospecting' | 'Qualification' | 'Proposal' | 'Negotiation' | 'Closed Won' | 'Closed Lost';
+
+export const LEGACY_STAGE_MAP: Record<LegacyStage, Stage> = {
+  Prospecting: 'Prospect',
+  Qualification: 'Qualified',
+  Proposal: 'Trial Ended',
+  Negotiation: 'Results Successful',
+  'Closed Won': 'Won',
+  'Closed Lost': 'Stalled or Lost',
+};
+
+/** Normalize a stage that may be a legacy label into the new set. */
+export function normalizeStage(s: string | null | undefined): Stage {
+  if (!s) return 'Prospect';
+  if ((STAGES_ORDER as string[]).includes(s)) return s as Stage;
+  const mapped = LEGACY_STAGE_MAP[s as LegacyStage];
+  return mapped || 'Prospect';
+}
 export type ActivityType = 'Call' | 'Meeting' | 'Email' | 'Note';
 export type Priority = 'High' | 'Medium' | 'Low';
 export type TaskStatus = 'Open' | 'Completed';
@@ -585,24 +651,24 @@ export const initialContacts: Contact[] = [
 ];
 
 export const initialOpportunities: Opportunity[] = [
-{ id: 'opp-001', name: 'Tyson – Broiler Performance Package Q2', accountId: 'acc-001', stage: 'Proposal', amount: 185000, closeDate: '2026-04-15', probability: 60, ownerId: 'user-003', nextStep: 'Send updated pricing proposal with volume discount', leadSource: 'Trade Show', createdDate: '2026-01-10', contactIds: ['con-001', 'con-002'] },
-  { id: 'opp-002', name: 'Tyson – Mycotoxin Binder Trial', accountId: 'acc-001', stage: 'Qualification', amount: 45000, closeDate: '2026-05-30', probability: 30, ownerId: 'user-003', nextStep: 'Schedule technical presentation with nutritionist team', leadSource: 'Referral', createdDate: '2026-02-01', contactIds: ['con-002'] },
-  { id: 'opp-003', name: 'Smithfield – Swine Growth Promoter Program', accountId: 'acc-002', stage: 'Negotiation', amount: 280000, closeDate: '2026-03-31', probability: 80, ownerId: 'user-003', nextStep: 'Final contract review with legal team', leadSource: 'Cold Call', createdDate: '2025-11-15', contactIds: ['con-003'] },
-  { id: 'opp-004', name: 'JBS USA – Beef Feed Efficiency Additive', accountId: 'acc-003', stage: 'Closed Won', amount: 220000, closeDate: '2026-02-28', probability: 100, ownerId: 'user-004', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-10-01', contactIds: ['con-004', 'con-005'] },
-  { id: 'opp-005', name: "Land O'Lakes – Dairy Rumen Buffer", accountId: 'acc-004', stage: 'Prospecting', amount: 95000, closeDate: '2026-06-30', probability: 10, ownerId: 'user-003', nextStep: 'Identify key decision maker and schedule intro call', leadSource: 'LinkedIn', createdDate: '2026-03-01', contactIds: ['con-006'] },
-  { id: 'opp-006', name: "Land O'Lakes – Dairy Transition Cow Supplement", accountId: 'acc-004', stage: 'Proposal', amount: 138000, closeDate: '2026-04-30', probability: 55, ownerId: 'user-003', nextStep: 'Deliver technical data package and ROI analysis', leadSource: 'Referral', createdDate: '2026-01-20', contactIds: ['con-006'] },
-  { id: 'opp-007', name: 'Cargill – Enzyme Blend Annual Contract', accountId: 'acc-005', stage: 'Closed Won', amount: 175000, closeDate: '2026-01-31', probability: 100, ownerId: 'user-003', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-09-15', contactIds: ['con-007', 'con-008'] },
-  { id: 'opp-008', name: 'Cargill – Organic Acid Blend Pilot', accountId: 'acc-005', stage: 'Qualification', amount: 62000, closeDate: '2026-05-15', probability: 25, ownerId: 'user-003', nextStep: 'Send product samples and efficacy data', leadSource: 'Email Campaign', createdDate: '2026-02-10', contactIds: ['con-008'] },
-  { id: 'opp-009', name: 'Perdue Farms – Poultry Probiotic Program', accountId: 'acc-006', stage: 'Negotiation', amount: 155000, closeDate: '2026-03-28', probability: 75, ownerId: 'user-004', nextStep: 'Agree on pricing tiers for volume commitments', leadSource: 'Referral', createdDate: '2025-12-01', contactIds: ['con-009'] },
-  { id: 'opp-010', name: 'Mountaire – Antibiotic-Free Program Support', accountId: 'acc-007', stage: 'Proposal', amount: 78000, closeDate: '2026-04-10', probability: 50, ownerId: 'user-004', nextStep: 'Present alternative-to-antibiotic product portfolio', leadSource: 'Cold Call', createdDate: '2026-01-25', contactIds: ['con-010'] },
-  { id: 'opp-011', name: 'Wayne Farms – Intestinal Health Package', accountId: 'acc-008', stage: 'Closed Lost', amount: 95000, closeDate: '2026-02-15', probability: 0, ownerId: 'user-004', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-11-01', contactIds: ['con-011'] },
-  { id: 'opp-012', name: 'Iowa Select – Swine Amino Acid Optimization', accountId: 'acc-009', stage: 'Qualification', amount: 15000, closeDate: '2026-06-15', probability: 20, ownerId: 'user-003', nextStep: 'Send formulation recommendations and sample kit', leadSource: 'LinkedIn', createdDate: '2026-03-10', contactIds: ['con-012', 'con-013'] },
-{ id: 'opp-b01', name: 'BluePearl – Emergency Care Pharmaceutical Bundle', accountId: 'acc-b01', stage: 'Proposal', amount: 145000, closeDate: '2026-04-20', probability: 55, ownerId: 'user-006', nextStep: 'Present expanded formulary and negotiate tier pricing', leadSource: 'Trade Show', createdDate: '2026-01-15', contactIds: ['con-b01'] },
-  { id: 'opp-b02', name: 'VCA – National Vaccine Distribution Contract', accountId: 'acc-b02', stage: 'Negotiation', amount: 620000, closeDate: '2026-04-01', probability: 75, ownerId: 'user-006', nextStep: 'Finalize cold-chain logistics agreement', leadSource: 'Referral', createdDate: '2025-11-01', contactIds: ['con-b02'] },
-  { id: 'opp-b03', name: 'NVA – Antiparasitic Portfolio Distribution', accountId: 'acc-b03', stage: 'Qualification', amount: 88000, closeDate: '2026-05-30', probability: 30, ownerId: 'user-006', nextStep: 'Send samples and efficacy comparisons vs. current supplier', leadSource: 'Cold Call', createdDate: '2026-02-01', contactIds: ['con-b03'] },
-  { id: 'opp-b04', name: 'Patterson – Surgical Supplies Distribution Agreement', accountId: 'acc-b04', stage: 'Closed Won', amount: 390000, closeDate: '2026-02-15', probability: 100, ownerId: 'user-006', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-10-10', contactIds: ['con-b04'] },
-  { id: 'opp-b05', name: 'Henry Schein – Preventive Care Supplement Line', accountId: 'acc-b05', stage: 'Prospecting', amount: 210000, closeDate: '2026-07-31', probability: 10, ownerId: 'user-006', nextStep: 'Schedule discovery call with category manager', leadSource: 'LinkedIn', createdDate: '2026-03-05', contactIds: ['con-b05'] },
-  { id: 'opp-b06', name: 'Banfield – Orthopedic & Recovery Product Introduction', accountId: 'acc-b07', stage: 'Qualification', amount: 175000, closeDate: '2026-06-15', probability: 25, ownerId: 'user-006', nextStep: 'Arrange pilot with 5 Banfield locations in Pacific Northwest', leadSource: 'Email Campaign', createdDate: '2026-02-20', contactIds: ['con-b07'] },
+{ id: 'opp-001', name: 'Tyson – Broiler Performance Package Q2', accountId: 'acc-001', stage: 'Trial Ended', amount: 185000, closeDate: '2026-04-15', probability: 60, ownerId: 'user-003', nextStep: 'Send updated pricing proposal with volume discount', leadSource: 'Trade Show', createdDate: '2026-01-10', contactIds: ['con-001', 'con-002'] },
+  { id: 'opp-002', name: 'Tyson – Mycotoxin Binder Trial', accountId: 'acc-001', stage: 'Qualified', amount: 45000, closeDate: '2026-05-30', probability: 30, ownerId: 'user-003', nextStep: 'Schedule technical presentation with nutritionist team', leadSource: 'Referral', createdDate: '2026-02-01', contactIds: ['con-002'] },
+  { id: 'opp-003', name: 'Smithfield – Swine Growth Promoter Program', accountId: 'acc-002', stage: 'Results Successful', amount: 280000, closeDate: '2026-03-31', probability: 80, ownerId: 'user-003', nextStep: 'Final contract review with legal team', leadSource: 'Cold Call', createdDate: '2025-11-15', contactIds: ['con-003'] },
+  { id: 'opp-004', name: 'JBS USA – Beef Feed Efficiency Additive', accountId: 'acc-003', stage: 'Won', amount: 220000, closeDate: '2026-02-28', probability: 100, ownerId: 'user-004', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-10-01', contactIds: ['con-004', 'con-005'] },
+  { id: 'opp-005', name: "Land O'Lakes – Dairy Rumen Buffer", accountId: 'acc-004', stage: 'Prospect', amount: 95000, closeDate: '2026-06-30', probability: 10, ownerId: 'user-003', nextStep: 'Identify key decision maker and schedule intro call', leadSource: 'LinkedIn', createdDate: '2026-03-01', contactIds: ['con-006'] },
+  { id: 'opp-006', name: "Land O'Lakes – Dairy Transition Cow Supplement", accountId: 'acc-004', stage: 'Trial Ended', amount: 138000, closeDate: '2026-04-30', probability: 55, ownerId: 'user-003', nextStep: 'Deliver technical data package and ROI analysis', leadSource: 'Referral', createdDate: '2026-01-20', contactIds: ['con-006'] },
+  { id: 'opp-007', name: 'Cargill – Enzyme Blend Annual Contract', accountId: 'acc-005', stage: 'Won', amount: 175000, closeDate: '2026-01-31', probability: 100, ownerId: 'user-003', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-09-15', contactIds: ['con-007', 'con-008'] },
+  { id: 'opp-008', name: 'Cargill – Organic Acid Blend Pilot', accountId: 'acc-005', stage: 'Qualified', amount: 62000, closeDate: '2026-05-15', probability: 25, ownerId: 'user-003', nextStep: 'Send product samples and efficacy data', leadSource: 'Email Campaign', createdDate: '2026-02-10', contactIds: ['con-008'] },
+  { id: 'opp-009', name: 'Perdue Farms – Poultry Probiotic Program', accountId: 'acc-006', stage: 'Results Successful', amount: 155000, closeDate: '2026-03-28', probability: 75, ownerId: 'user-004', nextStep: 'Agree on pricing tiers for volume commitments', leadSource: 'Referral', createdDate: '2025-12-01', contactIds: ['con-009'] },
+  { id: 'opp-010', name: 'Mountaire – Antibiotic-Free Program Support', accountId: 'acc-007', stage: 'Trial Ended', amount: 78000, closeDate: '2026-04-10', probability: 50, ownerId: 'user-004', nextStep: 'Present alternative-to-antibiotic product portfolio', leadSource: 'Cold Call', createdDate: '2026-01-25', contactIds: ['con-010'] },
+  { id: 'opp-011', name: 'Wayne Farms – Intestinal Health Package', accountId: 'acc-008', stage: 'Stalled or Lost', amount: 95000, closeDate: '2026-02-15', probability: 0, ownerId: 'user-004', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-11-01', contactIds: ['con-011'] },
+  { id: 'opp-012', name: 'Iowa Select – Swine Amino Acid Optimization', accountId: 'acc-009', stage: 'Qualified', amount: 15000, closeDate: '2026-06-15', probability: 20, ownerId: 'user-003', nextStep: 'Send formulation recommendations and sample kit', leadSource: 'LinkedIn', createdDate: '2026-03-10', contactIds: ['con-012', 'con-013'] },
+{ id: 'opp-b01', name: 'BluePearl – Emergency Care Pharmaceutical Bundle', accountId: 'acc-b01', stage: 'Trial Ended', amount: 145000, closeDate: '2026-04-20', probability: 55, ownerId: 'user-006', nextStep: 'Present expanded formulary and negotiate tier pricing', leadSource: 'Trade Show', createdDate: '2026-01-15', contactIds: ['con-b01'] },
+  { id: 'opp-b02', name: 'VCA – National Vaccine Distribution Contract', accountId: 'acc-b02', stage: 'Results Successful', amount: 620000, closeDate: '2026-04-01', probability: 75, ownerId: 'user-006', nextStep: 'Finalize cold-chain logistics agreement', leadSource: 'Referral', createdDate: '2025-11-01', contactIds: ['con-b02'] },
+  { id: 'opp-b03', name: 'NVA – Antiparasitic Portfolio Distribution', accountId: 'acc-b03', stage: 'Qualified', amount: 88000, closeDate: '2026-05-30', probability: 30, ownerId: 'user-006', nextStep: 'Send samples and efficacy comparisons vs. current supplier', leadSource: 'Cold Call', createdDate: '2026-02-01', contactIds: ['con-b03'] },
+  { id: 'opp-b04', name: 'Patterson – Surgical Supplies Distribution Agreement', accountId: 'acc-b04', stage: 'Won', amount: 390000, closeDate: '2026-02-15', probability: 100, ownerId: 'user-006', nextStep: '', leadSource: 'Trade Show', createdDate: '2025-10-10', contactIds: ['con-b04'] },
+  { id: 'opp-b05', name: 'Henry Schein – Preventive Care Supplement Line', accountId: 'acc-b05', stage: 'Prospect', amount: 210000, closeDate: '2026-07-31', probability: 10, ownerId: 'user-006', nextStep: 'Schedule discovery call with category manager', leadSource: 'LinkedIn', createdDate: '2026-03-05', contactIds: ['con-b05'] },
+  { id: 'opp-b06', name: 'Banfield – Orthopedic & Recovery Product Introduction', accountId: 'acc-b07', stage: 'Qualified', amount: 175000, closeDate: '2026-06-15', probability: 25, ownerId: 'user-006', nextStep: 'Arrange pilot with 5 Banfield locations in Pacific Northwest', leadSource: 'Email Campaign', createdDate: '2026-02-20', contactIds: ['con-b07'] },
 ];
 
 export const initialActivities: Activity[] = [

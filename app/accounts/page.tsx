@@ -219,7 +219,7 @@ export default function AccountsPage() {
   const dealsByAccount = useMemo(() => {
     const map: Record<string, { count: number; value: number }> = {};
     opportunities.forEach((o) => {
-      if (o.stage === 'Closed Won' || o.stage === 'Closed Lost') return;
+      if (o.stage === 'Won' || o.stage === 'Stalled or Lost') return;
       if (!o.accountId) return;
       if (!map[o.accountId]) map[o.accountId] = { count: 0, value: 0 };
       map[o.accountId].count += 1;

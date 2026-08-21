@@ -19,16 +19,16 @@ import { computePace, fmtRate, trendGlyph, type PaceRow } from '@/lib/prospectin
 
 const TYPE_EMOJI: Record<string, string> = { Call: '📞', Email: '📧', Meeting: '🤝' };
 
-// Sales-cycle stages surfaced in the "Pipeline" panel. We fold the
-// duplicate labels ('Prospect'/'Prospecting', 'Qualified'/'Qualification')
-// into a single canonical bucket so a rep doesn't see the same stage
-// twice on their scorecard.
+// Sales-cycle stages surfaced in the "Pipeline" panel. The refined
+// 7-stage set is authoritative; legacy labels (Prospecting /
+// Qualification / Proposal / Negotiation) get folded in so any row
+// the DB migration hasn't touched yet still lands in the right bucket.
 const STAGE_GROUPS: { label: string; stages: string[] }[] = [
-  { label: 'Prospect',      stages: ['Prospect', 'Prospecting'] },
-  { label: 'Qualified',     stages: ['Qualified', 'Qualification'] },
-  { label: 'Trial Started', stages: ['Trial Started'] },
-  { label: 'Proposal',      stages: ['Proposal'] },
-  { label: 'Negotiation',   stages: ['Negotiation'] },
+  { label: 'Prospect',           stages: ['Prospect', 'Prospecting'] },
+  { label: 'Qualified',          stages: ['Qualified', 'Qualification'] },
+  { label: 'Trial Started',      stages: ['Trial Started'] },
+  { label: 'Trial Ended',        stages: ['Trial Ended', 'Proposal'] },
+  { label: 'Results Successful', stages: ['Results Successful', 'Negotiation'] },
 ];
 
 interface Props {
