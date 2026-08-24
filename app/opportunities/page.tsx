@@ -307,15 +307,19 @@ export default function OpportunitiesPage() {
                             {formatCurrency(stageTotal)}
                           </p>
                         )}
-                        {stage !== 'Won' && stage !== 'Stalled or Lost' && (
-                          <button
-                            onClick={() => setQuickAddStage(stage)}
-                            className={`mt-1.5 w-full text-center text-[10px] font-medium py-0.5 rounded border border-dashed opacity-60 hover:opacity-100 transition-opacity ${columnTitleStyle[stage]}`}
-                            style={{ borderColor: 'currentColor' }}
-                          >
-                            + Quick Add
-                          </button>
-                        )}
+                        {/* Quick Add is available on every column now,
+                            including Won and Stalled or Lost. Sales
+                            director asked for parity — sometimes reps
+                            need to log a deal that landed direct-to-
+                            won (no earlier stages) or a stalled deal
+                            they picked up from a colleague. */}
+                        <button
+                          onClick={() => setQuickAddStage(stage)}
+                          className={`mt-1.5 w-full text-center text-[10px] font-medium py-0.5 rounded border border-dashed opacity-60 hover:opacity-100 transition-opacity ${columnTitleStyle[stage]}`}
+                          style={{ borderColor: 'currentColor' }}
+                        >
+                          + Quick Add
+                        </button>
                       </div>
 
                       <Droppable droppableId={stage}>
