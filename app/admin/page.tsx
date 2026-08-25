@@ -1398,10 +1398,36 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
                                           onChange={(e) => updateFile(f.id, { url: e.target.value })}
                                           placeholder="File URL (Pathway Library)"
                                           className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
-                                        <input value={f.thumbnailUrl || ''}
-                                          onChange={(e) => updateFile(f.id, { thumbnailUrl: e.target.value || null })}
-                                          placeholder="Thumbnail image URL (optional)"
-                                          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                        {/* Thumbnail row — file upload
+                                            OR keep the pasted URL. Prefer
+                                            upload for stability (external
+                                            URLs can rot). */}
+                                        <div className="flex items-center gap-1.5">
+                                          <input value={f.thumbnailUrl || ''}
+                                            onChange={(e) => updateFile(f.id, { thumbnailUrl: e.target.value || null })}
+                                            placeholder="Thumbnail URL — or upload →"
+                                            className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                          <ThumbnailUploader
+                                            productId={f.productId}
+                                            onUploaded={async (url) => {
+                                              updateFile(f.id, { thumbnailUrl: url });
+                                              // Immediate save so the URL
+                                              // persists even if the admin
+                                              // forgets to click Save.
+                                              try {
+                                                const { upsertFile } = await import('@/lib/productCatalog');
+                                                await upsertFile({
+                                                  id: f.id, productId: f.productId, category: f.category,
+                                                  label: f.label, url: f.url,
+                                                  thumbnailUrl: url,
+                                                  displayOrder: f.displayOrder,
+                                                });
+                                                onSave('Thumbnail uploaded');
+                                              } catch (e) { setError(formatErr(e)); }
+                                            }}
+                                            onError={(msg) => setError(msg)}
+                                          />
+                                        </div>
                                       </div>
                                       <div className="flex flex-col gap-1">
                                         <button onClick={() => saveFile(f)}
@@ -1468,5 +1494,69 @@ function ColumnsInput({
       placeholder="Imperial, Metric"
       className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs"
     />
+  );
+}
+
+// Small file-upload button used inline in the product-file editor.
+// Hides the native file input behind a labeled button, uploads to
+// Supabase Storage (bucket: product-thumbnails), and hands the
+// resulting public URL back to the parent.
+function ThumbnailUploader({
+  productId,
+  onUploaded,
+  onError,
+}: {
+  productId: string;
+  onUploaded: (publicUrl: string) => void;
+  onError: (msg: string) => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input so the same filename can be picked again later.
+    if (inputRef.current) inputRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      onError('Thumbnail must be an image (PNG / JPG / WEBP).');
+      return;
+    }
+    // 3 MB cap — thumbnails are decorative, no need for full-size.
+    if (file.size > 3 * 1024 * 1024) {
+      onError('Thumbnail too large (max 3 MB).');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { uploadThumbnail } = await import('@/lib/productCatalog');
+      const publicUrl = await uploadThumbnail(file, productId);
+      onUploaded(publicUrl);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handlePick}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 whitespace-nowrap"
+        title="Upload an image file to use as this file's thumbnail"
+      >
+        {busy ? '↑ …' : '↑ Upload'}
+      </button>
+    </>
   );
 }

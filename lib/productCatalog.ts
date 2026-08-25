@@ -218,3 +218,40 @@ export function toSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
+// ── Thumbnail uploads ───────────────────────────────────────────
+// Storage bucket is created in data-migration/27-product-thumbnails-storage.sql.
+// We upload as `<productId>/<timestamp>-<sanitized-name>` so multiple
+// versions of the same file don't clobber each other and it's clear
+// which product a file belongs to when browsing the bucket.
+const THUMBNAIL_BUCKET = 'product-thumbnails';
+
+export async function uploadThumbnail(
+  file: File,
+  productId: string,
+): Promise<string> {
+  const client = sb();
+  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `${productId}/${Date.now()}-${safeName}`;
+  const { error } = await client.storage.from(THUMBNAIL_BUCKET).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = client.storage.from(THUMBNAIL_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/** Delete a thumbnail from Storage by its public URL. Best-effort —
+ *  swallows errors because a stale row shouldn't block DB edits. */
+export async function deleteThumbnailByUrl(url: string): Promise<void> {
+  if (!url) return;
+  const marker = `/${THUMBNAIL_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx < 0) return; // not one of ours
+  const path = url.slice(idx + marker.length);
+  try {
+    await sb().storage.from(THUMBNAIL_BUCKET).remove([path]);
+  } catch { /* ignore */ }
+}
