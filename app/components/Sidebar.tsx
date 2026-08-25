@@ -140,15 +140,18 @@ export default function Sidebar() {
     pathname.startsWith('/rnd') || pathname.startsWith('/projects'),
   );
   // Products parent menu — expandable, admin-curated list of external
-  // shortcuts into the Pathway USA Library. Links load from Supabase
-  // so admin edits propagate everywhere without a redeploy.
+  // Product catalog — sidebar shows the admin-curated product list.
+  // Each entry links to /products/<slug>, an in-app catalog page
+  // (PPT-style, with descriptions + Sales Tools file downloads).
+  // Old external-URL rows were auto-migrated in
+  // data-migration/25-product-catalog.sql.
   const [productsOpen, setProductsOpen] = useState(false);
-  const [productLinks, setProductLinks] = useState<{ id: string; label: string; url: string }[]>([]);
+  const [productLinks, setProductLinks] = useState<{ id: string; slug: string; name: string }[]>([]);
   useEffect(() => {
     let cancelled = false;
-    import('@/lib/productLinks').then(({ listProductLinks }) =>
-      listProductLinks()
-        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, label: r.label, url: r.url }))); })
+    import('@/lib/productCatalog').then(({ listProducts }) =>
+      listProducts()
+        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name }))); })
         .catch(() => { /* silent — sidebar just hides the section */ }),
     );
     return () => { cancelled = true; };
@@ -377,17 +380,19 @@ export default function Sidebar() {
             {productsOpen && (
               <div className="ml-8 mt-1 space-y-0.5">
                 {productLinks.map((link) => (
-                  <a
+                  <Link
                     key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/products/${link.slug}`}
                     onClick={() => setMobileOpen(false)}
-                    className="block px-3 py-1.5 rounded-md text-sm transition-all text-white/50 hover:text-white hover:bg-white/5"
-                    title={link.url}
+                    className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                      pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
+                        ? 'bg-white/15 text-white font-medium'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={link.name}
                   >
-                    {link.label}
-                  </a>
+                    {link.name}
+                  </Link>
                 ))}
               </div>
             )}

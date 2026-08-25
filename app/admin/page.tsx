@@ -682,7 +682,7 @@ export default function AdminPage() {
           )}
 
           {activeTab === 'productLibrary' && (
-            <ProductLibraryPanel onSave={(msg) => setToast(msg)} />
+            <ProductCatalogPanel onSave={(msg) => setToast(msg)} />
           )}
 
           {activeTab === 'health' && (
@@ -1031,19 +1031,37 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
-// ── Product Library Panel ──────────────────────────────────────────
-// CRUD for the product_library_links table
-// (data-migration/23-product-library-links.sql). Everything the
-// sidebar's "Products" expandable group renders comes from this
-// panel — admins add / rename / re-URL / reorder / delete links
-// here and the sidebar picks them up on next page load.
-function ProductLibraryPanel({ onSave }: { onSave: (msg: string) => void }) {
-  type Link = { id: string; label: string; url: string; displayOrder: number };
-  const [links, setLinks] = React.useState<Link[]>([]);
+// ── Product Catalog Panel ──────────────────────────────────────────
+// CRUD for the product_library_products + product_library_files
+// tables (data-migration/25-product-catalog.sql). Replaces the flat
+// ProductLibraryPanel — each product now carries a hero, description,
+// product-information table, and per-category Sales Tools file list,
+// mirroring the "Product sheet on CRM" PPT the sales team uses.
+function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
+  type FileCat = 'presentation' | 'flyer' | 'calculator' | 'technical_bulletin' | 'document';
+  type PInfoRow = { label: string; values: string[] };
+  type PInfo = { columns: string[]; rows: PInfoRow[] };
+  type PFile = { id: string; productId: string; category: FileCat; label: string; url: string; displayOrder: number };
+  type Prod = {
+    id: string; slug: string; name: string;
+    tagline: string | null; description: string | null;
+    productInfo: PInfo; displayOrder: number; active: boolean;
+    files: PFile[];
+  };
+
+  const CAT_META: { key: FileCat; label: string }[] = [
+    { key: 'presentation',       label: 'Sales presentations' },
+    { key: 'flyer',              label: 'Flyers' },
+    { key: 'calculator',         label: 'Calculators' },
+    { key: 'technical_bulletin', label: 'Technical bulletins' },
+    { key: 'document',           label: 'Documents' },
+  ];
+
+  const [products, setProducts] = React.useState<Prod[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [newLabel, setNewLabel] = React.useState('');
-  const [newUrl, setNewUrl] = React.useState('');
+  const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+  const [newName, setNewName] = React.useState('');
 
   function formatErr(e: unknown): string {
     if (!e) return 'Unknown error';
@@ -1059,51 +1077,150 @@ function ProductLibraryPanel({ onSave }: { onSave: (msg: string) => void }) {
   async function load() {
     setLoading(true); setError(null);
     try {
-      const { listProductLinks } = await import('@/lib/productLinks');
-      const rows = await listProductLinks();
-      setLinks(rows.map((r) => ({ id: r.id, label: r.label, url: r.url, displayOrder: r.displayOrder })));
+      const { listProductsWithFiles } = await import('@/lib/productCatalog');
+      const rows = await listProductsWithFiles();
+      setProducts(rows.map((r) => ({
+        id: r.id, slug: r.slug, name: r.name,
+        tagline: r.tagline, description: r.description,
+        productInfo: r.productInfo, displayOrder: r.displayOrder, active: r.active,
+        files: r.files.map((f) => ({
+          id: f.id, productId: f.productId, category: f.category,
+          label: f.label, url: f.url, displayOrder: f.displayOrder,
+        })),
+      })));
     } catch (e) { setError(formatErr(e)); }
     finally { setLoading(false); }
   }
   React.useEffect(() => { load(); }, []);
 
-  async function saveRow(row: Link) {
-    if (!row.label.trim() || !row.url.trim()) {
-      onSave('Label and URL are required.');
-      return;
-    }
+  function toggleExpanded(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function addNewProduct() {
+    const name = newName.trim();
+    if (!name) { onSave('Enter a product name.'); return; }
     try {
-      const { upsertProductLink } = await import('@/lib/productLinks');
-      await upsertProductLink({
-        id: row.id || undefined,
-        label: row.label, url: row.url, displayOrder: row.displayOrder,
+      const { upsertProduct, toSlug } = await import('@/lib/productCatalog');
+      const nextOrder = products.length > 0 ? Math.max(...products.map((p) => p.displayOrder)) + 10 : 0;
+      await upsertProduct({ slug: toSlug(name), name, displayOrder: nextOrder });
+      setNewName('');
+      await load();
+      onSave(`Added "${name}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function saveProductMeta(p: Prod) {
+    try {
+      const { upsertProduct } = await import('@/lib/productCatalog');
+      await upsertProduct({
+        id: p.id, slug: p.slug, name: p.name,
+        tagline: p.tagline, description: p.description,
+        productInfo: p.productInfo, displayOrder: p.displayOrder, active: p.active,
       });
-      await load();
-      onSave(`Saved "${row.label}"`);
+      onSave(`Saved "${p.name}"`);
     } catch (e) { setError(formatErr(e)); }
   }
 
-  async function removeRow(id: string, label: string) {
-    if (!confirm(`Delete link "${label}"?`)) return;
+  async function removeProduct(p: Prod) {
+    if (!confirm(`Delete "${p.name}" and all its files?`)) return;
     try {
-      const { deleteProductLink } = await import('@/lib/productLinks');
-      await deleteProductLink(id);
+      const { deleteProduct } = await import('@/lib/productCatalog');
+      await deleteProduct(p.id);
       await load();
-      onSave(`Deleted "${label}"`);
+      onSave(`Deleted "${p.name}"`);
     } catch (e) { setError(formatErr(e)); }
   }
 
-  async function addNew() {
-    const label = newLabel.trim(), url = newUrl.trim();
-    if (!label || !url) { onSave('Label and URL are required.'); return; }
+  async function addFile(productId: string, category: FileCat) {
+    const label = prompt('File label (e.g. "Lipidol Prime_Flyer_Swine_07 2026.pdf")')?.trim();
+    if (!label) return;
+    const url = prompt('File URL (from Pathway Library)')?.trim();
+    if (!url) return;
     try {
-      const { upsertProductLink } = await import('@/lib/productLinks');
-      const nextOrder = links.length > 0 ? Math.max(...links.map((l) => l.displayOrder)) + 10 : 0;
-      await upsertProductLink({ label, url, displayOrder: nextOrder });
-      setNewLabel(''); setNewUrl('');
+      const { upsertFile } = await import('@/lib/productCatalog');
+      const existing = products.find((p) => p.id === productId)?.files.filter((f) => f.category === category) || [];
+      const nextOrder = existing.length > 0 ? Math.max(...existing.map((f) => f.displayOrder)) + 10 : 0;
+      await upsertFile({ productId, category, label, url, displayOrder: nextOrder });
       await load();
       onSave(`Added "${label}"`);
     } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function saveFile(f: PFile) {
+    try {
+      const { upsertFile } = await import('@/lib/productCatalog');
+      await upsertFile({
+        id: f.id, productId: f.productId, category: f.category,
+        label: f.label, url: f.url, displayOrder: f.displayOrder,
+      });
+      onSave('File updated');
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function removeFile(f: PFile) {
+    if (!confirm(`Delete file "${f.label}"?`)) return;
+    try {
+      const { deleteFile } = await import('@/lib/productCatalog');
+      await deleteFile(f.id);
+      await load();
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  // Local mutators — edit in state, then Save button pushes to DB.
+  function updateProduct(id: string, patch: Partial<Prod>) {
+    setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...patch } : p));
+  }
+  function updateFile(fileId: string, patch: Partial<PFile>) {
+    setProducts((prev) => prev.map((p) => ({
+      ...p, files: p.files.map((f) => f.id === fileId ? { ...f, ...patch } : f),
+    })));
+  }
+  function updateInfoColumns(id: string, cols: string[]) {
+    setProducts((prev) => prev.map((p) => p.id === id ? {
+      ...p,
+      productInfo: {
+        columns: cols,
+        // Realign each row's values to the new column count.
+        rows: p.productInfo.rows.map((r) => {
+          const values = [...r.values];
+          while (values.length < cols.length) values.push('');
+          values.length = cols.length;
+          return { ...r, values };
+        }),
+      },
+    } : p));
+  }
+  function addInfoRow(id: string) {
+    setProducts((prev) => prev.map((p) => p.id === id ? {
+      ...p,
+      productInfo: {
+        columns: p.productInfo.columns.length > 0 ? p.productInfo.columns : ['Value'],
+        rows: [...p.productInfo.rows, {
+          label: '',
+          values: new Array(Math.max(1, p.productInfo.columns.length)).fill(''),
+        }],
+      },
+    } : p));
+  }
+  function removeInfoRow(id: string, idx: number) {
+    setProducts((prev) => prev.map((p) => p.id === id ? {
+      ...p,
+      productInfo: { ...p.productInfo, rows: p.productInfo.rows.filter((_, i) => i !== idx) },
+    } : p));
+  }
+  function updateInfoRow(id: string, idx: number, patch: Partial<PInfoRow>) {
+    setProducts((prev) => prev.map((p) => p.id === id ? {
+      ...p,
+      productInfo: {
+        ...p.productInfo,
+        rows: p.productInfo.rows.map((r, i) => i === idx ? { ...r, ...patch } : r),
+      },
+    } : p));
   }
 
   return (
@@ -1111,8 +1228,8 @@ function ProductLibraryPanel({ onSave }: { onSave: (msg: string) => void }) {
       <div className="mb-4">
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Product Library</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Curate the shortcuts that appear under the sidebar&apos;s <span className="font-medium">Products</span> group.
-          Each link opens the Pathway USA Library in a new tab.
+          Curate the products that appear under the sidebar&apos;s <span className="font-medium">Products</span> group.
+          Each product opens an in-app catalog page with description, spec table, and file downloads pulled from the Pathway Library.
         </p>
       </div>
 
@@ -1122,86 +1239,168 @@ function ProductLibraryPanel({ onSave }: { onSave: (msg: string) => void }) {
         </div>
       )}
 
+      {/* Add-new bar */}
+      <div className="mb-4 flex items-center gap-2">
+        <input value={newName} onChange={(e) => setNewName(e.target.value)}
+          placeholder="New product name (e.g. Lipidol Prime)"
+          className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+        <button onClick={addNewProduct}
+          className="text-sm px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">
+          + Add Product
+        </button>
+      </div>
+
       {loading ? (
         <div className="py-8 text-center text-sm text-gray-400">Loading…</div>
+      ) : products.length === 0 ? (
+        <div className="py-8 text-center text-sm text-gray-400 italic">
+          No products yet — add the first one above.
+        </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-800">
-                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase w-20">Order</th>
-                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">Label</th>
-                <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-xs uppercase">URL</th>
-                <th className="px-4 py-2 w-28" />
-              </tr>
-            </thead>
-            <tbody>
-              {links.map((row) => (
-                <tr key={row.id} className="border-b border-gray-50 dark:border-slate-800">
-                  <td className="px-4 py-2">
-                    <input type="number" value={row.displayOrder}
-                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, displayOrder: Number(e.target.value) || 0 } : r))}
-                      className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input value={row.label}
-                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, label: e.target.value } : r))}
-                      placeholder="Product name"
-                      className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input value={row.url}
-                      onChange={(e) => setLinks((prev) => prev.map((r) => r.id === row.id ? { ...r, url: e.target.value } : r))}
-                      placeholder="https://pathway-library-flame.vercel.app/..."
-                      className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm font-mono text-xs" />
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button onClick={() => saveRow(row)}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
-                      <button onClick={() => removeRow(row.id, row.label)}
-                        className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium">×</button>
+        <div className="space-y-3">
+          {products.map((p) => {
+            const isOpen = expanded.has(p.id);
+            return (
+              <div key={p.id} className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                {/* Header row */}
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-slate-800 bg-gray-50/60 dark:bg-slate-800/40">
+                  <button onClick={() => toggleExpanded(p.id)}
+                    className="text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 text-sm">
+                    {isOpen ? '▼' : '▶'}
+                  </button>
+                  <input value={p.name}
+                    onChange={(e) => updateProduct(p.id, { name: e.target.value })}
+                    className="flex-1 border border-transparent hover:border-gray-300 dark:hover:border-slate-600 focus:border-emerald-500 dark:bg-slate-900 dark:text-gray-100 rounded px-2 py-1 text-sm font-semibold" />
+                  <input type="number" value={p.displayOrder}
+                    onChange={(e) => updateProduct(p.id, { displayOrder: Number(e.target.value) || 0 })}
+                    className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{p.slug}</span>
+                  <button onClick={() => saveProductMeta(p)}
+                    className="text-xs px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
+                  <button onClick={() => removeProduct(p)}
+                    className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-medium">×</button>
+                </div>
+
+                {isOpen && (
+                  <div className="p-4 space-y-4">
+                    {/* Tagline + description */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Tagline</label>
+                      <input value={p.tagline || ''}
+                        onChange={(e) => updateProduct(p.id, { tagline: e.target.value })}
+                        placeholder="The First Absorption Accelerator"
+                        className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
                     </div>
-                  </td>
-                </tr>
-              ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Description</label>
+                      <textarea value={p.description || ''}
+                        onChange={(e) => updateProduct(p.id, { description: e.target.value })}
+                        rows={5}
+                        placeholder="Long-form product description shown at the top of the catalog page."
+                        className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm resize-y" />
+                    </div>
 
-              {/* New-row form as the last table row so it always sits
-                  under the existing links. */}
-              <tr className="bg-gray-50/60 dark:bg-slate-800/30">
-                <td className="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">new</td>
-                <td className="px-4 py-2">
-                  <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
-                    placeholder="e.g. Lipidol Prime"
-                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm" />
-                </td>
-                <td className="px-4 py-2">
-                  <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="https://pathway-library-flame.vercel.app/lipidol-prime"
-                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-sm font-mono text-xs" />
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <button onClick={addNew}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">+ Add</button>
-                </td>
-              </tr>
+                    {/* Product info table */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Product Information Table</label>
+                        <button onClick={() => addInfoRow(p.id)}
+                          className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200">+ Row</button>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400">Columns (comma-separated):</span>
+                        <input value={p.productInfo.columns.join(', ')}
+                          onChange={(e) => updateInfoColumns(p.id, e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+                          placeholder="Imperial, Metric"
+                          className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                      </div>
+                      {p.productInfo.rows.length > 0 && (
+                        <table className="w-full text-xs mb-1">
+                          <tbody>
+                            {p.productInfo.rows.map((row, ri) => (
+                              <tr key={ri} className="border-b border-gray-50 dark:border-slate-800">
+                                <td className="py-1 pr-2 w-[30%]">
+                                  <input value={row.label}
+                                    onChange={(e) => updateInfoRow(p.id, ri, { label: e.target.value })}
+                                    placeholder="Inclusion rate"
+                                    className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                                </td>
+                                {p.productInfo.columns.map((_, ci) => (
+                                  <td key={ci} className="py-1 pr-2">
+                                    <input value={row.values[ci] || ''}
+                                      onChange={(e) => {
+                                        const values = [...row.values];
+                                        values[ci] = e.target.value;
+                                        updateInfoRow(p.id, ri, { values });
+                                      }}
+                                      placeholder="0.6 lb/ton"
+                                      className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                                  </td>
+                                ))}
+                                <td className="py-1 w-8 text-right">
+                                  <button onClick={() => removeInfoRow(p.id, ri)}
+                                    className="text-red-500 hover:text-red-700 text-xs">×</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
 
-              {links.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-500 italic">
-                    No links yet — add the first one above.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    {/* Files by category */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Sales Tools</label>
+                      <div className="space-y-3">
+                        {CAT_META.map((cat) => {
+                          const catFiles = p.files.filter((f) => f.category === cat.key);
+                          return (
+                            <div key={cat.key} className="border border-gray-100 dark:border-slate-800 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">{cat.label}</span>
+                                <button onClick={() => addFile(p.id, cat.key)}
+                                  className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium">+ Add file</button>
+                              </div>
+                              {catFiles.length === 0 ? (
+                                <div className="text-[11px] text-gray-400 dark:text-gray-500 italic">No files.</div>
+                              ) : (
+                                <ul className="space-y-1.5">
+                                  {catFiles.map((f) => (
+                                    <li key={f.id} className="flex items-center gap-2">
+                                      <input value={f.label}
+                                        onChange={(e) => updateFile(f.id, { label: e.target.value })}
+                                        className="flex-1 min-w-0 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                                      <input value={f.url}
+                                        onChange={(e) => updateFile(f.id, { url: e.target.value })}
+                                        placeholder="https://pathway-library-flame.vercel.app/…"
+                                        className="flex-1 min-w-0 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                      <button onClick={() => saveFile(f)}
+                                        className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
+                                      <button onClick={() => removeFile(f)}
+                                        className="text-xs px-1.5 py-1 rounded text-red-600 hover:bg-red-50">×</button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button onClick={() => saveProductMeta(p)}
+                        className="text-sm px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">
+                        Save product metadata
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
-        Tip: paste the exact URL of the library page (e.g. a specific product page).
-        Lower &quot;Order&quot; numbers appear first in the sidebar.
-      </p>
     </div>
   );
 }
