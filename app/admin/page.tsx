@@ -1315,10 +1315,10 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
                       </div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-[11px] text-gray-500 dark:text-gray-400">Columns (comma-separated):</span>
-                        <input value={p.productInfo.columns.join(', ')}
-                          onChange={(e) => updateInfoColumns(p.id, e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-                          placeholder="Imperial, Metric"
-                          className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                        <ColumnsInput
+                          initial={p.productInfo.columns.join(', ')}
+                          onCommit={(cols) => updateInfoColumns(p.id, cols)}
+                        />
                       </div>
                       {p.productInfo.rows.length > 0 && (
                         <table className="w-full text-xs mb-1">
@@ -1433,5 +1433,40 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Text input for the Product Information "columns" list. The parent
+// stores columns as `string[]`, but joining that back into
+// `Imperial, Metric` for the input value and re-splitting on every
+// keystroke strips whatever the user just typed after the trailing
+// comma — so `Imperial,` becomes `Imperial` before they can type the
+// second column name. This wrapper keeps a raw text buffer locally
+// and only commits the parsed array on blur (or Enter).
+function ColumnsInput({
+  initial,
+  onCommit,
+}: {
+  initial: string;
+  onCommit: (cols: string[]) => void;
+}) {
+  const [text, setText] = React.useState(initial);
+  // Re-sync when the caller's data changes (e.g. reload after save).
+  React.useEffect(() => { setText(initial); }, [initial]);
+
+  function commit() {
+    const parsed = text.split(',').map((s) => s.trim()).filter(Boolean);
+    onCommit(parsed);
+  }
+
+  return (
+    <input
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+      placeholder="Imperial, Metric"
+      className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs"
+    />
   );
 }
