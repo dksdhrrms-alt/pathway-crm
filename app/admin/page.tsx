@@ -1041,7 +1041,7 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
   type FileCat = 'presentation' | 'flyer' | 'calculator' | 'technical_bulletin' | 'document';
   type PInfoRow = { label: string; values: string[] };
   type PInfo = { columns: string[]; rows: PInfoRow[] };
-  type PFile = { id: string; productId: string; category: FileCat; label: string; url: string; displayOrder: number };
+  type PFile = { id: string; productId: string; category: FileCat; label: string; url: string; thumbnailUrl: string | null; displayOrder: number };
   type Prod = {
     id: string; slug: string; name: string;
     tagline: string | null; description: string | null;
@@ -1085,7 +1085,9 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
         productInfo: r.productInfo, displayOrder: r.displayOrder, active: r.active,
         files: r.files.map((f) => ({
           id: f.id, productId: f.productId, category: f.category,
-          label: f.label, url: f.url, displayOrder: f.displayOrder,
+          label: f.label, url: f.url,
+          thumbnailUrl: f.thumbnailUrl,
+          displayOrder: f.displayOrder,
         })),
       })));
     } catch (e) { setError(formatErr(e)); }
@@ -1141,11 +1143,13 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
     if (!label) return;
     const url = prompt('File URL (from Pathway Library)')?.trim();
     if (!url) return;
+    // Thumbnail is optional — skip to leave the card icon-less.
+    const thumbnailUrl = prompt('Preview thumbnail URL (optional — paste any image URL, or leave blank)')?.trim() || null;
     try {
       const { upsertFile } = await import('@/lib/productCatalog');
       const existing = products.find((p) => p.id === productId)?.files.filter((f) => f.category === category) || [];
       const nextOrder = existing.length > 0 ? Math.max(...existing.map((f) => f.displayOrder)) + 10 : 0;
-      await upsertFile({ productId, category, label, url, displayOrder: nextOrder });
+      await upsertFile({ productId, category, label, url, thumbnailUrl, displayOrder: nextOrder });
       await load();
       onSave(`Added "${label}"`);
     } catch (e) { setError(formatErr(e)); }
@@ -1156,7 +1160,9 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
       const { upsertFile } = await import('@/lib/productCatalog');
       await upsertFile({
         id: f.id, productId: f.productId, category: f.category,
-        label: f.label, url: f.url, displayOrder: f.displayOrder,
+        label: f.label, url: f.url,
+        thumbnailUrl: f.thumbnailUrl,
+        displayOrder: f.displayOrder,
       });
       onSave('File updated');
     } catch (e) { setError(formatErr(e)); }
@@ -1364,20 +1370,45 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
                               {catFiles.length === 0 ? (
                                 <div className="text-[11px] text-gray-400 dark:text-gray-500 italic">No files.</div>
                               ) : (
-                                <ul className="space-y-1.5">
+                                <ul className="space-y-2">
                                   {catFiles.map((f) => (
-                                    <li key={f.id} className="flex items-center gap-2">
-                                      <input value={f.label}
-                                        onChange={(e) => updateFile(f.id, { label: e.target.value })}
-                                        className="flex-1 min-w-0 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
-                                      <input value={f.url}
-                                        onChange={(e) => updateFile(f.id, { url: e.target.value })}
-                                        placeholder="https://pathway-library-flame.vercel.app/…"
-                                        className="flex-1 min-w-0 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
-                                      <button onClick={() => saveFile(f)}
-                                        className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
-                                      <button onClick={() => removeFile(f)}
-                                        className="text-xs px-1.5 py-1 rounded text-red-600 hover:bg-red-50">×</button>
+                                    <li key={f.id} className="flex items-start gap-2 p-2 rounded border border-gray-100 dark:border-slate-800">
+                                      {/* Live thumbnail preview so admin
+                                          knows the URL resolves before
+                                          reps click it. eslint-disable
+                                          because we want any external
+                                          host without configuring
+                                          next.config remote patterns. */}
+                                      {f.thumbnailUrl ? (
+                                        /* eslint-disable-next-line @next/next/no-img-element */
+                                        <img src={f.thumbnailUrl} alt=""
+                                          className="w-12 h-12 flex-shrink-0 object-cover rounded border border-gray-200 dark:border-slate-700 bg-white"
+                                          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.2'; }} />
+                                      ) : (
+                                        <div className="w-12 h-12 flex-shrink-0 rounded border border-dashed border-gray-300 dark:border-slate-700 flex items-center justify-center text-[9px] text-gray-400">
+                                          no img
+                                        </div>
+                                      )}
+                                      <div className="flex-1 min-w-0 space-y-1">
+                                        <input value={f.label}
+                                          onChange={(e) => updateFile(f.id, { label: e.target.value })}
+                                          placeholder="File label"
+                                          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                                        <input value={f.url}
+                                          onChange={(e) => updateFile(f.id, { url: e.target.value })}
+                                          placeholder="File URL (Pathway Library)"
+                                          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                        <input value={f.thumbnailUrl || ''}
+                                          onChange={(e) => updateFile(f.id, { thumbnailUrl: e.target.value || null })}
+                                          placeholder="Thumbnail image URL (optional)"
+                                          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                      </div>
+                                      <div className="flex flex-col gap-1">
+                                        <button onClick={() => saveFile(f)}
+                                          className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
+                                        <button onClick={() => removeFile(f)}
+                                          className="text-xs px-2 py-1 rounded text-red-600 hover:bg-red-50">Delete</button>
+                                      </div>
                                     </li>
                                   ))}
                                 </ul>

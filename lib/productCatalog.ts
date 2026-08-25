@@ -52,6 +52,8 @@ export interface ProductFile {
   category: FileCategory;
   label: string;
   url: string;
+  /** Optional preview image shown above the filename on the catalog page. */
+  thumbnailUrl: string | null;
   displayOrder: number;
 }
 
@@ -76,7 +78,8 @@ type ProductRow = {
 };
 type FileRow = {
   id: string; product_id: string; category: FileCategory;
-  label: string; url: string; display_order: number;
+  label: string; url: string; thumbnail_url: string | null;
+  display_order: number;
 };
 
 function asProductInfo(raw: unknown): ProductInfo {
@@ -110,7 +113,9 @@ function asProduct(r: ProductRow, files: ProductFile[] = []): Product {
 function asFile(r: FileRow): ProductFile {
   return {
     id: r.id, productId: r.product_id, category: r.category,
-    label: r.label, url: r.url, displayOrder: r.display_order,
+    label: r.label, url: r.url,
+    thumbnailUrl: r.thumbnail_url,
+    displayOrder: r.display_order,
   };
 }
 
@@ -191,6 +196,7 @@ export async function upsertFile(
     category: input.category,
     label: input.label.trim(),
     url: input.url.trim(),
+    thumbnail_url: input.thumbnailUrl ? String(input.thumbnailUrl).trim() : null,
     display_order: input.displayOrder ?? 0,
     updated_at: new Date().toISOString(),
   };
