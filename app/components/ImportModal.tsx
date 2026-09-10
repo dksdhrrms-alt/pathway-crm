@@ -56,26 +56,42 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
 
   const fields = type === 'accounts' ? ACCOUNT_FIELDS : CONTACT_FIELDS;
 
+  // Shared parser for raw vCard text — used both by the .vcf file
+  // path AND the "drag from macOS Contacts" path (which delivers
+  // vCard as a text MIME type, not always as a File).
+  function handleVCardText(text: string): boolean {
+    if (type !== 'contacts') return false;
+    if (!/BEGIN:VCARD/i.test(text)) return false;
+    const { headers: h, rows: r } = parseVCardFile(text);
+    if (r.length === 0) {
+      console.warn('[Import] No vCard records found in dropped data');
+      return false;
+    }
+    setHeaders(h);
+    setRows(r);
+    setMapping(autoMapColumns(h, type));
+    setIsMondayMode(false);
+    setStep('mapping');
+    return true;
+  }
+
   function handleFile(f: File) {
-    if (!f.name.match(/\.(xlsx?|csv|vcf)$/i)) return;
+    // Accept the file if it has a known extension OR looks like a
+    // vCard by MIME type (macOS Contacts dropped files can arrive
+    // named "contacts.vcf" but also as "text.vcf" with a vCard type).
+    const isKnown = f.name.match(/\.(xlsx?|csv|vcf)$/i)
+      || (type === 'contacts' && /vcard/i.test(f.type));
+    if (!isKnown) return;
 
     // vCard branch — text-based, parse directly into RawRow shape and
     // skip straight to the mapping step. iCloud / iOS Contacts exports
     // come this way; one .vcf may hold many BEGIN/END VCARD blocks.
-    if (f.name.match(/\.vcf$/i) && type === 'contacts') {
+    const isVcf = f.name.match(/\.vcf$/i) || /vcard/i.test(f.type);
+    if (isVcf && type === 'contacts') {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
-        const { headers: h, rows: r } = parseVCardFile(text);
-        if (r.length === 0) {
-          console.warn('[Import] No vCard records found in file');
-          return;
-        }
-        setHeaders(h);
-        setRows(r);
-        setMapping(autoMapColumns(h, type));
-        setIsMondayMode(false);
-        setStep('mapping');
+        handleVCardText(text);
       };
       reader.readAsText(f);
       return;
@@ -299,7 +315,34 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                // Priority 1 — actual File objects. Covers spreadsheet
+                // uploads AND macOS Contacts drags in browsers that
+                // materialize the drag as a .vcf attachment (Safari,
+                // recent Chrome on macOS).
+                const droppedFile = e.dataTransfer.files?.[0];
+                if (droppedFile) { handleFile(droppedFile); return; }
+                // Priority 2 — vCard text delivered via MIME strings.
+                // Some browsers (older Chrome/Firefox) deliver macOS
+                // Contacts drags as text/vcard or text/x-vcard rather
+                // than as a File. text/plain also often carries the
+                // full BEGIN:VCARD payload as a fallback.
+                if (type === 'contacts') {
+                  const vcardMime =
+                    e.dataTransfer.getData('text/vcard') ||
+                    e.dataTransfer.getData('text/x-vcard') ||
+                    e.dataTransfer.getData('public.vcard') ||
+                    '';
+                  if (vcardMime && handleVCardText(vcardMime)) return;
+                  const plain = e.dataTransfer.getData('text/plain') || '';
+                  if (plain && handleVCardText(plain)) return;
+                }
+                console.warn('[Import] Drop had no recognized data', {
+                  types: Array.from(e.dataTransfer.types || []),
+                });
+              }}
               onClick={() => fileRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-green-400 bg-green-50 dark:border-green-600 dark:bg-green-950/40' : 'border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-600'}`}
             >
@@ -310,6 +353,11 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 Accepts .xlsx, .xls, .csv{type === 'contacts' ? ', .vcf (iPhone / iCloud Contacts)' : ''}
               </p>
+              {type === 'contacts' && (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  Tip: you can also drag contacts directly from the macOS Contacts app.
+                </p>
+              )}
               <input ref={fileRef} type="file" accept={type === 'contacts' ? '.xlsx,.xls,.csv,.vcf' : '.xlsx,.xls,.csv'} className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
             <button onClick={downloadTemplate} className="mt-3 text-sm font-medium hover:underline" style={{ color: '#1a4731' }}>
