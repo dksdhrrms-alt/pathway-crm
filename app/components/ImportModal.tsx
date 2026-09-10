@@ -339,8 +339,20 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                   const plain = e.dataTransfer.getData('text/plain') || '';
                   if (plain && handleVCardText(plain)) return;
                 }
+                // Nothing usable landed. Log every payload the browser
+                // did surface — helps diagnose "why did the drag from
+                // macOS Contacts bounce back?" tickets. Common cause:
+                // Contacts.app exposes non-standard UTIs the browser
+                // refuses to translate. Workaround is Contacts →
+                // Finder → .vcf → drop here (see UI hint above).
+                const types = Array.from(e.dataTransfer.types || []);
+                const preview: Record<string, string> = {};
+                for (const t of types) {
+                  try { preview[t] = (e.dataTransfer.getData(t) || '').slice(0, 200); }
+                  catch { preview[t] = '(unreadable)'; }
+                }
                 console.warn('[Import] Drop had no recognized data', {
-                  types: Array.from(e.dataTransfer.types || []),
+                  types, preview, files_count: e.dataTransfer.files?.length ?? 0,
                 });
               }}
               onClick={() => fileRef.current?.click()}
@@ -354,9 +366,15 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
                 Accepts .xlsx, .xls, .csv{type === 'contacts' ? ', .vcf (iPhone / iCloud Contacts)' : ''}
               </p>
               {type === 'contacts' && (
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  Tip: you can also drag contacts directly from the macOS Contacts app.
-                </p>
+                <div className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+                  <p className="font-medium text-gray-600 dark:text-gray-300">Importing from macOS Contacts app?</p>
+                  <p>
+                    Direct drag from the Contacts app is blocked by most browsers. Instead:
+                    <br />1. Select contacts in the <span className="font-medium">Contacts app</span> (⌘-click for multiple)
+                    <br />2. Drag them onto your <span className="font-medium">Desktop</span> — a <code>.vcf</code> file appears
+                    <br />3. Drag that <code>.vcf</code> file here.
+                  </p>
+                </div>
               )}
               <input ref={fileRef} type="file" accept={type === 'contacts' ? '.xlsx,.xls,.csv,.vcf' : '.xlsx,.xls,.csv'} className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
