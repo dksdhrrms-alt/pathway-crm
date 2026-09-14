@@ -8,7 +8,7 @@ import {
   Draggable,
   DropResult,
 } from '@hello-pangea/dnd';
-import { Opportunity, Stage, annualizedRevenue } from '@/lib/data';
+import { Opportunity, Stage, STAGE_PROBABILITY, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import StageBadge from '@/app/components/StageBadge';
@@ -105,7 +105,18 @@ export default function OpportunitiesPage() {
   // Stats for current view
   const openOpps = filteredOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost');
   const totalPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
-  const STAGE_PROB: Record<string, number> = { Prospect: 5, Prospecting: 10, Qualified: 20, Qualification: 25, 'Trial Started': 40, Proposal: 50, Negotiation: 75, 'Won': 100, 'Stalled or Lost': 0 };
+  // Stage → default probability. Uses the canonical STAGE_PROBABILITY
+  // from lib/data.ts so we never drift from the modals again. Legacy
+  // stage names (Prospecting / Qualification / Proposal / Negotiation)
+  // are folded in via LEGACY_STAGE_MAP so any pre-migration rows still
+  // contribute to the weighted total.
+  const STAGE_PROB: Record<string, number> = {
+    ...STAGE_PROBABILITY,
+    Prospecting:   STAGE_PROBABILITY['Prospect'],
+    Qualification: STAGE_PROBABILITY['Qualified'],
+    Proposal:      STAGE_PROBABILITY['Trial Ended'],
+    Negotiation:   STAGE_PROBABILITY['Results Successful'],
+  };
   const weightedPipeline = openOpps.reduce((sum, o) => sum + (Number(o.amount) || 0) * ((STAGE_PROB[o.stage] || 0) / 100), 0);
   const closedWonCount = filteredOpps.filter((o) => o.stage === 'Won').length;
 
