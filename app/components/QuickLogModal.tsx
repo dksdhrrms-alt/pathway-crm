@@ -176,11 +176,12 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               style={{
                 padding: '10px 4px', borderRadius: '10px',
                 border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
-                background: type === t.id ? '#f0f7ee' : undefined,
                 cursor: 'pointer', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: '4px',
               }}
-              className={type === t.id ? 'dark:border-emerald-500 dark:bg-emerald-900/30' : 'bg-white dark:border-slate-600 dark:bg-slate-800'}
+              // Selected-state background moved to className so dark
+              // mode can override it. Inline style would win otherwise.
+              className={type === t.id ? 'bg-[#f0f7ee] dark:border-emerald-500 dark:bg-emerald-900/30' : 'bg-white dark:border-slate-600 dark:bg-slate-800'}
             >
               <span style={{ fontSize: '20px' }}>{t.emoji}</span>
               <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
@@ -259,9 +260,11 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               fontSize: '14px',
               border: accountId ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
               borderRadius: '8px', boxSizing: 'border-box',
-              background: accountId ? '#f0f7ee' : undefined,
             }}
-            className={accountId ? 'dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
+            // Background moved out of inline style — inline was
+            // winning over the dark: class and leaving white text on
+            // a light-green background (invisible in dark mode).
+            className={accountId ? 'bg-[#f0f7ee] dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
           />
           {accountName && (
             <button
@@ -336,9 +339,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
               fontSize: '14px',
               border: selectedContactObjs.length > 0 ? '1.5px solid #1a4731' : '1px solid #e5e7eb',
               borderRadius: '8px', boxSizing: 'border-box',
-              background: selectedContactObjs.length > 0 ? '#f0f7ee' : undefined,
             }}
-            className={selectedContactObjs.length > 0 ? 'dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
+            // Same fix — inline background overrode the dark class.
+            className={selectedContactObjs.length > 0 ? 'bg-[#f0f7ee] dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-gray-100 dark:placeholder-gray-500' : 'bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500'}
           />
           {contactSearch && (
             <button

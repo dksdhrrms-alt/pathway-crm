@@ -224,11 +224,15 @@ export default function QuickLogFAB() {
                   style={{
                     padding: '10px 4px', borderRadius: '10px',
                     border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
-                    background: type === t.id ? '#f0f7ee' : undefined,
                     cursor: 'pointer', display: 'flex', flexDirection: 'column',
                     alignItems: 'center', gap: '4px',
                   }}
-                  className="bg-white dark:border-slate-600 dark:bg-slate-800"
+                  // Selected background moved to className so dark
+                  // mode gets its own tint. Inline style would win
+                  // over the dark: class otherwise.
+                  className={type === t.id
+                    ? 'bg-[#f0f7ee] dark:border-emerald-500 dark:bg-emerald-900/30'
+                    : 'bg-white dark:border-slate-600 dark:bg-slate-800'}
                 >
                   <span style={{ fontSize: '20px' }}>{t.emoji}</span>
                   <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
@@ -349,9 +353,14 @@ export default function QuickLogFAB() {
                   fontSize: '14px',
                   border: accountId ? '1px solid #1a4731' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
-                  background: accountId ? '#f0f7ee' : undefined,
                 }}
-                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                // Selected-state background moved out of the inline
+                // style so it can respond to dark mode. Light-green
+                // in light mode; darker emerald tint in dark mode so
+                // white text stays legible against it.
+                className={`${accountId
+                  ? 'bg-[#f0f7ee] dark:bg-emerald-900/40'
+                  : 'bg-white dark:bg-slate-800'} dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500`}
               />
               {accountName && (
                 <button
@@ -415,9 +424,12 @@ export default function QuickLogFAB() {
                   fontSize: '14px',
                   border: contactId ? '1px solid #1a4731' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
-                  background: contactId ? '#f0f7ee' : undefined,
                 }}
-                className="bg-white dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500"
+                // Same fix as the account input above — dark-mode
+                // aware selected state so white text stays visible.
+                className={`${contactId
+                  ? 'bg-[#f0f7ee] dark:bg-emerald-900/40'
+                  : 'bg-white dark:bg-slate-800'} dark:border-slate-600 dark:text-gray-100 dark:placeholder-gray-500`}
               />
               {contactSearch && (
                 <button
