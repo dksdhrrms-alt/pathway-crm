@@ -151,7 +151,20 @@ function mmddyyyyToTime(s: string): number {
 }
 
 async function fetchOne(c: CommodityConfig): Promise<FetchResult> {
-  if (c.source === 'cbot' && c.yahooSymbol) return fetchYahoo(c.yahooSymbol);
+  if (c.source === 'cbot' && c.yahooSymbol) {
+    const raw = await fetchYahoo(c.yahooSymbol);
+    // Yahoo ships CBOT corn (ZC=F) in CENTS/bu, not $/bu. Our config
+    // labels the row 'USD/bu' and the dashboard renders "$X.XX/bu",
+    // so 543 cents → $543 in the UI, which the sales team correctly
+    // called out as wrong. Divide by 100 on ingest so what we store
+    // matches the label. Soybean Oil (ZL=F) is already in cents/lb
+    // (config unit matches), and Soybean Meal (ZM=F) is $/ton, so
+    // neither needs adjustment.
+    if (raw.ok && c.key === 'corn') {
+      raw.points = raw.points.map((p) => ({ ...p, price: p.price / 100 }));
+    }
+    return raw;
+  }
   if (c.source === 'usda-ams' && c.mmnSlug) return fetchMmn(c);
   return { ok: false, error: 'no-fetcher' };
 }
