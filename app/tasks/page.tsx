@@ -223,11 +223,23 @@ export default function TasksPage() {
                           </button>
                         </td>
                         <td className="px-4 py-3.5">
+                          {task.isImportant && (
+                            <span
+                              className="mr-1.5 text-amber-500 dark:text-amber-400"
+                              title="Marked as important — full description will appear in Weekly Report"
+                            >★</span>
+                          )}
                           <span className={`font-medium text-gray-800 dark:text-gray-100 ${task.status === 'Completed' ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
                             {task.subject}
                           </span>
                           {task.description && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 line-clamp-1">{task.description}</p>
+                            // Full description wraps naturally — the old
+                            // `line-clamp-1` cut multi-line notes to a
+                            // single ellipsised line and users couldn't
+                            // see what was actually in the task.
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-wrap leading-relaxed">
+                              {task.description}
+                            </p>
                           )}
                         </td>
                         <td className="px-4 py-3.5">

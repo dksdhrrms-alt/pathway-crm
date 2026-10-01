@@ -29,6 +29,8 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
   const [relatedAccountId, setRelatedAccountId] = useState(task.relatedAccountId || '');
   const [relatedContactId, setRelatedContactId] = useState(task.relatedContactId || '');
   const [description, setDescription] = useState(task.description || '');
+  // Star flag — Weekly Report shows the full description when on.
+  const [isImportant, setIsImportant] = useState(!!task.isImportant);
   const [error, setError] = useState('');
   // Guards against double-submit (button still visible during the brief
   // window between click and the parent closing the modal via onSaved).
@@ -49,6 +51,7 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
         subject: subject.trim(), dueDate, priority, status, description: description.trim(),
         relatedAccountId: relatedAccountId || undefined,
         relatedContactId: relatedContactId || undefined,
+        isImportant,
       };
 
       updateTask(task.id, updates);
@@ -112,8 +115,21 @@ export default function EditTaskModal({ task, onClose, onSaved }: Props) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5}
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" />
+            <button
+              type="button"
+              onClick={() => setIsImportant((v) => !v)}
+              className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition ${
+                isImportant
+                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+              }`}
+              title="Star this task so the full description shows up in the Weekly Report"
+            >
+              <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+              <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+            </button>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</SubmitButton>

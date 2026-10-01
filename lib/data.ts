@@ -264,6 +264,10 @@ export interface Task {
   relatedContactId?: string;
   relatedOpportunityId?: string;
   description?: string;
+  // Mirror of Activity.isImportant — when true, the Weekly Report
+  // carries the full subject + description instead of a one-line
+  // summary. Default false. See data-migration/29-task-important.sql.
+  isImportant?: boolean;
 }
 
 export interface AccountBudget {

@@ -223,7 +223,15 @@ async function generateMonogastricReport(
         t.subject,
         t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
       ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-      return `- ${parts.join(' | ')}`;
+      const starred = !!t.isImportant;
+      const line1 = `- ${starred ? '★ ' : ''}${parts.join(' | ')}`;
+      const description = (t.description || '').trim();
+      // Full description only for starred tasks — mirrors the
+      // starred-activity treatment so leadership gets detail where
+      // the rep explicitly asked for it.
+      if (!starred || !description) return line1;
+      const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+      return `${line1}\n  ${safeDesc}`;
     }).join('\n');
     aiSummaries[team] = {
       thisWeek: actCount > 0 ? actText : '- No activities',
@@ -474,7 +482,12 @@ async function generateRuminantReport(
       t.subject,
       t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
     ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-    return `- ${parts.join(' | ')}`;
+    const starred = !!t.isImportant;
+    const line1 = `- ${starred ? '★ ' : ''}${parts.join(' | ')}`;
+    const description = (t.description || '').trim();
+    if (!starred || !description) return line1;
+    const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+    return `${line1}\n  ${safeDesc}`;
   }).join('\n');
   const rumSummary = {
     thisWeek: actCount > 0 ? rumActText : '- No activities recorded',
@@ -695,7 +708,12 @@ async function generateLATAMReport(
       t.subject,
       t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
     ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
-    return `- ${parts.join(' | ')}`;
+    const starred = !!t.isImportant;
+    const line1 = `- ${starred ? '★ ' : ''}${parts.join(' | ')}`;
+    const description = (t.description || '').trim();
+    if (!starred || !description) return line1;
+    const safeDesc = sanitize(description).replace(/\s*\n+\s*/g, ' ');
+    return `${line1}\n  ${safeDesc}`;
   }).join('\n');
   const latSummary = {
     thisWeek: actCount > 0 ? latActText : '- No activities recorded',

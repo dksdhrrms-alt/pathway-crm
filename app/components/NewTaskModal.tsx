@@ -38,6 +38,10 @@ export default function NewTaskModal({
   const [relatedAccountId, setRelatedAccountId] = useState(defaultAccountId);
   const [relatedContactId, setRelatedContactId] = useState(defaultContactId);
   const [description, setDescription] = useState('');
+  // Star flag — mirrors Activity.isImportant. When on, the Weekly
+  // Report prints the full task subject + description instead of a
+  // one-line meta bullet.
+  const [isImportant, setIsImportant] = useState(false);
   const [ownerId, setOwnerId] = useState(userId);
   const [error, setError] = useState('');
   // Guards against double-submit (button still visible during the brief
@@ -70,6 +74,7 @@ export default function NewTaskModal({
         relatedContactId: relatedContactId || undefined,
         relatedOpportunityId: defaultOpportunityId || undefined,
         description: description.trim() || undefined,
+        isImportant,
       };
       addTask(newTask);
       onSave(newTask);
@@ -192,9 +197,24 @@ export default function NewTaskModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional details..."
-              rows={3}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              rows={5}
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
             />
+            {/* Star flag — Weekly Report prints the full description
+                when on. Mirrors the Log/Edit Activity modals. */}
+            <button
+              type="button"
+              onClick={() => setIsImportant((v) => !v)}
+              className={`mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition ${
+                isImportant
+                  ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                  : 'border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800'
+              }`}
+              title="Star this task so the full description shows up in the Weekly Report"
+            >
+              <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
+              <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
+            </button>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

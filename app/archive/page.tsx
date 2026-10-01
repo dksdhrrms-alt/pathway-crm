@@ -25,7 +25,8 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EmptyState from '@/app/components/EmptyState';
 import ExportButton, { ExportColumn } from '@/app/components/ExportButton';
 import EditActivityModal from '@/app/components/EditActivityModal';
-import type { Activity } from '@/lib/data';
+import EditTaskModal from '@/app/components/EditTaskModal';
+import type { Activity, Task } from '@/lib/data';
 import { getCommentCounts } from '@/lib/comments';
 
 const TYPE_BADGE_BG: Record<string, string> = {
@@ -44,7 +45,7 @@ function formatDate(d: string): string {
 
 export default function ArchivePage() {
   const { data: session } = useSession();
-  const { activities, accounts, contacts, loading } = useCRM();
+  const { activities, tasks, accounts, contacts, loading } = useCRM();
   const { users } = useUsers();
 
   const sessionUserId = session?.user?.id ?? '';
@@ -110,9 +111,13 @@ export default function ArchivePage() {
   // row in the table to set this; the modal handles save/delete via
   // CRMContext.updateActivity / deleteActivity (both optimistic).
   const [editing, setEditing] = useState<Activity | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  // Which record type the user is browsing — defaults to activities
+  // for backward compatibility (that was the only type before).
+  const [recordType, setRecordType] = useState<'activities' | 'tasks'>('activities');
   // Unassigned-only filter — surfaces inbound emails the parser couldn't
   // confidently route. Activated by URL `?filter=unassigned` (NotificationBell
   // bell badge links here) or by toggling the chip in the filter row.
@@ -199,6 +204,37 @@ export default function ArchivePage() {
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }, [activities, canPickOthers, selectedUserIds, sessionUserId, fromDate, toDate, search, unassignedOnly]);
 
+  // Same filter model, applied to tasks. `dueDate` plays the role of
+  // `date`, and search also matches the related account / contact
+  // name so a rep can hunt by customer when they only remember who
+  // the follow-up was for.
+  const filteredTasks = useMemo(() => {
+    const ownerSet = canPickOthers ? selectedUserIds : new Set([sessionUserId]);
+    const needle = search.trim().toLowerCase();
+    const acctName = (id: string | undefined) => id ? (accounts.find((a) => a.id === id)?.name || '') : '';
+    const ctName = (id: string | undefined) => {
+      if (!id) return '';
+      const c = contacts.find((x) => x.id === id);
+      return c ? `${c.firstName} ${c.lastName}` : '';
+    };
+    return tasks
+      .filter((t) => ownerSet.has(t.ownerId))
+      .filter((t) => {
+        const d = t.dueDate || '';
+        if (fromDate && d && d < fromDate) return false;
+        if (toDate && d && d > toDate) return false;
+        if (needle) {
+          const hay = (
+            t.subject + ' ' + (t.description ?? '') + ' ' +
+            acctName(t.relatedAccountId) + ' ' + ctName(t.relatedContactId)
+          ).toLowerCase();
+          if (!hay.includes(needle)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => (b.dueDate || '').localeCompare(a.dueDate || ''));
+  }, [tasks, canPickOthers, selectedUserIds, sessionUserId, fromDate, toDate, search, accounts, contacts]);
+
   // Type tally chips above the table. Keeps the user oriented when filters
   // are applied — they can see at a glance how many of each kind survived.
   const typeCounts = useMemo(() => {
@@ -273,6 +309,32 @@ export default function ArchivePage() {
               columns={exportColumns}
               title={`Activities — ${targetUserName}`}
             />
+          </div>
+
+          {/* Record type tabs — Activities (default) vs Tasks. The
+              search / date / user filters apply to whichever tab is
+              active. Export + table swap accordingly. */}
+          <div className="mb-4 inline-flex bg-gray-100 dark:bg-slate-800 p-1 rounded-md">
+            <button
+              onClick={() => setRecordType('activities')}
+              className={`px-3 py-1.5 text-sm rounded ${
+                recordType === 'activities'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Activities <span className="text-xs text-gray-400">({filtered.length})</span>
+            </button>
+            <button
+              onClick={() => setRecordType('tasks')}
+              className={`px-3 py-1.5 text-sm rounded ${
+                recordType === 'tasks'
+                  ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm font-medium'
+                  : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              Tasks <span className="text-xs text-gray-400">({filteredTasks.length})</span>
+            </button>
           </div>
 
           {/* Filter bar */}
@@ -394,6 +456,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Summary chips */}
+          {recordType === 'activities' && (
           <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
             <span className="text-gray-700 dark:text-gray-200 font-medium">
               {filtered.length} record{filtered.length === 1 ? '' : 's'}
@@ -416,11 +479,15 @@ export default function ArchivePage() {
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Email}`}>📧 {typeCounts.Email}</span>
             <span className={`px-2 py-0.5 rounded text-xs ${TYPE_BADGE_BG.Note}`}>📝 {typeCounts.Note}</span>
           </div>
+          )}
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            Click any row to edit the activity.
+            {recordType === 'activities'
+              ? 'Click any row to edit the activity.'
+              : 'Click any row to edit the task.'}
           </p>
 
           {/* Table */}
+          {recordType === 'activities' && (
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
             {filtered.length === 0 ? (
               <EmptyState
@@ -497,6 +564,80 @@ export default function ArchivePage() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Tasks table — same filter semantics as Activities, but
+              keyed on due date. Clicking a row opens the Edit Task
+              modal where the star flag can be toggled too. */}
+          {recordType === 'tasks' && (
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              {filteredTasks.length === 0 ? (
+                <EmptyState
+                  title="No tasks found"
+                  description={
+                    isAdminLike
+                      ? `No tasks for ${targetUserName} match the current filters.`
+                      : 'You have no tasks matching the current filters. Try widening the date range or clearing the search.'
+                  }
+                />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold">Due date</th>
+                        <th className="text-left px-4 py-3 font-semibold">Status</th>
+                        {selectedUserIds.size > 1 && <th className="text-left px-4 py-3 font-semibold">Owner</th>}
+                        <th className="text-left px-4 py-3 font-semibold">Subject</th>
+                        <th className="text-left px-4 py-3 font-semibold">Priority</th>
+                        <th className="text-left px-4 py-3 font-semibold">Account</th>
+                        <th className="text-left px-4 py-3 font-semibold">Contact</th>
+                        <th className="text-left px-4 py-3 font-semibold">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                      {filteredTasks.map((t) => (
+                        <tr key={t.id}
+                            onClick={() => setEditingTask(t)}
+                            className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                            title="Click to edit">
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-200">
+                            {t.dueDate ? formatDate(t.dueDate) : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              t.status === 'Completed'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                                : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-gray-300'
+                            }`}>{t.status}</span>
+                          </td>
+                          {selectedUserIds.size > 1 && (
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-200 max-w-[14ch] truncate" title={userNameById.get(t.ownerId) ?? '—'}>
+                              {userNameById.get(t.ownerId) ?? '—'}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-gray-900 dark:text-gray-100 font-medium max-w-xs truncate" title={t.subject}>
+                            {t.isImportant && <span className="text-amber-500 mr-1" title="Important">★</span>}
+                            {t.subject}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-200">{t.priority || '—'}</td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[14ch] truncate" title={accountById.get(t.relatedAccountId ?? '') ?? ''}>
+                            {accountById.get(t.relatedAccountId ?? '') ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-[14ch] truncate" title={contactById.get(t.relatedContactId ?? '') ?? ''}>
+                            {contactById.get(t.relatedContactId ?? '') ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400 max-w-md truncate" title={t.description ?? ''}>
+                            {t.description || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </main>
@@ -510,6 +651,13 @@ export default function ArchivePage() {
             // the user just opened/added inside the modal.
             setReloadCountsToken((n) => n + 1);
           }}
+        />
+      )}
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          onClose={() => setEditingTask(null)}
+          onSaved={() => setEditingTask(null)}
         />
       )}
     </div>
