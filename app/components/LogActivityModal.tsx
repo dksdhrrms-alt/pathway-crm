@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
+import ActivityAttachmentsField, { type ActivityAttachmentsFieldHandle } from './ActivityAttachmentsField';
 
 interface LogActivityModalProps {
   accountId?: string;
@@ -52,6 +53,10 @@ export default function LogActivityModal({
   // Off by default so the report stays scannable; reps opt in per
   // activity when the meeting notes are worth surfacing to leadership.
   const [isImportant, setIsImportant] = useState(false);
+  // Buffers queued files until after the activity row is created.
+  // See ActivityAttachmentsField for the two-mode (pre-save / post-save)
+  // lifecycle.
+  const attachmentsRef = useRef<ActivityAttachmentsFieldHandle | null>(null);
   const [error, setError] = useState('');
   // Guards against double-submit (button still visible during the brief
   // window between click and the parent closing the modal via onSave).
@@ -85,7 +90,7 @@ export default function LogActivityModal({
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
 
@@ -100,6 +105,7 @@ export default function LogActivityModal({
       // If no contacts selected, create one activity with no contact
       const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
       let last: Activity | null = null;
+      const createdIds: string[] = [];
       contactList.forEach((cid) => {
         const newActivity: Activity = {
           id: generateId(),
@@ -115,8 +121,24 @@ export default function LogActivityModal({
           isImportant,
         };
         addActivity(newActivity);
+        createdIds.push(newActivity.id);
         last = newActivity;
       });
+      // Upload any queued attachments. If the rep logged against
+      // multiple contacts we attach the files to the FIRST activity
+      // row to avoid uploading the same PDF 5 times — the Activity
+      // Timeline on sibling activities will still find them by their
+      // own id but the files only live once in storage.
+      if (createdIds.length > 0 && attachmentsRef.current?.hasPending()) {
+        try {
+          await attachmentsRef.current.uploadPending(createdIds[0], ownerId);
+        } catch (err) {
+          console.error('Attachment upload failed:', err);
+          // The activity itself was saved — surface a non-fatal note
+          // so the rep knows to re-attach via Edit.
+          setError(`Activity saved, but attachment upload failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       if (last) onSave(last);
       onClose();
     } catch (err) {
@@ -296,6 +318,14 @@ export default function LogActivityModal({
               <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
             </button>
           </div>
+
+          {/* Attachments — queued locally and uploaded in handleSubmit
+              after the activity row is inserted. */}
+          <ActivityAttachmentsField
+            ref={attachmentsRef}
+            uploadedBy={ownerId}
+            onError={(msg) => setError(msg)}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">

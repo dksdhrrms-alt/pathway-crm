@@ -6,6 +6,7 @@ import { useUsers } from '@/lib/UserContext';
 import CommentThread from './CommentThread';
 import { getCommentCounts } from '@/lib/comments';
 import ActivityDescription from './ActivityDescription';
+import { listAttachmentsFor, fmtBytes, type ActivityAttachment } from '@/lib/activityAttachments';
 
 interface ActivityTimelineProps {
   activities: Activity[];
@@ -63,6 +64,24 @@ export default function ActivityTimeline({
     });
     return () => { cancelled = true; };
   }, [activities, showComments]);
+
+  // Attachments per activity id. Loaded once per activity-list
+  // refresh — the modals (which can add/delete attachments) close
+  // after save and the parent typically refetches the activity list,
+  // so this effect reruns naturally.
+  const [attachmentsById, setAttachmentsById] = useState<Record<string, ActivityAttachment[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const ids = activities.map((a) => a.id);
+    if (ids.length === 0) { setAttachmentsById({}); return; }
+    listAttachmentsFor(ids).then((map) => {
+      if (cancelled) return;
+      const obj: Record<string, ActivityAttachment[]> = {};
+      map.forEach((arr, id) => { obj[id] = arr; });
+      setAttachmentsById(obj);
+    }).catch(() => { /* silent — timeline just hides the row */ });
+    return () => { cancelled = true; };
+  }, [activities]);
 
   function getOwnerName(ownerId: string): string {
     const ctxUser = users.find((u) => u.id === ownerId);
@@ -169,6 +188,27 @@ export default function ActivityTimeline({
                     </p>
                   ) : null}
                   <ActivityDescription description={activity.description} />
+                  {/* Attachments — compact list of chips with filename
+                      + size. Click opens the file in a new tab. */}
+                  {(attachmentsById[activity.id] || []).length > 0 && (
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      {(attachmentsById[activity.id] || []).map((att) => (
+                        <li key={att.id}>
+                          <a
+                            href={att.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs text-blue-700 dark:text-blue-400 max-w-[280px]"
+                            title={`${att.filename} · ${fmtBytes(att.sizeBytes)}`}
+                          >
+                            <span className="flex-shrink-0" aria-hidden>📎</span>
+                            <span className="truncate">{att.filename}</span>
+                            <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{fmtBytes(att.sizeBytes)}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="mt-1 flex items-center gap-3 flex-wrap">
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       Logged by <span className="font-medium text-gray-600 dark:text-gray-300">{getOwnerName(activity.ownerId)}</span>

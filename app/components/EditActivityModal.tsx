@@ -25,6 +25,7 @@ import { useCRM } from '@/lib/CRMContext';
 import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
 import CommentThread from './CommentThread';
+import ActivityAttachmentsField from './ActivityAttachmentsField';
 
 const ACTIVITY_TYPES: ActivityType[] = ['Call', 'Meeting', 'Email', 'Note'];
 const TYPE_LABEL: Record<ActivityType, string> = {
@@ -256,6 +257,14 @@ export default function EditActivityModal({ activity, onClose }: Props) {
               <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
             </button>
           </div>
+
+          {/* Attachments — editing mode uploads immediately (no
+              deferred buffer; the activity row already exists). */}
+          <ActivityAttachmentsField
+            activityId={activity.id}
+            uploadedBy={activity.ownerId}
+            onError={(msg) => setError(msg)}
+          />
 
           {error && (
             <div role="alert" className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg px-3 py-2">
