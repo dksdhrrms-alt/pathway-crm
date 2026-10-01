@@ -7,6 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
+import ActivityAttachmentsField, { type ActivityAttachmentsFieldHandle } from './ActivityAttachmentsField';
 
 const ACTIVITY_TYPES: { id: ActivityType; emoji: string; label: string }[] = [
   { id: 'Call', emoji: '📞', label: 'Call / Text' },
@@ -44,6 +45,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const [showParticipants, setShowParticipants] = useState(false);
   // Star flag → Weekly Report renders the full description verbatim.
   const [isImportant, setIsImportant] = useState(false);
+  // Attachments — queued locally in pre-save mode; uploaded after
+  // addActivity resolves. See ActivityAttachmentsField.
+  const attachmentsRef = useRef<ActivityAttachmentsFieldHandle | null>(null);
   function toggleParticipant(id: string) {
     setInternalParticipants((prev) => {
       const next = new Set(prev);
@@ -100,21 +104,30 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
     setSelectedContactIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!subject.trim() || saving || submitting) return;
     setSubmitting(true);
     setSaving(true);
     try {
       const ids = Array.from(selectedContactIds);
       const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
+      // Capture the first created activity id so we can upload any
+      // queued attachments against it (same pattern as the full
+      // LogActivityModal — attachments live on the first row rather
+      // than being uploaded N times when the user logged against
+      // multiple contacts).
+      let firstId: string | null = null;
+      const ownerForRow = ownerId || session?.user?.id || '';
       contactList.forEach((cid) => {
+        const newId = generateId();
+        if (!firstId) firstId = newId;
         addActivity({
-          id: generateId(),
+          id: newId,
           type,
           subject: subject.trim(),
           description: description.trim(),
           date,
-          ownerId: ownerId || session?.user?.id || '',
+          ownerId: ownerForRow,
           accountId: accountId || '',
           contactId: cid || '',
           purpose: purpose || undefined,
@@ -122,6 +135,15 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           isImportant,
         });
       });
+      if (firstId && attachmentsRef.current?.hasPending()) {
+        try {
+          await attachmentsRef.current.uploadPending(firstId, ownerForRow);
+        } catch (err) {
+          console.error('[QuickLogModal] attachment upload failed:', err);
+          // Non-fatal — the activity row itself was saved.
+          alert(`Activity saved, but attachment upload failed:\n${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       setSaved(true);
       setTimeout(() => onClose(), 1200);
     } catch (err) {
@@ -462,6 +484,16 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
           <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
         </button>
+
+        {/* Attachments — queued locally and uploaded in handleSave
+            after the activity row is created. */}
+        <div style={{ marginBottom: '10px' }}>
+          <ActivityAttachmentsField
+            ref={attachmentsRef}
+            uploadedBy={ownerId || session?.user?.id || ''}
+            onError={(msg) => alert(msg)}
+          />
+        </div>
 
         {/* Logged By — admin only, collapsed by default. Defaults to the
             current user; only worth exposing when the admin is logging

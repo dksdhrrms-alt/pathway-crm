@@ -7,6 +7,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
 import VoiceInputButton from './VoiceInputButton';
+import ActivityAttachmentsField, { type ActivityAttachmentsFieldHandle } from './ActivityAttachmentsField';
 import SubmitButton from './SubmitButton';
 
 const TYPES: { id: ActivityType; emoji: string }[] = [
@@ -67,6 +68,9 @@ export default function QuickLogFAB() {
   const [showParticipants, setShowParticipants] = useState(false);
   // Star flag → Weekly Report renders the full description verbatim.
   const [isImportant, setIsImportant] = useState(false);
+  // Attachments ref — see ActivityAttachmentsField for the two-mode
+  // (pre-save / post-save) lifecycle.
+  const attachmentsRef = useRef<ActivityAttachmentsFieldHandle | null>(null);
   function toggleParticipant(id: string) {
     setInternalParticipants((prev) => {
       const next = new Set(prev);
@@ -138,24 +142,35 @@ export default function QuickLogFAB() {
     setIsImportant(false);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!subject.trim() || saving || submitting) return;
     setSubmitting(true);
     setSaving(true);
     try {
+      const newId = generateId();
+      const ownerForRow = ownerId || session?.user?.id || '';
       addActivity({
-        id: generateId(),
+        id: newId,
         type,
         subject: subject.trim(),
         description: description.trim(),
         date,
-        ownerId: ownerId || session?.user?.id || '',
+        ownerId: ownerForRow,
         accountId: accountId || '',
         contactId: contactId || '',
         purpose: purpose || undefined,
         internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
         isImportant,
       });
+      // Upload any queued attachments once the row id is minted.
+      if (attachmentsRef.current?.hasPending()) {
+        try {
+          await attachmentsRef.current.uploadPending(newId, ownerForRow);
+        } catch (err) {
+          console.error('[QuickLogFAB] attachment upload failed:', err);
+          alert(`Activity saved, but attachment upload failed:\n${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       setSaved(true);
       setTimeout(resetAll, 1200);
     } catch (err) {
@@ -549,6 +564,16 @@ export default function QuickLogFAB() {
               <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
               <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
             </button>
+
+            {/* Attachments — queued locally and uploaded in handleSave
+                after the activity row is created. */}
+            <div style={{ marginBottom: '10px' }}>
+              <ActivityAttachmentsField
+                ref={attachmentsRef}
+                uploadedBy={ownerId || session?.user?.id || ''}
+                onError={(msg) => alert(msg)}
+              />
+            </div>
 
             {/* Internal Participants — collapsed by default */}
             <div style={{ marginBottom: '16px' }}>

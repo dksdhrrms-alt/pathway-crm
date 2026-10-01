@@ -10,6 +10,7 @@ import SendEmailModal from '@/app/components/SendEmailModal';
 import ActivityDescription from '@/app/components/ActivityDescription';
 import CommentThread from '@/app/components/CommentThread';
 import { getCommentCounts } from '@/lib/comments';
+import { listAttachmentsFor, fmtBytes, type ActivityAttachment } from '@/lib/activityAttachments';
 import { useUsers } from '@/lib/UserContext';
 import LogActivityModal from '@/app/components/LogActivityModal';
 import NewTaskModal from '@/app/components/NewTaskModal';
@@ -156,10 +157,18 @@ export default function AccountDetailPage() {
       map[p] = (map[p] || 0) + (Number(r.amount) || 0);
     });
     return Object.entries(map).sort(([, a], [, b]) => b - a);
+  }, [accountSales]);
+  const maxProductAmount = productBreakdown.length > 0 ? productBreakdown[0][1] : 0;
 
   // Fetch comment counts for the visible activities in one round-trip.
-  // Re-runs whenever the inline thread is opened/closed so deletions and
-  // new replies show up without needing a full page refresh.
+  // Re-runs whenever the inline thread is opened/closed so deletions
+  // and new replies show up without needing a full page refresh.
+  //
+  // Historical note: this useEffect used to be mis-placed INSIDE the
+  // productBreakdown useMemo above (after its `return`), making it
+  // unreachable dead code. That silently broke reply counts AND
+  // attachments on the account page. Pulled back out to the top
+  // level where React's hook rules actually run it.
   useEffect(() => {
     let cancelled = false;
     const ids = accountActivities.map((a) => a.id);
@@ -169,8 +178,22 @@ export default function AccountDetailPage() {
     });
     return () => { cancelled = true; };
   }, [accountActivities, openCommentsFor]);
-  }, [accountSales]);
-  const maxProductAmount = productBreakdown.length > 0 ? productBreakdown[0][1] : 0;
+
+  // Attachments per activity, same pattern as ActivityTimeline. One
+  // batched query over every visible activity id.
+  const [attachmentsByActId, setAttachmentsByActId] = useState<Record<string, ActivityAttachment[]>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const ids = accountActivities.map((a) => a.id);
+    if (ids.length === 0) { setAttachmentsByActId({}); return; }
+    listAttachmentsFor(ids).then((map) => {
+      if (cancelled) return;
+      const obj: Record<string, ActivityAttachment[]> = {};
+      map.forEach((arr, id) => { obj[id] = arr; });
+      setAttachmentsByActId(obj);
+    }).catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [accountActivities]);
 
   function getOwnerName(ownerId: string): string {
     return users.find((u) => u.id === ownerId)?.name ?? ownerId;
@@ -868,6 +891,27 @@ export default function AccountDetailPage() {
                                     bodyClassName="whitespace-pre-wrap text-xs text-gray-600 dark:text-gray-300 leading-relaxed"
                                   />
                                 </div>
+                              )}
+                              {/* Attachments — same chip style as the
+                                  shared ActivityTimeline component. */}
+                              {(attachmentsByActId[act.id] || []).length > 0 && (
+                                <ul className="mt-2 flex flex-wrap gap-1.5">
+                                  {(attachmentsByActId[act.id] || []).map((att) => (
+                                    <li key={att.id}>
+                                      <a
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs text-blue-700 dark:text-blue-400 max-w-[280px]"
+                                        title={`${att.filename} · ${fmtBytes(att.sizeBytes)}`}
+                                      >
+                                        <span className="flex-shrink-0" aria-hidden>📎</span>
+                                        <span className="truncate">{att.filename}</span>
+                                        <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{fmtBytes(att.sizeBytes)}</span>
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
                               )}
                               <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                                 <span>
