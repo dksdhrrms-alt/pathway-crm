@@ -217,7 +217,9 @@ export default function Sidebar() {
     '/rnd': 'rnd',
     '/projects': 'projects',
     '/reports': 'reports',
-    '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales', '/admin': 'admin',
+    '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales',
+    '/admin-marketing': 'marketing',
+    '/admin': 'admin',
   };
 
   const allItems = [
@@ -232,6 +234,7 @@ export default function Sidebar() {
     { href: '/insights' as const, label: 'Insights', icon: InsightsIcon },
     { href: '/scan-card' as const, label: 'Scan Card', icon: ScanCardIcon },
     { href: '/sales' as const, label: 'Sales', icon: SalesIcon },
+    { href: '/admin-marketing' as const, label: 'Admin-Marketing', icon: ProductsIcon },
     { href: '/admin' as const, label: 'Admin', icon: AdminIcon },
   ];
 

@@ -53,7 +53,7 @@ export default function AdminPage() {
   const { opportunities, tasks, activities, accounts, saleRecords } = useCRM();
   const { users: allUsers, updateUserById } = useUsers();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'productLibrary' | 'health'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health'>('overview');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -327,14 +327,9 @@ export default function AdminPage() {
             >
               User Permissions
             </button>
-            <button
-              onClick={() => setActiveTab('productLibrary')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'productLibrary' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Product Library
-            </button>
+            {/* Product Library tab was removed — moved to /admin-marketing.
+                Marketing editors upload/edit there under an approval flow
+                before changes appear in the public Products menu. */}
             <button
               onClick={() => setActiveTab('health')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
@@ -681,9 +676,7 @@ export default function AdminPage() {
             <UserPermissionsPanel users={allUsers} onSave={(msg) => setToast(msg)} />
           )}
 
-          {activeTab === 'productLibrary' && (
-            <ProductCatalogPanel onSave={(msg) => setToast(msg)} />
-          )}
+          {/* Product Library panel moved to /admin-marketing route */}
 
           {activeTab === 'health' && (
             <div>
@@ -1032,11 +1025,13 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 // ── Product Catalog Panel ──────────────────────────────────────────
-// CRUD for the product_library_products + product_library_files
-// tables (data-migration/25-product-catalog.sql). Replaces the flat
-// ProductLibraryPanel — each product now carries a hero, description,
-// product-information table, and per-category Sales Tools file list,
-// mirroring the "Product sheet on CRM" PPT the sales team uses.
+// LEGACY — kept temporarily for reference. All functionality moved to
+// /admin-marketing (app/admin-marketing/page.tsx), which adds a
+// drag-and-drop tree, species reparenting, and an approval workflow
+// (draft/pending/approved/rejected) gated by the Marketing Approver
+// permission. Safe to delete this entire block once /admin-marketing
+// has been in production for a release.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
   type FileCat = 'presentation' | 'flyer' | 'calculator' | 'technical_bulletin' | 'document';
   type PInfoRow = { label: string; values: string[] };

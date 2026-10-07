@@ -46,6 +46,8 @@ export interface ProductInfo {
   rows: ProductInfoRow[];
 }
 
+export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+
 export interface ProductFile {
   id: string;
   productId: string;
@@ -55,6 +57,13 @@ export interface ProductFile {
   /** Optional preview image shown above the filename on the catalog page. */
   thumbnailUrl: string | null;
   displayOrder: number;
+  // Approval workflow (data-migration/33)
+  status: ApprovalStatus;
+  createdBy: string | null;
+  submittedAt: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectionReason: string | null;
 }
 
 export interface Product {
@@ -70,6 +79,13 @@ export interface Product {
   displayOrder: number;
   active: boolean;
   files: ProductFile[];      // populated by getProduct()/listProductsWithFiles()
+  // Approval workflow (data-migration/33)
+  status: ApprovalStatus;
+  createdBy: string | null;
+  submittedAt: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectionReason: string | null;
 }
 
 // ── Row shapes (snake_case from Supabase) ────────────────────────
@@ -79,11 +95,23 @@ type ProductRow = {
   species: string | null;
   tagline: string | null; description: string | null;
   product_info: unknown; display_order: number; active: boolean;
+  status?: ApprovalStatus | null;
+  created_by?: string | null;
+  submitted_at?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
 };
 type FileRow = {
   id: string; product_id: string; category: FileCategory;
   label: string; url: string; thumbnail_url: string | null;
   display_order: number;
+  status?: ApprovalStatus | null;
+  created_by?: string | null;
+  submitted_at?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejection_reason?: string | null;
 };
 
 function asProductInfo(raw: unknown): ProductInfo {
@@ -112,6 +140,12 @@ function asProduct(r: ProductRow, files: ProductFile[] = []): Product {
     productInfo: asProductInfo(r.product_info),
     displayOrder: r.display_order, active: r.active,
     files,
+    status: (r.status as ApprovalStatus) ?? 'approved',
+    createdBy: r.created_by ?? null,
+    submittedAt: r.submitted_at ?? null,
+    approvedBy: r.approved_by ?? null,
+    approvedAt: r.approved_at ?? null,
+    rejectionReason: r.rejection_reason ?? null,
   };
 }
 
@@ -121,16 +155,24 @@ function asFile(r: FileRow): ProductFile {
     label: r.label, url: r.url,
     thumbnailUrl: r.thumbnail_url,
     displayOrder: r.display_order,
+    status: (r.status as ApprovalStatus) ?? 'approved',
+    createdBy: r.created_by ?? null,
+    submittedAt: r.submitted_at ?? null,
+    approvedBy: r.approved_by ?? null,
+    approvedAt: r.approved_at ?? null,
+    rejectionReason: r.rejection_reason ?? null,
   };
 }
 
 // ── Reads ────────────────────────────────────────────────────────
 
-/** Sidebar / product list — no files loaded, keeps payload light. */
+/** Sidebar / product list — no files loaded, keeps payload light.
+ *  Public-facing: only `approved` products are returned. */
 export async function listProducts(): Promise<Product[]> {
   const { data, error } = await sb()
     .from('product_library_products')
     .select('*')
+    .eq('status', 'approved')
     .order('species', { nullsFirst: false })
     .order('display_order').order('name');
   if (error) throw error;
@@ -156,13 +198,17 @@ export async function listProductsWithFiles(): Promise<Product[]> {
   return (p.data as ProductRow[]).map((r) => asProduct(r, byProduct.get(r.id) || []));
 }
 
+/** Public catalog page — only approved product + approved files. */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await sb()
-    .from('product_library_products').select('*').eq('slug', slug).maybeSingle();
+    .from('product_library_products').select('*')
+    .eq('slug', slug).eq('status', 'approved').maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const { data: files } = await sb()
-    .from('product_library_files').select('*').eq('product_id', (data as ProductRow).id)
+    .from('product_library_files').select('*')
+    .eq('product_id', (data as ProductRow).id)
+    .eq('status', 'approved')
     .order('display_order').order('label');
   return asProduct(data as ProductRow, ((files || []) as FileRow[]).map(asFile));
 }
@@ -297,6 +343,122 @@ export async function uploadProductFile(
  *  URLs don't get the attribute (cross-origin would ignore it). */
 export function isUploadedProductFile(url: string): boolean {
   return !!url && url.includes(`/${FILES_BUCKET}/`);
+}
+
+// ── Approval workflow ───────────────────────────────────────────
+// Non-approver edits land as status='pending' and only appear on the
+// public sidebar / catalog page after a Marketing Approver flips them
+// to 'approved'. See data-migration/33-marketing-approval-workflow.sql.
+
+export async function submitProductForApproval(
+  id: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_products')
+    .update({
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+      created_by: userId,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function approveProduct(id: string, approverId: string): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_products')
+    .update({
+      status: 'approved',
+      approved_by: approverId,
+      approved_at: new Date().toISOString(),
+      rejection_reason: null,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function rejectProduct(
+  id: string, approverId: string, reason: string,
+): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_products')
+    .update({
+      status: 'rejected',
+      approved_by: approverId,
+      approved_at: new Date().toISOString(),
+      rejection_reason: reason || null,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function submitFileForApproval(
+  id: string, userId: string,
+): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_files')
+    .update({
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+      created_by: userId,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function approveFile(id: string, approverId: string): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_files')
+    .update({
+      status: 'approved',
+      approved_by: approverId,
+      approved_at: new Date().toISOString(),
+      rejection_reason: null,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function rejectFile(
+  id: string, approverId: string, reason: string,
+): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_files')
+    .update({
+      status: 'rejected',
+      approved_by: approverId,
+      approved_at: new Date().toISOString(),
+      rejection_reason: reason || null,
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/** Move a product under a different species (drag-drop in Admin-Marketing). */
+export async function updateProductSpecies(
+  id: string, species: string | null, displayOrder?: number,
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    species: species ? species.trim() || null : null,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof displayOrder === 'number') payload.display_order = displayOrder;
+  const { error } = await sb()
+    .from('product_library_products').update(payload).eq('id', id);
+  if (error) throw error;
+}
+
+/** Reorder products within a species (drag-drop in Admin-Marketing).
+ *  Takes the full sorted array of product ids for that species and
+ *  writes display_order = index on each. */
+export async function reorderProducts(ids: string[]): Promise<void> {
+  const now = new Date().toISOString();
+  await Promise.all(ids.map((id, i) =>
+    sb().from('product_library_products')
+      .update({ display_order: i, updated_at: now })
+      .eq('id', id)
+  ));
 }
 
 /** Delete a product file from Storage by its public URL. Best-effort. */
