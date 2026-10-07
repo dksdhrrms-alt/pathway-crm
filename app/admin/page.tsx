@@ -1139,10 +1139,9 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
   }
 
   async function addFile(productId: string, category: FileCat) {
-    const label = prompt('File label (e.g. "Lipidol Prime_Flyer_Swine_07 2026.pdf")')?.trim();
+    const label = prompt('File label (e.g. "Lipidol Prime_Flyer_Swine_07 2026.pdf")\n\n(You can leave URL blank and use the ↑ Upload button on the row to attach a file directly.)')?.trim();
     if (!label) return;
-    const url = prompt('File URL (from Pathway Library)')?.trim();
-    if (!url) return;
+    const url = prompt('File URL (paste a Pathway Library URL, OR leave blank and click ↑ Upload after)')?.trim() || '';
     // Thumbnail is optional — skip to leave the card icon-less.
     const thumbnailUrl = prompt('Preview thumbnail URL (optional — paste any image URL, or leave blank)')?.trim() || null;
     try {
@@ -1151,7 +1150,7 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
       const nextOrder = existing.length > 0 ? Math.max(...existing.map((f) => f.displayOrder)) + 10 : 0;
       await upsertFile({ productId, category, label, url, thumbnailUrl, displayOrder: nextOrder });
       await load();
-      onSave(`Added "${label}"`);
+      onSave(`Added "${label}"${url ? '' : ' — now click ↑ Upload on the row to attach the file'}`);
     } catch (e) { setError(formatErr(e)); }
   }
 
@@ -1394,10 +1393,41 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
                                           onChange={(e) => updateFile(f.id, { label: e.target.value })}
                                           placeholder="File label"
                                           className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
-                                        <input value={f.url}
-                                          onChange={(e) => updateFile(f.id, { url: e.target.value })}
-                                          placeholder="File URL (Pathway Library)"
-                                          className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                        {/* File URL — paste a Pathway
+                                            Library URL OR click "Upload"
+                                            to put the file directly in
+                                            Supabase Storage. The latter
+                                            lets reps click → direct
+                                            download without Library
+                                            login. */}
+                                        <div className="flex items-center gap-1.5">
+                                          <input value={f.url}
+                                            onChange={(e) => updateFile(f.id, { url: e.target.value })}
+                                            placeholder="File URL — paste Library URL or upload →"
+                                            className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs font-mono" />
+                                          <ProductFileUploader
+                                            productId={f.productId}
+                                            onUploaded={async (res) => {
+                                              // If the label is still a
+                                              // placeholder (empty), seed
+                                              // it with the filename for
+                                              // a sensible default.
+                                              const nextLabel = (f.label || '').trim() || res.filename;
+                                              updateFile(f.id, { url: res.url, label: nextLabel });
+                                              try {
+                                                const { upsertFile } = await import('@/lib/productCatalog');
+                                                await upsertFile({
+                                                  id: f.id, productId: f.productId, category: f.category,
+                                                  label: nextLabel, url: res.url,
+                                                  thumbnailUrl: f.thumbnailUrl,
+                                                  displayOrder: f.displayOrder,
+                                                });
+                                                onSave(`Uploaded "${res.filename}"`);
+                                              } catch (e) { setError(formatErr(e)); }
+                                            }}
+                                            onError={(msg) => setError(msg)}
+                                          />
+                                        </div>
                                         {/* Thumbnail row — file upload
                                             OR keep the pasted URL. Prefer
                                             upload for stability (external
@@ -1554,6 +1584,65 @@ function ThumbnailUploader({
         disabled={busy}
         className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 whitespace-nowrap"
         title="Upload an image file to use as this file's thumbnail"
+      >
+        {busy ? '↑ …' : '↑ Upload'}
+      </button>
+    </>
+  );
+}
+
+// Sibling of ThumbnailUploader — uploads an arbitrary product file
+// (PDF, PPTX, XLSX, etc.) into the `product-files` Supabase bucket
+// and hands the public URL back. Larger size cap than thumbnails
+// since product decks are often 10-20 MB.
+function ProductFileUploader({
+  productId,
+  onUploaded,
+  onError,
+}: {
+  productId: string;
+  onUploaded: (res: { url: string; filename: string; sizeBytes: number }) => void;
+  onError: (msg: string) => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (inputRef.current) inputRef.current.value = '';
+    if (!file) return;
+    // 50 MB — generous for sales decks and spec sheets but still
+    // sane. Thumbnails stay at 3 MB (ThumbnailUploader).
+    if (file.size > 50 * 1024 * 1024) {
+      onError('File too large (max 50 MB). For bigger assets, paste a Library URL instead.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { uploadProductFile } = await import('@/lib/productCatalog');
+      const res = await uploadProductFile(file, productId);
+      onUploaded(res);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        onChange={handlePick}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 disabled:opacity-50 whitespace-nowrap"
+        title="Upload a file to Supabase Storage so reps can download without logging into Library"
       >
         {busy ? '↑ …' : '↑ Upload'}
       </button>

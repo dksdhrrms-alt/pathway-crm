@@ -24,7 +24,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import TopBar from '@/app/components/TopBar';
-import { getProductBySlug, type Product, type ProductFile, type FileCategory } from '@/lib/productCatalog';
+import { getProductBySlug, isUploadedProductFile, type Product, type ProductFile, type FileCategory } from '@/lib/productCatalog';
 
 // Section metadata for the Sales Tools grid.
 const SALES_TOOL_SECTIONS: { key: FileCategory; label: string }[] = [
@@ -60,7 +60,14 @@ export default function ProductCatalogPage() {
     technical_bulletin: [], document: [],
   };
   if (product) {
-    for (const f of product.files) filesByCategory[f.category].push(f);
+    // Skip placeholder rows (label set but URL blank) — admin
+    // creates these when adding a file via the prompt flow and
+    // intends to attach via the Upload button next. Hiding them
+    // keeps the catalog view clean until the upload finishes.
+    for (const f of product.files) {
+      if (!f.url || !f.url.trim()) continue;
+      filesByCategory[f.category].push(f);
+    }
   }
 
   return (
@@ -165,7 +172,10 @@ export default function ProductCatalogPage() {
                             {files.map((f) => (
                               <li key={f.id} className="flex items-start gap-3">
                                 {f.thumbnailUrl && (
-                                  <a href={f.url} target="_blank" rel="noopener noreferrer"
+                                  <a href={f.url}
+                                     target={isUploadedProductFile(f.url) ? undefined : '_blank'}
+                                     rel="noopener noreferrer"
+                                     download={isUploadedProductFile(f.url) ? f.label : undefined}
                                      className="flex-shrink-0 block w-24 h-24 border border-gray-200 dark:border-slate-700 rounded overflow-hidden bg-white">
                                     {/* Regular <img> instead of next/image so
                                         admin can drop in any external URL
@@ -178,9 +188,17 @@ export default function ProductCatalogPage() {
                                   </a>
                                 )}
                                 <div className="flex-1 min-w-0 pt-1">
-                                  <a href={f.url} target="_blank" rel="noopener noreferrer"
+                                  {/* Supabase-hosted files force a
+                                      direct download (download attr).
+                                      External URLs open in a new tab
+                                      the old way — download attr
+                                      doesn't work cross-origin. */}
+                                  <a href={f.url}
+                                     target={isUploadedProductFile(f.url) ? undefined : '_blank'}
+                                     rel="noopener noreferrer"
+                                     download={isUploadedProductFile(f.url) ? f.label : undefined}
                                      className="text-sm text-blue-700 dark:text-blue-400 hover:underline break-all"
-                                     title={`Open ${f.url}`}>
+                                     title={isUploadedProductFile(f.url) ? `Download ${f.label}` : `Open ${f.url}`}>
                                     {f.label}
                                   </a>
                                 </div>
@@ -204,9 +222,12 @@ export default function ProductCatalogPage() {
                     <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1 columns-1 md:columns-2 lg:columns-3 gap-6">
                       {filesByCategory.document.map((f) => (
                         <li key={f.id} className="break-inside-avoid">
-                          <a href={f.url} target="_blank" rel="noopener noreferrer"
+                          <a href={f.url}
+                             target={isUploadedProductFile(f.url) ? undefined : '_blank'}
+                             rel="noopener noreferrer"
+                             download={isUploadedProductFile(f.url) ? f.label : undefined}
                              className="hover:underline break-all"
-                             title={`Open ${f.url}`}>
+                             title={isUploadedProductFile(f.url) ? `Download ${f.label}` : `Open ${f.url}`}>
                             {f.label}
                           </a>
                         </li>

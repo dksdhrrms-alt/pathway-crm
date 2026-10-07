@@ -225,6 +225,10 @@ export function toSlug(name: string): string {
 // versions of the same file don't clobber each other and it's clear
 // which product a file belongs to when browsing the bucket.
 const THUMBNAIL_BUCKET = 'product-thumbnails';
+// Bucket for the actual sales-tools files (PDF, PPTX, XLSX). Hybrid
+// with external URLs — admins pick either; both land in the same
+// `product_library_files.url` column.
+const FILES_BUCKET = 'product-files';
 
 export async function uploadThumbnail(
   file: File,
@@ -253,5 +257,47 @@ export async function deleteThumbnailByUrl(url: string): Promise<void> {
   const path = url.slice(idx + marker.length);
   try {
     await sb().storage.from(THUMBNAIL_BUCKET).remove([path]);
+  } catch { /* ignore */ }
+}
+
+// ── Product file uploads ────────────────────────────────────────
+// Direct upload path (vs the external URL path). Reps click the
+// filename and the browser downloads immediately — no Library login
+// needed. Admins pick either path per file; both end up in the same
+// `product_library_files.url` column.
+export async function uploadProductFile(
+  file: File,
+  productId: string,
+): Promise<{ url: string; filename: string; sizeBytes: number }> {
+  const client = sb();
+  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const path = `${productId}/${Date.now()}-${safeName}`;
+  const { error } = await client.storage.from(FILES_BUCKET).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = client.storage.from(FILES_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, filename: file.name, sizeBytes: file.size };
+}
+
+/** Returns true when the url points at the product-files bucket —
+ *  used by the catalog page to add a `download` attribute so the
+ *  browser forces a download instead of in-tab preview. External
+ *  URLs don't get the attribute (cross-origin would ignore it). */
+export function isUploadedProductFile(url: string): boolean {
+  return !!url && url.includes(`/${FILES_BUCKET}/`);
+}
+
+/** Delete a product file from Storage by its public URL. Best-effort. */
+export async function deleteProductFileByUrl(url: string): Promise<void> {
+  if (!url) return;
+  const marker = `/${FILES_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx < 0) return;
+  const path = url.slice(idx + marker.length);
+  try {
+    await sb().storage.from(FILES_BUCKET).remove([path]);
   } catch { /* ignore */ }
 }
