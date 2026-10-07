@@ -10,6 +10,21 @@ export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
 /**
+ * DEPRECATED — Resend Inbound webhook.
+ *
+ * Resend's webhook payload ships metadata only (no `text`/`html`
+ * body) and BCC delivery strips the original `To:` header, so this
+ * route logs activities as `(Body unavailable)` with no contact
+ * attribution. We migrated to Postmark Inbound; see
+ * `app/api/postmark/inbound/route.ts` and `docs/postmark-inbound-setup.md`.
+ *
+ * This handler stays deployed for now so any Resend webhook that's
+ * still enabled during cut-over doesn't 4xx and trigger endless
+ * retries. Once the Resend webhook is disabled in the Resend
+ * dashboard, this file can be deleted.
+ *
+ * Original doc-comment follows.
+ *
  * Inbound email webhook (Resend → CRM).
  *
  * Phase 3 (this version): full pipeline. After Svix verification we

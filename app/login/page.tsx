@@ -113,9 +113,12 @@ function LoginForm() {
 
         </div>
 
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
-          Don&apos;t have an account?{' '}
-          <a href="/signup" className="font-medium" style={{ color: '#1a4731' }}>Sign up</a>
+        {/* Self-signup removed — accounts are now provisioned only
+            by an administrator via Admin → Users. If someone needs
+            access, they contact IT / their manager rather than
+            registering themselves. */}
+        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">
+          Access is managed by your administrator.
         </p>
       </div>
     </div>

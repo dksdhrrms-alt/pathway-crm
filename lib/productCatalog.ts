@@ -404,6 +404,91 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Duplicate a product into another folder (or the root). The clone
+ * is a full, independent copy: metadata, product-info table, and all
+ * file rows. Storage objects are shared by URL — the clone's file
+ * rows point at the same bucket paths as the original — so a 50 MB
+ * PDF isn't re-uploaded for every species it belongs to. Replacing a
+ * file on the clone uploads a new object and only the clone's row
+ * repoints; the original keeps serving the old URL.
+ *
+ *   · slug collisions resolved by appending "-2", "-3", … until free.
+ *   · displayOrder sent to the end of the target folder.
+ *   · file statuses copied verbatim (approved stays approved; pending
+ *     stays pending). The approver gating still works because approval
+ *     authority is per-folder — a pending file inherited into a new
+ *     species may need re-approval by that species's approver.
+ */
+export async function cloneProduct(
+  sourceId: string, targetFolderId: string | null,
+): Promise<Product> {
+  const client = sb();
+
+  // 1. Load source + its files in parallel.
+  const [srcRes, filesRes] = await Promise.all([
+    client.from('product_library_products').select('*').eq('id', sourceId).maybeSingle(),
+    client.from('product_library_files').select('*').eq('product_id', sourceId),
+  ]);
+  if (srcRes.error) throw srcRes.error;
+  if (filesRes.error) throw filesRes.error;
+  const src = srcRes.data as ProductRow | null;
+  if (!src) throw new Error('Source product not found.');
+
+  // 2. Resolve a unique slug — slug has a UNIQUE constraint so a
+  //    naive copy would 23505. Try "-2", "-3", … up to a sane cap.
+  const base = src.slug;
+  let slug = base;
+  for (let i = 2; i < 100; i++) {
+    const { data: hit } = await client
+      .from('product_library_products').select('id').eq('slug', slug).maybeSingle();
+    if (!hit) break;
+    slug = `${base}-${i}`;
+  }
+
+  // 3. Place the clone at the end of the target folder.
+  const { data: siblings } = await client
+    .from('product_library_products').select('display_order').eq('folder_id', targetFolderId);
+  const nextOrder = Array.isArray(siblings) && siblings.length
+    ? Math.max(...siblings.map((s: { display_order: number }) => s.display_order ?? 0)) + 10
+    : 0;
+
+  const { data: inserted, error: insErr } = await client
+    .from('product_library_products').insert({
+      slug,
+      name: src.name,
+      species: src.species,          // kept for backward-compat only
+      folder_id: targetFolderId,
+      tagline: src.tagline,
+      description: src.description,
+      product_info: src.product_info,
+      display_order: nextOrder,
+      active: src.active,
+    }).select('*').single();
+  if (insErr) throw insErr;
+  const clone = asProduct(inserted as ProductRow);
+
+  // 4. Duplicate every file row with the clone as the new parent.
+  //    Storage objects are shared via url / thumbnail_url — no
+  //    re-upload. Status copied verbatim.
+  const files = (filesRes.data || []) as FileRow[];
+  if (files.length > 0) {
+    const rows = files.map((f) => ({
+      product_id: clone.id,
+      category: f.category,
+      label: f.label,
+      url: f.url,
+      thumbnail_url: f.thumbnail_url,
+      display_order: f.display_order,
+      status: f.status ?? 'approved',
+    }));
+    const { error: fErr } = await client.from('product_library_files').insert(rows);
+    if (fErr) throw fErr;
+  }
+
+  return clone;
+}
+
 export async function upsertFile(
   input: Partial<ProductFile> & { productId: string; category: FileCategory; label: string; url: string },
 ): Promise<ProductFile> {

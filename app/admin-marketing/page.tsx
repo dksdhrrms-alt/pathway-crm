@@ -41,6 +41,7 @@ import {
   moveProductToFolder,
   FolderApprover, listFolderApprovers, setFolderApprovers,
   userApprovesFolder,
+  cloneProduct,
 } from '@/lib/productCatalog';
 import { useUsers } from '@/lib/UserContext';
 
@@ -149,6 +150,9 @@ export default function AdminMarketingPage() {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [approversModalFolder, setApproversModalFolder] = useState<Folder | null>(null);
+  // State for the "Duplicate product to…" folder picker. Holds the
+  // product currently being copied; null when the modal is closed.
+  const [cloneSource, setCloneSource] = useState<Product | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -352,6 +356,21 @@ export default function AdminMarketingPage() {
     try { await deleteFile(f.id); await load(); } catch (e) { setError(formatErr(e)); }
   }
 
+  async function handleClone(sourceId: string, targetFolderId: string | null) {
+    try {
+      const src = products.find((p) => p.id === sourceId);
+      const clone = await cloneProduct(sourceId, targetFolderId);
+      await load();
+      setSelectedId(clone.id);
+      if (targetFolderId) setExpanded((prev) => { const n = new Set(prev); n.add(targetFolderId); return n; });
+      setCloneSource(null);
+      const where = targetFolderId
+        ? (folders.find((f) => f.id === targetFolderId)?.name ?? 'target folder')
+        : 'root';
+      setToast(`Copied "${src?.name ?? 'product'}" (with files) to ${where}`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
   async function approveF(id: string) { try { await approveFile(id, userId); await load(); setToast('Approved'); } catch (e) { setError(formatErr(e)); } }
   async function rejectF(id: string) {
     const reason = prompt('Rejection reason (optional):') || '';
@@ -500,6 +519,7 @@ export default function AdminMarketingPage() {
                       onNewProduct={handleNewProduct}
                       onDeleteFolder={handleDeleteFolder}
                       onEditApprovers={setApproversModalFolder}
+                      onDuplicateProduct={(p) => setCloneSource(p)}
                     />
                   ))}
                 </ul>
@@ -531,6 +551,15 @@ export default function AdminMarketingPage() {
           </div>
         </div>
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        {cloneSource && (
+          <FolderPickerModal
+            title={`Duplicate "${cloneSource.name}" (with files) to…`}
+            folders={folders}
+            disabledFolderId={cloneSource.folderId}
+            onPick={(targetFolderId) => handleClone(cloneSource.id, targetFolderId)}
+            onClose={() => setCloneSource(null)}
+          />
+        )}
         {approversModalFolder && (
           <ApproversModal
             folder={approversModalFolder}
@@ -562,7 +591,7 @@ function TreeNodeView({
   approverCountByFolder,
   onSelectProduct, onToggle, onDropOnFolder,
   onBeginRename, onCommitRename, onNewFolder, onNewProduct, onDeleteFolder,
-  onEditApprovers,
+  onEditApprovers, onDuplicateProduct,
 }: {
   node: TreeNode;
   depth: number;
@@ -580,6 +609,7 @@ function TreeNodeView({
   onNewProduct: (folderId: string | null) => void;
   onDeleteFolder: (f: Folder) => void;
   onEditApprovers: (f: Folder) => void;
+  onDuplicateProduct: (p: Product) => void;
 }) {
   const indent = { paddingLeft: `${depth * 14 + 8}px` };
 
@@ -656,6 +686,7 @@ function TreeNodeView({
                 onNewProduct={onNewProduct}
                 onDeleteFolder={onDeleteFolder}
                 onEditApprovers={onEditApprovers}
+                onDuplicateProduct={onDuplicateProduct}
               />
             ))}
           </ul>
@@ -675,7 +706,7 @@ function TreeNodeView({
         draggable
         onDragStart={(e) => { drag.current = { kind: 'product', id: p.id }; e.dataTransfer.effectAllowed = 'move'; }}
         onClick={() => onSelectProduct(p.id)}
-        className={`flex items-center gap-1 py-1 pr-2 rounded text-sm cursor-pointer ${
+        className={`group flex items-center gap-1 py-1 pr-2 rounded text-sm cursor-pointer ${
           selectedId === p.id
             ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 font-medium'
             : 'hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200'
@@ -686,8 +717,86 @@ function TreeNodeView({
         <span className="flex-1 truncate">{p.name}</span>
         {pending > 0 && <span title={`${pending} pending file(s)`} className="shrink-0 text-[10px] px-1 rounded bg-amber-100 text-amber-800">{pending}</span>}
         {rejected > 0 && <span title={`${rejected} rejected file(s)`} className="shrink-0 text-[10px] px-1 rounded bg-red-100 text-red-800">{rejected}</span>}
+        {/* Duplicate — hover-only to keep the row quiet. Opens the
+            folder picker; the clone includes every file. */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center shrink-0">
+          <IconBtn title="Duplicate to another folder (incl. files)" onClick={() => onDuplicateProduct(p)}>📋</IconBtn>
+        </div>
       </div>
     </li>
+  );
+}
+
+// Modal — pick a destination folder from the full folder tree.
+// Used for "Duplicate product to…". Renders the hierarchy with
+// indent-per-depth so the admin picks the right species. "Root"
+// is always offered as the first option; the source folder is
+// disabled to prevent an accidental same-place copy.
+function FolderPickerModal({
+  title, folders, disabledFolderId, onPick, onClose,
+}: {
+  title: string;
+  folders: Folder[];
+  disabledFolderId?: string | null;
+  onPick: (folderId: string | null) => void;
+  onClose: () => void;
+}) {
+  const byParent = useMemo(() => {
+    const map = new Map<string | null, Folder[]>();
+    for (const f of folders) {
+      const arr = map.get(f.parentId) || [];
+      arr.push(f);
+      map.set(f.parentId, arr);
+    }
+    for (const [, arr] of map) arr.sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name));
+    return map;
+  }, [folders]);
+
+  function render(parentId: string | null, depth: number): React.ReactNode[] {
+    const children = byParent.get(parentId) || [];
+    return children.flatMap((f) => {
+      const disabled = f.id === disabledFolderId;
+      return [
+        <button key={f.id} disabled={disabled}
+          onClick={() => onPick(f.id)}
+          style={{ paddingLeft: `${depth * 16 + 12}px` }}
+          className={`w-full flex items-center gap-2 pr-3 py-2 text-sm text-left ${
+            disabled
+              ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+              : 'hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200'
+          }`}
+        >
+          <span>📁</span>
+          <span className="flex-1 truncate">{f.name}</span>
+          {disabled && <span className="text-[10px] text-gray-400">current</span>}
+        </button>,
+        ...render(f.id, depth + 1),
+      ];
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Pick a destination. Every file in the source product (DB rows + thumbnails) is copied over too; Storage objects are shared by URL so the copy doesn&apos;t cost extra disk space.
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto py-1">
+          <button onClick={() => onPick(null)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-800 dark:text-gray-200">
+            <span>🏠</span><span className="flex-1">Root (ungrouped)</span>
+          </button>
+          <div className="border-t border-gray-100 dark:border-slate-800 my-1" />
+          {render(null, 0)}
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end">
+          <button onClick={onClose} className="text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800">Cancel</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
