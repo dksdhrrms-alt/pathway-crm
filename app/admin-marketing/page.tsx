@@ -39,7 +39,10 @@ import {
   approveFile, rejectFile, submitFileForApproval,
   createFolder, renameFolder, moveFolder, deleteFolder,
   moveProductToFolder,
+  FolderApprover, listFolderApprovers, setFolderApprovers,
+  userApprovesFolder,
 } from '@/lib/productCatalog';
+import { useUsers } from '@/lib/UserContext';
 
 type ApprovalKind = 'draft' | 'pending' | 'approved' | 'rejected';
 
@@ -134,8 +137,10 @@ export default function AdminMarketingPage() {
   const canEdit = canAccess('marketing');
   const canApprove = canAccess('marketing_approver');
 
+  const { users } = useUsers();
   const [products, setProducts] = useState<Product[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [approvers, setApprovers] = useState<FolderApprover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -143,13 +148,17 @@ export default function AdminMarketingPage() {
   const [showPending, setShowPending] = useState(true);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [approversModalFolder, setApproversModalFolder] = useState<Folder | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const [p, f] = await Promise.all([listProductsWithFiles(), listFolders()]);
+      const [p, f, a] = await Promise.all([
+        listProductsWithFiles(), listFolders(), listFolderApprovers(),
+      ]);
       setProducts(p);
       setFolders(f);
+      setApprovers(a);
       // Expand all folders by default on first load so new users see
       // their whole catalog. After that we preserve the current expand
       // state (no automatic collapse).
@@ -171,12 +180,37 @@ export default function AdminMarketingPage() {
 
   const tree = useMemo(() => buildTree(folders, products), [folders, products]);
 
+  // Approver count by folder — small badge next to each root folder
+  // so admins can see at a glance who's gating what.
+  const approverCountByFolder = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of approvers) map.set(a.folderId, (map.get(a.folderId) || 0) + 1);
+    return map;
+  }, [approvers]);
+
+  // Does the current user have approval authority for the file sitting
+  // in the given folder? Combines the global `marketing_approver`
+  // permission (cross-species) with per-folder assignments from
+  // product_library_folder_approvers (ancestor-chain check).
+  const canApproveFolder = useCallback(
+    (folderId: string | null) => canApprove || userApprovesFolder(folders, approvers, userId, folderId),
+    [canApprove, folders, approvers, userId],
+  );
+
   const pendingFiles = useMemo(
     () => products.flatMap((p) =>
-      p.files.filter((f) => f.status === 'pending').map((f) => ({ file: f, product: p })),
+      p.files.filter((f) => f.status === 'pending')
+        .filter(() => canApproveFolder(p.folderId))
+        .map((f) => ({ file: f, product: p })),
     ),
-    [products],
+    [products, canApproveFolder],
   );
+
+  // True if the user is an approver anywhere — gates the Pending
+  // queue container itself. Non-approvers see nothing even on the
+  // folders they can edit.
+  const hasAnyApprovalRights = canApprove ||
+    (userId !== '' && approvers.some((a) => a.userId === userId));
 
   // ── Folder actions ────────────────────────────────────────────
   async function handleNewFolder(parentId: string | null) {
@@ -280,30 +314,33 @@ export default function AdminMarketingPage() {
   // ── File actions (approval only applies here) ────────────────
   async function addFileRow(productId: string, category: FileCategory, file: File) {
     try {
+      const parent = products.find((p) => p.id === productId);
+      const autoApprove = canApproveFolder(parent?.folderId ?? null);
       const res = await uploadProductFile(file, productId);
-      const existing = products.find((p) => p.id === productId)?.files
-        .filter((f) => f.category === category) || [];
+      const existing = parent?.files.filter((f) => f.category === category) || [];
       const order = existing.length ? Math.max(...existing.map((x) => x.displayOrder)) + 10 : 0;
       const created = await upsertFile({
         productId, category,
         label: res.filename, url: res.url,
         displayOrder: order,
       });
-      if (!canApprove) await submitFileForApproval(created.id, userId);
+      if (!autoApprove) await submitFileForApproval(created.id, userId);
       await load();
-      setToast(`Uploaded "${res.filename}"${canApprove ? '' : ' — pending approval'}`);
+      setToast(`Uploaded "${res.filename}"${autoApprove ? '' : ' — pending approval'}`);
     } catch (e) { setError(formatErr(e)); }
   }
 
   async function saveFileRow(f: ProductFile, patch: Partial<ProductFile>) {
     const next = { ...f, ...patch };
     try {
+      const parent = products.find((p) => p.id === next.productId);
+      const autoApprove = canApproveFolder(parent?.folderId ?? null);
       await upsertFile({
         id: next.id, productId: next.productId, category: next.category,
         label: next.label, url: next.url,
         thumbnailUrl: next.thumbnailUrl, displayOrder: next.displayOrder,
       });
-      if (!canApprove && next.status === 'approved') {
+      if (!autoApprove && next.status === 'approved') {
         await submitFileForApproval(next.id, userId);
       }
       await load();
@@ -399,8 +436,10 @@ export default function AdminMarketingPage() {
             </div>
           )}
 
-          {/* Pending files queue — approver-only; only files, no products */}
-          {canApprove && pendingFiles.length > 0 && (
+          {/* Pending files queue — approver-only; only files, no
+              products. Shows a file only if the current user has
+              approval authority for its folder (global or per-folder). */}
+          {hasAnyApprovalRights && pendingFiles.length > 0 && (
             <div className="mb-5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10">
               <button onClick={() => setShowPending(!showPending)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-amber-800 dark:text-amber-300">
@@ -449,6 +488,7 @@ export default function AdminMarketingPage() {
                       expanded={expanded}
                       renamingFolderId={renamingFolderId}
                       drag={drag}
+                      approverCountByFolder={approverCountByFolder}
                       onSelectProduct={setSelectedId}
                       onToggle={(id) => setExpanded((prev) => {
                         const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
@@ -459,6 +499,7 @@ export default function AdminMarketingPage() {
                       onNewFolder={handleNewFolder}
                       onNewProduct={handleNewProduct}
                       onDeleteFolder={handleDeleteFolder}
+                      onEditApprovers={setApproversModalFolder}
                     />
                   ))}
                 </ul>
@@ -490,6 +531,22 @@ export default function AdminMarketingPage() {
           </div>
         </div>
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        {approversModalFolder && (
+          <ApproversModal
+            folder={approversModalFolder}
+            currentIds={approvers.filter((a) => a.folderId === approversModalFolder.id).map((a) => a.userId)}
+            users={users.map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role }))}
+            onClose={() => setApproversModalFolder(null)}
+            onSave={async (ids) => {
+              try {
+                await setFolderApprovers(approversModalFolder.id, ids);
+                await load();
+                setToast(`Updated approvers for "${approversModalFolder.name}"`);
+                setApproversModalFolder(null);
+              } catch (e) { setError(formatErr(e)); }
+            }}
+          />
+        )}
       </div>
     </>
   );
@@ -502,8 +559,10 @@ function nodeKey(n: TreeNode): string {
 // ── Recursive tree node ───────────────────────────────────────
 function TreeNodeView({
   node, depth, selectedId, expanded, renamingFolderId, drag,
+  approverCountByFolder,
   onSelectProduct, onToggle, onDropOnFolder,
   onBeginRename, onCommitRename, onNewFolder, onNewProduct, onDeleteFolder,
+  onEditApprovers,
 }: {
   node: TreeNode;
   depth: number;
@@ -511,6 +570,7 @@ function TreeNodeView({
   expanded: Set<string>;
   renamingFolderId: string | null;
   drag: React.MutableRefObject<DragPayload | null>;
+  approverCountByFolder: Map<string, number>;
   onSelectProduct: (id: string) => void;
   onToggle: (folderId: string) => void;
   onDropOnFolder: (folderId: string | null) => void;
@@ -519,6 +579,7 @@ function TreeNodeView({
   onNewFolder: (parentId: string | null) => void;
   onNewProduct: (folderId: string | null) => void;
   onDeleteFolder: (f: Folder) => void;
+  onEditApprovers: (f: Folder) => void;
 }) {
   const indent = { paddingLeft: `${depth * 14 + 8}px` };
 
@@ -556,6 +617,16 @@ function TreeNodeView({
               {f.name}
             </span>
           )}
+          {/* Approver count badge — only on root folders (species).
+              Clicking opens the modal; always visible, not just on hover,
+              so admins can see at a glance which species have gating. */}
+          {depth === 0 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onEditApprovers(f); }}
+              title="Set Marketing Approvers for this species"
+              className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200">
+              👥 {approverCountByFolder.get(f.id) || 0}
+            </button>
+          )}
           {/* Hover actions */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
             <IconBtn title="New subfolder" onClick={() => onNewFolder(f.id)}>📁+</IconBtn>
@@ -575,6 +646,7 @@ function TreeNodeView({
                 expanded={expanded}
                 renamingFolderId={renamingFolderId}
                 drag={drag}
+                approverCountByFolder={approverCountByFolder}
                 onSelectProduct={onSelectProduct}
                 onToggle={onToggle}
                 onDropOnFolder={onDropOnFolder}
@@ -583,6 +655,7 @@ function TreeNodeView({
                 onNewFolder={onNewFolder}
                 onNewProduct={onNewProduct}
                 onDeleteFolder={onDeleteFolder}
+                onEditApprovers={onEditApprovers}
               />
             ))}
           </ul>
@@ -615,6 +688,89 @@ function TreeNodeView({
         {rejected > 0 && <span title={`${rejected} rejected file(s)`} className="shrink-0 text-[10px] px-1 rounded bg-red-100 text-red-800">{rejected}</span>}
       </div>
     </li>
+  );
+}
+
+// Modal to pick which users approve files inside a species (folder).
+// We render all users as a checkbox list — small team, no need for
+// virtualization. Save writes the whole set via setFolderApprovers
+// (atomic wipe-and-rewrite), and Cancel reverts to the server state
+// by just closing without saving.
+function ApproversModal({
+  folder, currentIds, users, onClose, onSave,
+}: {
+  folder: Folder;
+  currentIds: string[];
+  users: { id: string; name: string; email: string; role: string }[];
+  onClose: () => void;
+  onSave: (ids: string[]) => void;
+}) {
+  const [picked, setPicked] = useState<Set<string>>(new Set(currentIds));
+  const [query, setQuery] = useState('');
+
+  const filtered = users
+    .filter((u) => {
+      if (!query.trim()) return true;
+      const q = query.toLowerCase();
+      return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  function toggle(id: string) {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Approvers for 📁 {folder.name}
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Selected users can approve files uploaded under this folder (and any subfolder).
+            The global <span className="font-medium">Marketing Approver</span> permission still works across every folder.
+          </p>
+        </div>
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-800">
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users…"
+            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 py-2">
+          {filtered.length === 0 ? (
+            <div className="py-6 text-center text-sm text-gray-400">No users match.</div>
+          ) : (
+            <ul className="space-y-0.5">
+              {filtered.map((u) => (
+                <li key={u.id}>
+                  <label className="flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer text-sm">
+                    <input type="checkbox" checked={picked.has(u.id)} onChange={() => toggle(u.id)}
+                      className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-gray-900 dark:text-gray-100">{u.name}</div>
+                      <div className="truncate text-[11px] text-gray-500">{u.email} · {u.role}</div>
+                    </div>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="px-5 py-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <span className="text-xs text-gray-500">{picked.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={onClose} className="text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-slate-800">Cancel</button>
+            <button onClick={() => onSave(Array.from(picked))}
+              className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

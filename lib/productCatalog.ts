@@ -295,6 +295,70 @@ export async function deleteFolder(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Folder approvers (per-species Marketing Approvers) ─────────
+// data-migration/35. A row (folder_id, user_id) means that user can
+// approve files anywhere inside that folder or any of its descendants.
+// The global `marketing_approver` permission continues to grant
+// cross-folder authority — this table is additive on top.
+
+export interface FolderApprover { folderId: string; userId: string }
+
+type ApproverRow = { folder_id: string; user_id: string };
+
+export async function listFolderApprovers(): Promise<FolderApprover[]> {
+  const { data, error } = await sb()
+    .from('product_library_folder_approvers')
+    .select('folder_id, user_id');
+  if (error) throw error;
+  return (data as ApproverRow[]).map((r) => ({ folderId: r.folder_id, userId: r.user_id }));
+}
+
+/** Replace the approver list for one folder in a single call.
+ *  Deletes rows that aren't in `userIds` and inserts the new ones. */
+export async function setFolderApprovers(
+  folderId: string, userIds: string[],
+): Promise<void> {
+  const client = sb();
+  const unique = Array.from(new Set(userIds.map((s) => s.trim()).filter(Boolean)));
+  // Wipe-and-rewrite — tiny list, race-free for the small admin UI.
+  const del = await client
+    .from('product_library_folder_approvers')
+    .delete().eq('folder_id', folderId);
+  if (del.error) throw del.error;
+  if (unique.length === 0) return;
+  const rows = unique.map((user_id) => ({ folder_id: folderId, user_id }));
+  const ins = await client.from('product_library_folder_approvers').insert(rows);
+  if (ins.error) throw ins.error;
+}
+
+/** Climb a folder's parent chain, returning every ancestor id
+ *  (including the folder itself) up to the root. */
+export function ancestorFolderIds(folders: Folder[], folderId: string | null): string[] {
+  if (!folderId) return [];
+  const byId = new Map(folders.map((f) => [f.id, f] as const));
+  const result: string[] = [];
+  const seen = new Set<string>();
+  let cur: Folder | undefined = byId.get(folderId);
+  while (cur && !seen.has(cur.id)) {
+    result.push(cur.id);
+    seen.add(cur.id);
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+  return result;
+}
+
+/** True when `userId` can approve a file sitting in `folderId`:
+ *  i.e. they're listed as approver on that folder or any ancestor.
+ *  (Callers combine this with the global `marketing_approver` check.) */
+export function userApprovesFolder(
+  folders: Folder[], approvers: FolderApprover[],
+  userId: string, folderId: string | null,
+): boolean {
+  if (!userId || !folderId) return false;
+  const chain = new Set(ancestorFolderIds(folders, folderId));
+  return approvers.some((a) => a.userId === userId && chain.has(a.folderId));
+}
+
 /** Move a product into a different folder (or to the root with null). */
 export async function moveProductToFolder(
   id: string, folderId: string | null, displayOrder?: number,
