@@ -1044,6 +1044,7 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
   type PFile = { id: string; productId: string; category: FileCat; label: string; url: string; thumbnailUrl: string | null; displayOrder: number };
   type Prod = {
     id: string; slug: string; name: string;
+    species: string | null;
     tagline: string | null; description: string | null;
     productInfo: PInfo; displayOrder: number; active: boolean;
     files: PFile[];
@@ -1081,6 +1082,7 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
       const rows = await listProductsWithFiles();
       setProducts(rows.map((r) => ({
         id: r.id, slug: r.slug, name: r.name,
+        species: r.species,
         tagline: r.tagline, description: r.description,
         productInfo: r.productInfo, displayOrder: r.displayOrder, active: r.active,
         files: r.files.map((f) => ({
@@ -1121,6 +1123,7 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
       const { upsertProduct } = await import('@/lib/productCatalog');
       await upsertProduct({
         id: p.id, slug: p.slug, name: p.name,
+        species: p.species,
         tagline: p.tagline, description: p.description,
         productInfo: p.productInfo, displayOrder: p.displayOrder, active: p.active,
       });
@@ -1288,6 +1291,26 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
 
                 {isOpen && (
                   <div className="p-4 space-y-4">
+                    {/* Species — top-level sidebar group. Free text
+                        (datalist of what's already in use for easy
+                        selection, but admin can type a new value). */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Species (sidebar group)</label>
+                      <input value={p.species || ''}
+                        onChange={(e) => updateProduct(p.id, { species: e.target.value || null })}
+                        placeholder="e.g. Turkey, Broiler, Swine, Dairy — leave blank for Ungrouped"
+                        list="product-species-options"
+                        className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
+                      <datalist id="product-species-options">
+                        {Array.from(new Set(products.map((x) => x.species).filter(Boolean))).map((sp) => (
+                          <option key={sp as string} value={sp as string} />
+                        ))}
+                      </datalist>
+                      <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                        The sidebar groups products under this label. Example: setting Turkey here makes <span className="font-mono">Products ▸ Turkey ▸ {p.name}</span>.
+                      </p>
+                    </div>
+
                     {/* Tagline + description */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Tagline</label>
@@ -1363,8 +1386,39 @@ function ProductCatalogPanel({ onSave }: { onSave: (msg: string) => void }) {
                             <div key={cat.key} className="border border-gray-100 dark:border-slate-800 rounded-lg p-3">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">{cat.label}</span>
-                                <button onClick={() => addFile(p.id, cat.key)}
-                                  className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium">+ Add file</button>
+                                <div className="flex items-center gap-1.5">
+                                  {/* Direct upload — opens the file
+                                      picker, uploads to Supabase, and
+                                      creates the row with the filename
+                                      as label. No URL prompt. */}
+                                  <AddFileButton
+                                    productId={p.id}
+                                    category={cat.key}
+                                    onUploaded={async (res) => {
+                                      try {
+                                        const { upsertFile } = await import('@/lib/productCatalog');
+                                        const existing = products.find((pp) => pp.id === p.id)?.files.filter((f) => f.category === cat.key) || [];
+                                        const nextOrder = existing.length > 0 ? Math.max(...existing.map((f) => f.displayOrder)) + 10 : 0;
+                                        await upsertFile({
+                                          productId: p.id, category: cat.key,
+                                          label: res.filename, url: res.url,
+                                          displayOrder: nextOrder,
+                                        });
+                                        await load();
+                                        onSave(`Uploaded "${res.filename}"`);
+                                      } catch (e) { setError(formatErr(e)); }
+                                    }}
+                                    onError={(msg) => setError(msg)}
+                                  />
+                                  {/* Fallback — prompt-based URL entry
+                                      for admins who prefer to paste a
+                                      Library URL instead of uploading. */}
+                                  <button onClick={() => addFile(p.id, cat.key)}
+                                    className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                                    title="Add a file by pasting an external URL instead of uploading">
+                                    + URL
+                                  </button>
+                                </div>
                               </div>
                               {catFiles.length === 0 ? (
                                 <div className="text-[11px] text-gray-400 dark:text-gray-500 italic">No files.</div>
@@ -1645,6 +1699,63 @@ function ProductFileUploader({
         title="Upload a file to Supabase Storage so reps can download without logging into Library"
       >
         {busy ? '↑ …' : '↑ Upload'}
+      </button>
+    </>
+  );
+}
+
+// "+ Upload" button for a Sales Tools category. Opens the file
+// picker directly, uploads, and reports the resulting URL + filename
+// back so the parent can insert the DB row. Replaces the old
+// prompt-chain addFile flow — admins can now click once and pick a
+// file instead of pasting a URL (which usually required logging into
+// the Library site to copy from). The "+ URL" fallback stays for
+// cases where admins want to link an external resource.
+function AddFileButton({
+  productId,
+  category,
+  onUploaded,
+  onError,
+}: {
+  productId: string;
+  category: string;
+  onUploaded: (res: { url: string; filename: string; sizeBytes: number }) => void;
+  onError: (msg: string) => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (inputRef.current) inputRef.current.value = '';
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      onError('File too large (max 50 MB). Use the + URL button to link larger assets.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const { uploadProductFile } = await import('@/lib/productCatalog');
+      const res = await uploadProductFile(file, productId);
+      onUploaded(res);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <input ref={inputRef} type="file" onChange={handlePick} className="hidden"
+        aria-label={`Upload file for ${category}`} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        className="text-xs px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white font-medium disabled:opacity-50"
+      >
+        {busy ? '↑ Uploading…' : '+ Upload'}
       </button>
     </>
   );

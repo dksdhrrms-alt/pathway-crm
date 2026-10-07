@@ -61,6 +61,9 @@ export interface Product {
   id: string;
   slug: string;
   name: string;
+  /** Top-level grouping (e.g. 'Turkey', 'Broiler', 'Swine'). Shown
+   *  as the parent node in the sidebar. Null = Ungrouped. */
+  species: string | null;
   tagline: string | null;
   description: string | null;
   productInfo: ProductInfo;
@@ -73,6 +76,7 @@ export interface Product {
 
 type ProductRow = {
   id: string; slug: string; name: string;
+  species: string | null;
   tagline: string | null; description: string | null;
   product_info: unknown; display_order: number; active: boolean;
 };
@@ -103,6 +107,7 @@ function asProductInfo(raw: unknown): ProductInfo {
 function asProduct(r: ProductRow, files: ProductFile[] = []): Product {
   return {
     id: r.id, slug: r.slug, name: r.name,
+    species: r.species,
     tagline: r.tagline, description: r.description,
     productInfo: asProductInfo(r.product_info),
     displayOrder: r.display_order, active: r.active,
@@ -126,6 +131,7 @@ export async function listProducts(): Promise<Product[]> {
   const { data, error } = await sb()
     .from('product_library_products')
     .select('*')
+    .order('species', { nullsFirst: false })
     .order('display_order').order('name');
   if (error) throw error;
   return (data as ProductRow[]).map((r) => asProduct(r));
@@ -134,7 +140,9 @@ export async function listProducts(): Promise<Product[]> {
 /** Admin panel + individual catalog pages — everything joined. */
 export async function listProductsWithFiles(): Promise<Product[]> {
   const [p, f] = await Promise.all([
-    sb().from('product_library_products').select('*').order('display_order').order('name'),
+    sb().from('product_library_products').select('*')
+      .order('species', { nullsFirst: false })
+      .order('display_order').order('name'),
     sb().from('product_library_files').select('*').order('display_order').order('label'),
   ]);
   if (p.error) throw p.error;
@@ -169,6 +177,7 @@ export async function upsertProduct(
   const payload: Record<string, unknown> = {
     slug: input.slug.trim(),
     name: input.name.trim(),
+    species: input.species ? String(input.species).trim() || null : null,
     tagline: input.tagline || null,
     description: input.description || null,
     product_info: input.productInfo ?? { columns: [], rows: [] },

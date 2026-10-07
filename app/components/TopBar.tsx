@@ -123,42 +123,9 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
           while it stayed visible on other pages whose search box was
           rendered. ml-auto keeps everything right-aligned regardless. */}
       <div className="relative flex items-center gap-3 ml-auto" ref={dropdownRef}>
-        {/* Pathway USA Library — bigger, more prominent link. Styled
-            after the brand mark from the library site (book spines +
-            backslash). Opens in a new tab so the CRM session stays put. */}
-        <a
-          href="https://pathway-library-flame.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-lg text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          title="Open Pathway USA Library in a new tab"
-        >
-          {/* Book-spines mark — three vertical bars + leaning slash, mirrors
-              the logotype from the library site. */}
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <line x1="4"  y1="5" x2="4"  y2="19" />
-            <line x1="8"  y1="5" x2="8"  y2="19" />
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="16" y1="5" x2="20" y2="19" />
-          </svg>
-          <span>Pathway USA Library</span>
-        </a>
-        {/* Mobile fallback — icon-only, same destination. */}
-        <a
-          href="https://pathway-library-flame.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="sm:hidden inline-flex items-center p-2 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          title="Open Pathway USA Library in a new tab"
-          aria-label="Pathway USA Library"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <line x1="4"  y1="5" x2="4"  y2="19" />
-            <line x1="8"  y1="5" x2="8"  y2="19" />
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="16" y1="5" x2="20" y2="19" />
-          </svg>
-        </a>
+        {/* Pathway USA Library link removed — product files now live
+            inside the CRM (uploaded via Admin → Product Library) and
+            reps download them directly from the Products menu. */}
         <ThemeToggle />
         <NotificationBell />
         <div className="hidden sm:flex items-center gap-2">

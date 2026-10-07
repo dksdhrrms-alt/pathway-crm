@@ -146,16 +146,41 @@ export default function Sidebar() {
   // Old external-URL rows were auto-migrated in
   // data-migration/25-product-catalog.sql.
   const [productsOpen, setProductsOpen] = useState(false);
-  const [productLinks, setProductLinks] = useState<{ id: string; slug: string; name: string }[]>([]);
+  // Products carry a `species` label (Turkey, Broiler, Swine, ...).
+  // The sidebar renders them two levels deep:
+  //   Products ▸ Turkey ▸ Lipidol Prime
+  // Null / blank species falls into an "Ungrouped" bucket at the end.
+  const [productLinks, setProductLinks] = useState<{ id: string; slug: string; name: string; species: string | null }[]>([]);
+  // Tracks which species groups are expanded. Keyed by species label
+  // (or '__ungrouped__' for the null bucket).
+  const [openSpecies, setOpenSpecies] = useState<Set<string>>(new Set());
   useEffect(() => {
     let cancelled = false;
     import('@/lib/productCatalog').then(({ listProducts }) =>
       listProducts()
-        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name }))); })
+        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name, species: r.species }))); })
         .catch(() => { /* silent — sidebar just hides the section */ }),
     );
     return () => { cancelled = true; };
   }, []);
+
+  // Group products by species for the sidebar tree. Preserves the
+  // array order (lib/productCatalog sorts by species → display_order
+  // → name) so species appear in alphabetical order.
+  const productsBySpecies: { species: string; display: string; items: typeof productLinks }[] = (() => {
+    const map = new Map<string, typeof productLinks>();
+    for (const p of productLinks) {
+      const key = p.species && p.species.trim() ? p.species.trim() : '__ungrouped__';
+      const arr = map.get(key) || [];
+      arr.push(p);
+      map.set(key, arr);
+    }
+    return Array.from(map.entries()).map(([species, items]) => ({
+      species,
+      display: species === '__ungrouped__' ? 'Ungrouped' : species,
+      items,
+    }));
+  })();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const userId = session?.user?.id ?? '';
@@ -379,21 +404,77 @@ export default function Sidebar() {
             </button>
             {productsOpen && (
               <div className="ml-8 mt-1 space-y-0.5">
-                {productLinks.map((link) => (
-                  <Link
-                    key={link.id}
-                    href={`/products/${link.slug}`}
-                    onClick={() => setMobileOpen(false)}
-                    className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
-                      pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
-                        ? 'bg-white/15 text-white font-medium'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
-                    }`}
-                    title={link.name}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+                {productsBySpecies.map((group) => {
+                  const isOpen = openSpecies.has(group.species);
+                  // Deep-link friendly: if the user is on a product
+                  // whose species matches this group, auto-expand so
+                  // their current selection is visible without an
+                  // extra click.
+                  const anyActive = group.items.some(
+                    (it) => pathname === `/products/${it.slug}` || pathname.startsWith(`/products/${it.slug}/`),
+                  );
+                  const expanded = isOpen || anyActive;
+                  // When there's only ONE species group (common for
+                  // small teams that haven't set species yet), skip
+                  // the extra indent and render products flat.
+                  const flat = productsBySpecies.length === 1;
+                  if (flat) {
+                    return group.items.map((link) => (
+                      <Link
+                        key={link.id}
+                        href={`/products/${link.slug}`}
+                        onClick={() => setMobileOpen(false)}
+                        className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                          pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
+                            ? 'bg-white/15 text-white font-medium'
+                            : 'text-white/50 hover:text-white hover:bg-white/5'
+                        }`}
+                        title={link.name}
+                      >
+                        {link.name}
+                      </Link>
+                    ));
+                  }
+                  return (
+                    <div key={group.species}>
+                      <button
+                        onClick={() => setOpenSpecies((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(group.species)) next.delete(group.species); else next.add(group.species);
+                          return next;
+                        })}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all ${
+                          anyActive ? 'text-white font-medium' : 'text-white/60 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span>{group.display}</span>
+                        <span className="ml-auto text-[10px] text-white/40">{group.items.length}</span>
+                      </button>
+                      {expanded && (
+                        <div className="ml-5 mt-0.5 space-y-0.5">
+                          {group.items.map((link) => (
+                            <Link
+                              key={link.id}
+                              href={`/products/${link.slug}`}
+                              onClick={() => setMobileOpen(false)}
+                              className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
+                                pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
+                                  ? 'bg-white/15 text-white font-medium'
+                                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                              }`}
+                              title={link.name}
+                            >
+                              {link.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
