@@ -1047,41 +1047,142 @@ function ProductEditor({
 
       {/* Sales Tools (files) */}
       <div>
-        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Sales Tools</label>
+        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
+          Sales Tools <span className="text-gray-400 font-normal normal-case">— drop files directly onto a category</span>
+        </label>
         <div className="space-y-3">
           {FILE_CATEGORY_META.map((cat) => {
             const items = product.files.filter((f) => f.category === cat.key)
               .sort((a, b) => a.displayOrder - b.displayOrder);
             return (
-              <div key={cat.key} className="border border-gray-100 dark:border-slate-800 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">
-                    {cat.emoji} {cat.label}
-                  </span>
-                  <FileUploadButton label="+ Upload" onPick={(file) => onFileAdd(product.id, cat.key, file)} />
-                </div>
-                {items.length === 0 ? (
-                  <div className="text-[11px] text-gray-400 italic">No files.</div>
-                ) : (
-                  <ul className="space-y-2">
-                    {items.map((f) => (
-                      <FileRow
-                        key={f.id}
-                        file={f}
-                        onSave={(patch) => onFileSave(f, patch)}
-                        onDelete={() => onFileDelete(f)}
-                        onToast={onToast}
-                        onError={onError}
-                        onReload={onReload}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <CategoryDropZone
+                key={cat.key}
+                category={cat}
+                items={items}
+                productId={product.id}
+                onFileAdd={onFileAdd}
+                onFileSave={onFileSave}
+                onFileDelete={onFileDelete}
+                onToast={onToast}
+                onError={onError}
+                onReload={onReload}
+              />
             );
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// One Sales Tools category — doubles as a drop zone for OS files.
+// We only react to drags that carry *actual files* (dataTransfer
+// contains the 'Files' type); drags that originate from the sidebar
+// folder/product tree are ignored so they don't accidentally hit
+// upload. Multiple files dropped at once upload sequentially.
+function CategoryDropZone({
+  category, items, productId,
+  onFileAdd, onFileSave, onFileDelete, onToast, onError, onReload,
+}: {
+  category: { key: FileCategory; label: string; emoji: string };
+  items: ProductFile[];
+  productId: string;
+  onFileAdd: (productId: string, category: FileCategory, file: File) => Promise<void> | void;
+  onFileSave: (f: ProductFile, patch: Partial<ProductFile>) => Promise<void> | void;
+  onFileDelete: (f: ProductFile) => void;
+  onToast: (msg: string) => void;
+  onError: (msg: string) => void;
+  onReload: () => Promise<void> | void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(0);
+
+  function hasFiles(dt: DataTransfer | null): boolean {
+    if (!dt) return false;
+    // dt.types is a DOMStringList that includes 'Files' only for OS
+    // file drags; internal element drags carry other types instead.
+    return Array.from(dt.types || []).includes('Files');
+  }
+
+  async function handleDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault(); e.stopPropagation();
+    setDragOver(false);
+    if (!hasFiles(e.dataTransfer)) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+
+    const tooBig = files.filter((f) => f.size > 50 * 1024 * 1024);
+    if (tooBig.length > 0) {
+      onError(`${tooBig.length} file(s) exceeded 50 MB and were skipped: ${tooBig.map((f) => f.name).join(', ')}`);
+    }
+    const ok = files.filter((f) => f.size <= 50 * 1024 * 1024);
+    if (ok.length === 0) return;
+
+    setUploading(ok.length);
+    try {
+      // Sequential uploads keep display_order stable + avoid piling
+      // too many concurrent requests on the Supabase anon connection.
+      for (const file of ok) {
+        await onFileAdd(productId, category.key, file);
+      }
+      if (ok.length > 1) onToast(`Uploaded ${ok.length} files to ${category.label}`);
+    } finally {
+      setUploading(0);
+    }
+  }
+
+  return (
+    <div
+      onDragOver={(e) => { if (hasFiles(e.dataTransfer)) { e.preventDefault(); e.stopPropagation(); setDragOver(true); } }}
+      onDragEnter={(e) => { if (hasFiles(e.dataTransfer)) { e.preventDefault(); e.stopPropagation(); setDragOver(true); } }}
+      onDragLeave={(e) => {
+        // Fires on child elements too — ignore unless the cursor truly
+        // left the zone bounds.
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setDragOver(false);
+      }}
+      onDrop={handleDrop}
+      className={`relative border rounded-lg p-3 transition-all ${
+        dragOver
+          ? 'border-emerald-500 border-dashed bg-emerald-50/60 dark:bg-emerald-900/10 ring-2 ring-emerald-300'
+          : 'border-gray-100 dark:border-slate-800'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">
+          {category.emoji} {category.label}
+        </span>
+        <FileUploadButton label="+ Upload" onPick={(file) => onFileAdd(productId, category.key, file)} />
+      </div>
+      {items.length === 0 ? (
+        <div className="text-[11px] text-gray-400 italic">
+          No files. Drag files here or click <span className="font-medium">+ Upload</span>.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((f) => (
+            <FileRow
+              key={f.id}
+              file={f}
+              onSave={(patch) => onFileSave(f, patch)}
+              onDelete={() => onFileDelete(f)}
+              onToast={onToast}
+              onError={onError}
+              onReload={onReload}
+            />
+          ))}
+        </ul>
+      )}
+      {/* Overlay while dragging over, and while an upload is in flight. */}
+      {(dragOver || uploading > 0) && (
+        <div className="absolute inset-0 rounded-lg flex items-center justify-center pointer-events-none bg-emerald-50/70 dark:bg-emerald-900/20 border-2 border-dashed border-emerald-500">
+          <div className="text-emerald-800 dark:text-emerald-200 text-sm font-medium">
+            {uploading > 0
+              ? `Uploading ${uploading} file${uploading === 1 ? '' : 's'}…`
+              : `Drop into "${category.label}"`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
