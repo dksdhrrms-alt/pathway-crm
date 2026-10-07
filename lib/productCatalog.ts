@@ -48,6 +48,17 @@ export interface ProductInfo {
 
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected';
 
+/** Hierarchical folders in the product catalog (data-migration/34).
+ *  Folders are NOT part of the approval workflow — creating or moving
+ *  a folder is immediate. Only uploaded files go pending → approved. */
+export interface Folder {
+  id: string;
+  name: string;
+  /** Null = root-level folder. Non-null = nested inside another folder. */
+  parentId: string | null;
+  displayOrder: number;
+}
+
 export interface ProductFile {
   id: string;
   productId: string;
@@ -57,7 +68,9 @@ export interface ProductFile {
   /** Optional preview image shown above the filename on the catalog page. */
   thumbnailUrl: string | null;
   displayOrder: number;
-  // Approval workflow (data-migration/33)
+  // Approval workflow (data-migration/33) — files are the ONLY entity
+  // in the catalog that goes through approval. Products / folders show
+  // up immediately.
   status: ApprovalStatus;
   createdBy: string | null;
   submittedAt: string | null;
@@ -70,22 +83,16 @@ export interface Product {
   id: string;
   slug: string;
   name: string;
-  /** Top-level grouping (e.g. 'Turkey', 'Broiler', 'Swine'). Shown
-   *  as the parent node in the sidebar. Null = Ungrouped. */
+  /** @deprecated Use folderId instead. Kept for backward-compat only. */
   species: string | null;
+  /** Null = at the root of the catalog. Non-null = inside a Folder. */
+  folderId: string | null;
   tagline: string | null;
   description: string | null;
   productInfo: ProductInfo;
   displayOrder: number;
   active: boolean;
   files: ProductFile[];      // populated by getProduct()/listProductsWithFiles()
-  // Approval workflow (data-migration/33)
-  status: ApprovalStatus;
-  createdBy: string | null;
-  submittedAt: string | null;
-  approvedBy: string | null;
-  approvedAt: string | null;
-  rejectionReason: string | null;
 }
 
 // ── Row shapes (snake_case from Supabase) ────────────────────────
@@ -93,14 +100,9 @@ export interface Product {
 type ProductRow = {
   id: string; slug: string; name: string;
   species: string | null;
+  folder_id: string | null;
   tagline: string | null; description: string | null;
   product_info: unknown; display_order: number; active: boolean;
-  status?: ApprovalStatus | null;
-  created_by?: string | null;
-  submitted_at?: string | null;
-  approved_by?: string | null;
-  approved_at?: string | null;
-  rejection_reason?: string | null;
 };
 type FileRow = {
   id: string; product_id: string; category: FileCategory;
@@ -112,6 +114,12 @@ type FileRow = {
   approved_by?: string | null;
   approved_at?: string | null;
   rejection_reason?: string | null;
+};
+type FolderRow = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  display_order: number;
 };
 
 function asProductInfo(raw: unknown): ProductInfo {
@@ -136,16 +144,20 @@ function asProduct(r: ProductRow, files: ProductFile[] = []): Product {
   return {
     id: r.id, slug: r.slug, name: r.name,
     species: r.species,
+    folderId: r.folder_id ?? null,
     tagline: r.tagline, description: r.description,
     productInfo: asProductInfo(r.product_info),
     displayOrder: r.display_order, active: r.active,
     files,
-    status: (r.status as ApprovalStatus) ?? 'approved',
-    createdBy: r.created_by ?? null,
-    submittedAt: r.submitted_at ?? null,
-    approvedBy: r.approved_by ?? null,
-    approvedAt: r.approved_at ?? null,
-    rejectionReason: r.rejection_reason ?? null,
+  };
+}
+
+function asFolder(r: FolderRow): Folder {
+  return {
+    id: r.id,
+    name: r.name,
+    parentId: r.parent_id,
+    displayOrder: r.display_order,
   };
 }
 
@@ -167,13 +179,12 @@ function asFile(r: FileRow): ProductFile {
 // ── Reads ────────────────────────────────────────────────────────
 
 /** Sidebar / product list — no files loaded, keeps payload light.
- *  Public-facing: only `approved` products are returned. */
+ *  Products are visible as soon as they exist; approval is on files
+ *  only (data-migration/33). */
 export async function listProducts(): Promise<Product[]> {
   const { data, error } = await sb()
     .from('product_library_products')
     .select('*')
-    .eq('status', 'approved')
-    .order('species', { nullsFirst: false })
     .order('display_order').order('name');
   if (error) throw error;
   return (data as ProductRow[]).map((r) => asProduct(r));
@@ -183,7 +194,6 @@ export async function listProducts(): Promise<Product[]> {
 export async function listProductsWithFiles(): Promise<Product[]> {
   const [p, f] = await Promise.all([
     sb().from('product_library_products').select('*')
-      .order('species', { nullsFirst: false })
       .order('display_order').order('name'),
     sb().from('product_library_files').select('*').order('display_order').order('label'),
   ]);
@@ -198,11 +208,12 @@ export async function listProductsWithFiles(): Promise<Product[]> {
   return (p.data as ProductRow[]).map((r) => asProduct(r, byProduct.get(r.id) || []));
 }
 
-/** Public catalog page — only approved product + approved files. */
+/** Public catalog page — product + only its *approved* files. The
+ *  product itself is always returned (no product-level approval). */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const { data, error } = await sb()
     .from('product_library_products').select('*')
-    .eq('slug', slug).eq('status', 'approved').maybeSingle();
+    .eq('slug', slug).maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const { data: files } = await sb()
@@ -211,6 +222,91 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     .eq('status', 'approved')
     .order('display_order').order('label');
   return asProduct(data as ProductRow, ((files || []) as FileRow[]).map(asFile));
+}
+
+// ── Folders ─────────────────────────────────────────────────────
+// Lightweight CRUD for the hierarchical folder tree in the
+// product catalog. No approval workflow — folder changes are
+// immediate (users can rename / move / create freely).
+
+export async function listFolders(): Promise<Folder[]> {
+  const { data, error } = await sb()
+    .from('product_library_folders')
+    .select('*')
+    .order('display_order').order('name');
+  if (error) throw error;
+  return (data as FolderRow[]).map(asFolder);
+}
+
+export async function createFolder(
+  name: string, parentId: string | null, displayOrder = 0,
+): Promise<Folder> {
+  const payload: Record<string, unknown> = {
+    name: name.trim(),
+    parent_id: parentId,
+    display_order: displayOrder,
+  };
+  const { data, error } = await sb()
+    .from('product_library_folders').insert(payload).select('*').single();
+  if (error) throw error;
+  return asFolder(data as FolderRow);
+}
+
+export async function renameFolder(id: string, name: string): Promise<void> {
+  const { error } = await sb()
+    .from('product_library_folders')
+    .update({ name: name.trim(), updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function moveFolder(
+  id: string, newParentId: string | null, displayOrder?: number,
+): Promise<void> {
+  // Guard against moving a folder into itself or one of its descendants —
+  // the caller should also check, but defense-in-depth never hurts.
+  if (newParentId === id) throw new Error('A folder cannot be its own parent.');
+  const payload: Record<string, unknown> = {
+    parent_id: newParentId,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof displayOrder === 'number') payload.display_order = displayOrder;
+  const { error } = await sb()
+    .from('product_library_folders').update(payload).eq('id', id);
+  if (error) throw error;
+}
+
+/** Reorder folders amongst their siblings. Pass the full ordered id
+ *  array for one parent (or root) — we write display_order = index. */
+export async function reorderFolders(ids: string[]): Promise<void> {
+  const now = new Date().toISOString();
+  await Promise.all(ids.map((id, i) =>
+    sb().from('product_library_folders')
+      .update({ display_order: i, updated_at: now })
+      .eq('id', id)
+  ));
+}
+
+export async function deleteFolder(id: string): Promise<void> {
+  // ON DELETE SET NULL on both children folders and products handles
+  // orphans — they resurface at the root rather than disappearing.
+  const { error } = await sb()
+    .from('product_library_folders').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/** Move a product into a different folder (or to the root with null). */
+export async function moveProductToFolder(
+  id: string, folderId: string | null, displayOrder?: number,
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    folder_id: folderId,
+    updated_at: new Date().toISOString(),
+  };
+  if (typeof displayOrder === 'number') payload.display_order = displayOrder;
+  const { error } = await sb()
+    .from('product_library_products').update(payload).eq('id', id);
+  if (error) throw error;
 }
 
 // ── Writes ───────────────────────────────────────────────────────
@@ -224,6 +320,7 @@ export async function upsertProduct(
     slug: input.slug.trim(),
     name: input.name.trim(),
     species: input.species ? String(input.species).trim() || null : null,
+    folder_id: input.folderId ?? null,
     tagline: input.tagline || null,
     description: input.description || null,
     product_info: input.productInfo ?? { columns: [], rows: [] },
@@ -345,53 +442,12 @@ export function isUploadedProductFile(url: string): boolean {
   return !!url && url.includes(`/${FILES_BUCKET}/`);
 }
 
-// ── Approval workflow ───────────────────────────────────────────
-// Non-approver edits land as status='pending' and only appear on the
-// public sidebar / catalog page after a Marketing Approver flips them
-// to 'approved'. See data-migration/33-marketing-approval-workflow.sql.
-
-export async function submitProductForApproval(
-  id: string,
-  userId: string,
-): Promise<void> {
-  const { error } = await sb()
-    .from('product_library_products')
-    .update({
-      status: 'pending',
-      submitted_at: new Date().toISOString(),
-      created_by: userId,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-export async function approveProduct(id: string, approverId: string): Promise<void> {
-  const { error } = await sb()
-    .from('product_library_products')
-    .update({
-      status: 'approved',
-      approved_by: approverId,
-      approved_at: new Date().toISOString(),
-      rejection_reason: null,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-export async function rejectProduct(
-  id: string, approverId: string, reason: string,
-): Promise<void> {
-  const { error } = await sb()
-    .from('product_library_products')
-    .update({
-      status: 'rejected',
-      approved_by: approverId,
-      approved_at: new Date().toISOString(),
-      rejection_reason: reason || null,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
+// ── Approval workflow (files only) ──────────────────────────────
+// Only uploaded files go through approval. Products and folders are
+// visible immediately. A non-approver's new/edited file lands as
+// status='pending' and only renders in the public catalog page
+// after a Marketing Approver flips it to 'approved'. See
+// data-migration/33-marketing-approval-workflow.sql.
 
 export async function submitFileForApproval(
   id: string, userId: string,
@@ -435,22 +491,8 @@ export async function rejectFile(
   if (error) throw error;
 }
 
-/** Move a product under a different species (drag-drop in Admin-Marketing). */
-export async function updateProductSpecies(
-  id: string, species: string | null, displayOrder?: number,
-): Promise<void> {
-  const payload: Record<string, unknown> = {
-    species: species ? species.trim() || null : null,
-    updated_at: new Date().toISOString(),
-  };
-  if (typeof displayOrder === 'number') payload.display_order = displayOrder;
-  const { error } = await sb()
-    .from('product_library_products').update(payload).eq('id', id);
-  if (error) throw error;
-}
-
-/** Reorder products within a species (drag-drop in Admin-Marketing).
- *  Takes the full sorted array of product ids for that species and
+/** Reorder products within a folder (drag-drop in Admin-Marketing).
+ *  Takes the full sorted array of product ids for that folder and
  *  writes display_order = index on each. */
 export async function reorderProducts(ids: string[]): Promise<void> {
   const now = new Date().toISOString();

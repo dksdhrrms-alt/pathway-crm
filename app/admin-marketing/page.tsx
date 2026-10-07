@@ -1,32 +1,27 @@
 'use client';
 
 /**
- * Admin-Marketing — product catalog management, extracted from the
- * main Admin tab (app/admin/page.tsx).
+ * Admin-Marketing — product catalog management, Google Drive-style.
  *
- * Why its own route?
- *   · Non-admin editors need write access to the catalog but not to
- *     the rest of Admin (users, permissions, data health).
- *   · Changes shouldn't go live immediately — there's an approval
- *     flow (draft → pending → approved) so a Marketing Approver can
- *     gate what reps actually see on the sidebar / Products page.
+ * Design notes
+ *   · Folders are a first-class entity (data-migration/34). Users
+ *     create / rename / delete / drag folders freely. Folders can
+ *     nest to any depth; the left panel is a recursive tree.
+ *   · Products live inside a folder (or at the root). Drag a product
+ *     onto a folder to move it there, or onto the root drop zone to
+ *     pull it out.
+ *   · Approval applies to UPLOADED FILES ONLY. New folders and new
+ *     products show up immediately. A non-approver's new/edited file
+ *     lands as `pending`; a Marketing Approver reviews it in the
+ *     "Pending files" queue at the top.
  *
  * Permissions (hooks/useMenuAccess.ts):
- *   · 'marketing'          → can open this page + edit catalog;
- *                            edits land as status='pending'.
- *   · 'marketing_approver' → additionally sees the "Pending Approval"
- *                            queue + Approve/Reject buttons; their
- *                            edits bypass pending.
- *   · Admin/CEO/administrative_manager have full access by default.
- *
- * UX:
- *   · Left: 2-level tree (Species → Product) with HTML5 drag-and-drop.
- *     Drop a product onto another species header to reparent;
- *     drop onto another product to reorder within that species.
- *   · Right: editor for the selected product (name, species, tagline,
- *     description, product-info table, per-category files).
- *   · Top (approver only): "Pending Approval" collapsible queue of
- *     products + files awaiting review.
+ *   · `marketing`          → open this page + edit catalog; file
+ *                            uploads/edits land as pending.
+ *   · `marketing_approver` → additionally sees the pending queue +
+ *                            Approve/Reject; their own uploads bypass
+ *                            pending.
+ *   · Admin / CEO / administrative_manager — full access by default.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,30 +31,29 @@ import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import { useMenuAccess } from '@/hooks/useMenuAccess';
 import {
-  Product, ProductFile, FileCategory, FILE_CATEGORY_META,
-  listProductsWithFiles, upsertProduct, deleteProduct, toSlug,
+  Product, ProductFile, Folder, FileCategory, FILE_CATEGORY_META,
+  listProductsWithFiles, listFolders,
+  upsertProduct, deleteProduct, toSlug,
   upsertFile, deleteFile,
   uploadProductFile, uploadThumbnail,
-  approveProduct, rejectProduct, approveFile, rejectFile,
-  submitProductForApproval, submitFileForApproval,
-  updateProductSpecies, reorderProducts,
+  approveFile, rejectFile, submitFileForApproval,
+  createFolder, renameFolder, moveFolder, deleteFolder,
+  moveProductToFolder,
 } from '@/lib/productCatalog';
 
-type StatusBadgeKind = 'draft' | 'pending' | 'approved' | 'rejected';
+type ApprovalKind = 'draft' | 'pending' | 'approved' | 'rejected';
 
-const STATUS_META: Record<StatusBadgeKind, { label: string; cls: string }> = {
-  draft: { label: 'Draft', cls: 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-gray-300' },
-  pending: { label: 'Pending', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
+const STATUS_META: Record<ApprovalKind, { label: string; cls: string }> = {
+  draft:    { label: 'Draft',    cls: 'bg-gray-200 text-gray-700 dark:bg-slate-700 dark:text-gray-300' },
+  pending:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' },
   approved: { label: 'Approved', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' },
   rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' },
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[(status as StatusBadgeKind)] ?? STATUS_META.approved;
+  const meta = STATUS_META[(status as ApprovalKind)] ?? STATUS_META.approved;
   return (
-    <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded ${meta.cls}`}>
-      {meta.label}
-    </span>
+    <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded ${meta.cls}`}>{meta.label}</span>
   );
 }
 
@@ -74,6 +68,63 @@ function formatErr(e: unknown): string {
   return String(e);
 }
 
+// ── Tree helpers ────────────────────────────────────────────────
+// Node kind — the recursive tree holds a mix of folders (parents)
+// and products (leaves). This union keeps the renderer simple.
+type TreeFolder = { kind: 'folder'; folder: Folder; children: TreeNode[] };
+type TreeProduct = { kind: 'product'; product: Product };
+type TreeNode = TreeFolder | TreeProduct;
+
+function buildTree(folders: Folder[], products: Product[]): TreeNode[] {
+  const byParent = new Map<string | null, Folder[]>();
+  for (const f of folders) {
+    const arr = byParent.get(f.parentId) || [];
+    arr.push(f);
+    byParent.set(f.parentId, arr);
+  }
+  const productsByFolder = new Map<string | null, Product[]>();
+  for (const p of products) {
+    const arr = productsByFolder.get(p.folderId) || [];
+    arr.push(p);
+    productsByFolder.set(p.folderId, arr);
+  }
+  function build(parentId: string | null): TreeNode[] {
+    const subFolders = (byParent.get(parentId) || [])
+      .slice().sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name));
+    const subProducts = (productsByFolder.get(parentId) || [])
+      .slice().sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name));
+    return [
+      ...subFolders.map<TreeFolder>((f) => ({ kind: 'folder', folder: f, children: build(f.id) })),
+      ...subProducts.map<TreeProduct>((p) => ({ kind: 'product', product: p })),
+    ];
+  }
+  return build(null);
+}
+
+/** Collect this folder + all descendant folder ids. Used to prevent
+ *  dropping a folder into itself or one of its own children. */
+function collectDescendantIds(folders: Folder[], rootId: string): Set<string> {
+  const result = new Set<string>([rootId]);
+  const byParent = new Map<string | null, Folder[]>();
+  for (const f of folders) {
+    const arr = byParent.get(f.parentId) || [];
+    arr.push(f);
+    byParent.set(f.parentId, arr);
+  }
+  const walk = (id: string) => {
+    for (const child of byParent.get(id) || []) {
+      if (!result.has(child.id)) { result.add(child.id); walk(child.id); }
+    }
+  };
+  walk(rootId);
+  return result;
+}
+
+// Drag payload — either a folder being moved, or a product being moved.
+type DragPayload =
+  | { kind: 'folder'; id: string }
+  | { kind: 'product'; id: string };
+
 export default function AdminMarketingPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -84,116 +135,154 @@ export default function AdminMarketingPage() {
   const canApprove = canAccess('marketing_approver');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [newName, setNewName] = useState('');
   const [showPending, setShowPending] = useState(true);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const rows = await listProductsWithFiles();
-      setProducts(rows);
-      // If currently selected id is gone (deleted), clear it.
-      setSelectedId((prev) => (prev && rows.some((r) => r.id === prev) ? prev : (rows[0]?.id ?? null)));
+      const [p, f] = await Promise.all([listProductsWithFiles(), listFolders()]);
+      setProducts(p);
+      setFolders(f);
+      // Expand all folders by default on first load so new users see
+      // their whole catalog. After that we preserve the current expand
+      // state (no automatic collapse).
+      setExpanded((prev) => prev.size === 0 ? new Set(f.map((x) => x.id)) : prev);
     } catch (e) { setError(formatErr(e)); }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { if (permsLoaded && canEdit) load(); }, [permsLoaded, canEdit, load]);
 
-  // Redirect out if the user lacks marketing permission. We wait for
-  // perms to load first so we don't flash a redirect on refresh.
   useEffect(() => {
     if (permsLoaded && !canEdit) router.replace('/dashboard');
   }, [permsLoaded, canEdit, router]);
 
-  const selected = useMemo(
+  const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedId) ?? null,
     [products, selectedId],
   );
 
-  const bySpecies = useMemo(() => {
-    const map = new Map<string, Product[]>();
-    for (const p of products) {
-      const key = p.species && p.species.trim() ? p.species.trim() : '__ungrouped__';
-      const arr = map.get(key) || [];
-      arr.push(p);
-      map.set(key, arr);
-    }
-    return Array.from(map.entries())
-      .map(([species, items]) => ({
-        species,
-        display: species === '__ungrouped__' ? 'Ungrouped' : species,
-        items: items.sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)),
-      }))
-      .sort((a, b) => a.species === '__ungrouped__' ? 1 : b.species === '__ungrouped__' ? -1 : a.display.localeCompare(b.display));
-  }, [products]);
+  const tree = useMemo(() => buildTree(folders, products), [folders, products]);
 
-  const pendingProducts = useMemo(() => products.filter((p) => p.status === 'pending'), [products]);
   const pendingFiles = useMemo(
-    () => products.flatMap((p) => p.files.filter((f) => f.status === 'pending').map((f) => ({ file: f, product: p }))),
+    () => products.flatMap((p) =>
+      p.files.filter((f) => f.status === 'pending').map((f) => ({ file: f, product: p })),
+    ),
     [products],
   );
 
-  // ── Mutations ────────────────────────────────────────────────
-  // Non-approvers' writes land as 'pending'. Approvers' writes stay
-  // 'approved' so they can edit live catalog without needing a
-  // second person to click Approve.
-  const nextStatus = (): 'approved' | 'pending' => (canApprove ? 'approved' : 'pending');
-
-  async function addProduct() {
-    const name = newName.trim();
-    if (!name) return;
+  // ── Folder actions ────────────────────────────────────────────
+  async function handleNewFolder(parentId: string | null) {
+    const name = prompt(parentId ? 'New subfolder name:' : 'New folder name:');
+    if (!name || !name.trim()) return;
     try {
-      const nextOrder = products.length ? Math.max(...products.map((p) => p.displayOrder)) + 10 : 0;
-      const created = await upsertProduct({ slug: toSlug(name), name, displayOrder: nextOrder });
-      // Stamp status + created_by for workflow tracking.
-      if (nextStatus() === 'pending') {
-        await submitProductForApproval(created.id, userId);
+      const siblings = folders.filter((f) => f.parentId === parentId);
+      const nextOrder = siblings.length ? Math.max(...siblings.map((s) => s.displayOrder)) + 10 : 0;
+      const created = await createFolder(name, parentId, nextOrder);
+      await load();
+      // Auto-expand parent + the new folder.
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (parentId) next.add(parentId);
+        next.add(created.id);
+        return next;
+      });
+      setToast(`Created folder "${created.name}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  async function handleRenameFolder(id: string, newName: string) {
+    if (!newName.trim()) { setRenamingFolderId(null); return; }
+    try {
+      await renameFolder(id, newName);
+      await load();
+    } catch (e) { setError(formatErr(e)); }
+    finally { setRenamingFolderId(null); }
+  }
+
+  async function handleDeleteFolder(f: Folder) {
+    const childCount =
+      folders.filter((x) => x.parentId === f.id).length +
+      products.filter((p) => p.folderId === f.id).length;
+    const msg = childCount > 0
+      ? `Delete "${f.name}"? Its ${childCount} items will move to the parent folder.`
+      : `Delete folder "${f.name}"?`;
+    if (!confirm(msg)) return;
+    try {
+      // ON DELETE SET NULL on parent_id/folder_id reparents children
+      // to the root. If this folder had its own parent, promote
+      // children to that parent instead for a less surprising UX.
+      if (f.parentId) {
+        for (const child of folders.filter((x) => x.parentId === f.id)) {
+          await moveFolder(child.id, f.parentId);
+        }
+        for (const prod of products.filter((p) => p.folderId === f.id)) {
+          await moveProductToFolder(prod.id, f.parentId);
+        }
       }
-      setNewName('');
+      await deleteFolder(f.id);
+      await load();
+      setToast(`Deleted folder "${f.name}"`);
+    } catch (e) { setError(formatErr(e)); }
+  }
+
+  // ── Product actions ───────────────────────────────────────────
+  async function handleNewProduct(folderId: string | null) {
+    const name = prompt('New product name:');
+    if (!name || !name.trim()) return;
+    try {
+      const siblings = products.filter((p) => p.folderId === folderId);
+      const nextOrder = siblings.length ? Math.max(...siblings.map((s) => s.displayOrder)) + 10 : 0;
+      const created = await upsertProduct({
+        slug: toSlug(name), name,
+        folderId, displayOrder: nextOrder,
+      });
       await load();
       setSelectedId(created.id);
-      setToast(`Added "${name}"${nextStatus() === 'pending' ? ' (pending approval)' : ''}`);
+      if (folderId) setExpanded((prev) => { const n = new Set(prev); n.add(folderId); return n; });
+      setToast(`Added "${name}"`);
     } catch (e) { setError(formatErr(e)); }
   }
 
   async function saveSelected(patch: Partial<Product>) {
-    if (!selected) return;
-    const next = { ...selected, ...patch };
+    if (!selectedProduct) return;
+    const next = { ...selectedProduct, ...patch };
     try {
       await upsertProduct({
         id: next.id, slug: next.slug, name: next.name,
-        species: next.species,
+        folderId: next.folderId, species: next.species,
         tagline: next.tagline, description: next.description,
         productInfo: next.productInfo, displayOrder: next.displayOrder, active: next.active,
       });
-      // If a non-approver edits an approved row, bump it back to pending.
-      if (!canApprove && next.status === 'approved') {
-        await submitProductForApproval(next.id, userId);
-      }
       await load();
       setToast(`Saved "${next.name}"`);
     } catch (e) { setError(formatErr(e)); }
   }
 
   async function removeSelected() {
-    if (!selected) return;
-    if (!confirm(`Delete "${selected.name}" and all its files?`)) return;
+    if (!selectedProduct) return;
+    if (!confirm(`Delete "${selectedProduct.name}" and all its files?`)) return;
     try {
-      await deleteProduct(selected.id);
+      await deleteProduct(selectedProduct.id);
       await load();
-      setToast(`Deleted "${selected.name}"`);
+      setSelectedId(null);
+      setToast(`Deleted "${selectedProduct.name}"`);
     } catch (e) { setError(formatErr(e)); }
   }
 
+  // ── File actions (approval only applies here) ────────────────
   async function addFileRow(productId: string, category: FileCategory, file: File) {
     try {
       const res = await uploadProductFile(file, productId);
-      const existing = products.find((p) => p.id === productId)?.files.filter((f) => f.category === category) || [];
+      const existing = products.find((p) => p.id === productId)?.files
+        .filter((f) => f.category === category) || [];
       const order = existing.length ? Math.max(...existing.map((x) => x.displayOrder)) + 10 : 0;
       const created = await upsertFile({
         productId, category,
@@ -202,7 +291,7 @@ export default function AdminMarketingPage() {
       });
       if (!canApprove) await submitFileForApproval(created.id, userId);
       await load();
-      setToast(`Uploaded "${res.filename}"${canApprove ? '' : ' (pending approval)'}`);
+      setToast(`Uploaded "${res.filename}"${canApprove ? '' : ' — pending approval'}`);
     } catch (e) { setError(formatErr(e)); }
   }
 
@@ -223,91 +312,82 @@ export default function AdminMarketingPage() {
 
   async function removeFileRow(f: ProductFile) {
     if (!confirm(`Delete file "${f.label}"?`)) return;
-    try { await deleteFile(f.id); await load(); }
-    catch (e) { setError(formatErr(e)); }
+    try { await deleteFile(f.id); await load(); } catch (e) { setError(formatErr(e)); }
   }
 
-  // Approval actions
-  async function approveP(id: string) { try { await approveProduct(id, userId); await load(); setToast('Approved'); } catch (e) { setError(formatErr(e)); } }
-  async function rejectP(id: string) { const reason = prompt('Reason (optional):') || ''; try { await rejectProduct(id, userId, reason); await load(); setToast('Rejected'); } catch (e) { setError(formatErr(e)); } }
-  async function approveF(id: string) { try { await approveFile(id, userId); await load(); setToast('File approved'); } catch (e) { setError(formatErr(e)); } }
-  async function rejectF(id: string) { const reason = prompt('Reason (optional):') || ''; try { await rejectFile(id, userId, reason); await load(); setToast('File rejected'); } catch (e) { setError(formatErr(e)); } }
+  async function approveF(id: string) { try { await approveFile(id, userId); await load(); setToast('Approved'); } catch (e) { setError(formatErr(e)); } }
+  async function rejectF(id: string) {
+    const reason = prompt('Rejection reason (optional):') || '';
+    try { await rejectFile(id, userId, reason); await load(); setToast('Rejected'); } catch (e) { setError(formatErr(e)); }
+  }
 
   // ── Drag & drop ──────────────────────────────────────────────
-  // dragProductId: product being dragged.
-  // Dropping onto a species header reparents + places at the end of
-  // that species. Dropping onto another product reorders adjacent to it
-  // (and reparents to that product's species if different).
-  const dragId = useRef<string | null>(null);
+  const drag = useRef<DragPayload | null>(null);
 
-  async function onDropToSpecies(targetSpecies: string) {
-    const id = dragId.current;
-    dragId.current = null;
-    if (!id) return;
-    const dragged = products.find((p) => p.id === id);
-    if (!dragged) return;
-    const newSpecies = targetSpecies === '__ungrouped__' ? null : targetSpecies;
-    if ((dragged.species ?? null) === newSpecies) return;
-    try {
-      // Append to the end of the target species.
-      const siblings = products.filter((p) => (p.species ?? '__ungrouped__') === (newSpecies ?? '__ungrouped__'));
-      const nextOrder = siblings.length ? Math.max(...siblings.map((s) => s.displayOrder)) + 10 : 0;
-      await updateProductSpecies(id, newSpecies, nextOrder);
-      await load();
-    } catch (e) { setError(formatErr(e)); }
-  }
+  async function dropOnFolder(targetFolderId: string | null) {
+    const payload = drag.current;
+    drag.current = null;
+    if (!payload) return;
 
-  async function onDropOnProduct(targetId: string) {
-    const id = dragId.current;
-    dragId.current = null;
-    if (!id || id === targetId) return;
-    const dragged = products.find((p) => p.id === id);
-    const target = products.find((p) => p.id === targetId);
-    if (!dragged || !target) return;
-    try {
-      // Reparent if species differs.
-      if ((dragged.species ?? null) !== (target.species ?? null)) {
-        await updateProductSpecies(id, target.species, target.displayOrder);
+    if (payload.kind === 'folder') {
+      // Prevent dropping into self / own descendants.
+      if (targetFolderId !== null) {
+        const banned = collectDescendantIds(folders, payload.id);
+        if (banned.has(targetFolderId)) {
+          setError('Can\'t move a folder into itself.');
+          return;
+        }
       }
-      // Build the new ordering within the target species: insert
-      // dragged just before target.
-      const speciesKey = target.species ?? '__ungrouped__';
-      const list = products
-        .filter((p) => (p.species ?? '__ungrouped__') === speciesKey && p.id !== id)
-        .sort((a, b) => a.displayOrder - b.displayOrder);
-      const insertIdx = list.findIndex((p) => p.id === targetId);
-      const ordered = [...list.slice(0, insertIdx), dragged, ...list.slice(insertIdx)];
-      await reorderProducts(ordered.map((p) => p.id));
+      const current = folders.find((f) => f.id === payload.id);
+      if (current && current.parentId === targetFolderId) return;
+      try {
+        const siblings = folders.filter((f) => f.parentId === targetFolderId && f.id !== payload.id);
+        const nextOrder = siblings.length ? Math.max(...siblings.map((s) => s.displayOrder)) + 10 : 0;
+        await moveFolder(payload.id, targetFolderId, nextOrder);
+        await load();
+      } catch (e) { setError(formatErr(e)); }
+      return;
+    }
+
+    // Product drop
+    const current = products.find((p) => p.id === payload.id);
+    if (current && current.folderId === targetFolderId) return;
+    try {
+      const siblings = products.filter((p) => p.folderId === targetFolderId && p.id !== payload.id);
+      const nextOrder = siblings.length ? Math.max(...siblings.map((s) => s.displayOrder)) + 10 : 0;
+      await moveProductToFolder(payload.id, targetFolderId, nextOrder);
       await load();
     } catch (e) { setError(formatErr(e)); }
   }
 
   // ── Render ────────────────────────────────────────────────────
   if (!permsLoaded) return null;
-  if (!canEdit) return null; // redirect in flight
+  if (!canEdit) return null;
 
   return (
     <>
       <TopBar />
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pt-16">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+          {/* Header */}
           <div className="mb-5 flex items-center justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Admin — Marketing</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Curate the Products catalog. {canApprove
-                  ? 'As Marketing Approver, your edits go live immediately and you can approve others\' submissions below.'
-                  : 'Your edits land as pending until a Marketing Approver reviews them.'}
+                Organize the Products catalog like a drive — create folders, nest subfolders, drag items anywhere.
+                {canApprove
+                  ? ' As Marketing Approver, your file uploads go live immediately and you can approve others\' submissions below.'
+                  : ' Your file uploads land as pending until a Marketing Approver reviews them. Folders and products show up immediately.'}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') addProduct(); }}
-                placeholder="New product name"
-                className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm w-64" />
-              <button onClick={addProduct}
+              <button onClick={() => handleNewFolder(null)}
+                className="text-sm px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-200 font-medium">
+                + New Folder
+              </button>
+              <button onClick={() => handleNewProduct(null)}
                 className="text-sm px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">
-                + Add Product
+                + New Product
               </button>
             </div>
           </div>
@@ -319,27 +399,19 @@ export default function AdminMarketingPage() {
             </div>
           )}
 
-          {/* Pending Approval queue — approver-only */}
-          {canApprove && (pendingProducts.length > 0 || pendingFiles.length > 0) && (
+          {/* Pending files queue — approver-only; only files, no products */}
+          {canApprove && pendingFiles.length > 0 && (
             <div className="mb-5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10">
               <button onClick={() => setShowPending(!showPending)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-amber-800 dark:text-amber-300">
-                <span>⏳ Pending Approval ({pendingProducts.length + pendingFiles.length})</span>
+                <span>⏳ Pending files ({pendingFiles.length})</span>
                 <span>{showPending ? '▼' : '▶'}</span>
               </button>
               {showPending && (
                 <div className="px-4 pb-4 space-y-2">
-                  {pendingProducts.map((p) => (
-                    <div key={p.id} className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800 p-2 text-sm">
-                      <span className="font-medium flex-1">Product · {p.name}</span>
-                      <span className="text-xs text-gray-500">{p.species || 'Ungrouped'}</span>
-                      <button onClick={() => approveP(p.id)} className="text-xs px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-800">Approve</button>
-                      <button onClick={() => rejectP(p.id)} className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200">Reject</button>
-                    </div>
-                  ))}
                   {pendingFiles.map(({ file, product }) => (
                     <div key={file.id} className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg border border-amber-200 dark:border-amber-800 p-2 text-sm">
-                      <span className="font-medium flex-1 truncate">File · {product.name} · {file.label}</span>
+                      <span className="font-medium flex-1 truncate">{product.name} · {file.label}</span>
                       <button onClick={() => approveF(file.id)} className="text-xs px-2 py-1 rounded bg-emerald-700 text-white hover:bg-emerald-800">Approve</button>
                       <button onClick={() => rejectF(file.id)} className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200">Reject</button>
                     </div>
@@ -349,67 +421,61 @@ export default function AdminMarketingPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
-            {/* Left: species → product tree with drag-drop */}
-            <aside className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-3 h-fit lg:sticky lg:top-20">
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5">
+            {/* Left: recursive folder tree */}
+            <aside
+              className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 h-fit lg:sticky lg:top-20 overflow-hidden"
+              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-emerald-400'); }}
+              onDragLeave={(e) => e.currentTarget.classList.remove('ring-2', 'ring-emerald-400')}
+              onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('ring-2', 'ring-emerald-400'); dropOnFolder(null); }}
+            >
+              <div className="px-3 py-2 border-b border-gray-100 dark:border-slate-800 text-[11px] text-gray-500 dark:text-gray-400 italic">
+                Drag items to any folder · drop here to move to root
+              </div>
               {loading ? (
                 <div className="py-6 text-center text-sm text-gray-400">Loading…</div>
-              ) : products.length === 0 ? (
-                <div className="py-6 text-center text-sm text-gray-400 italic">
-                  No products — add the first one above.
+              ) : tree.length === 0 ? (
+                <div className="py-6 text-center text-sm text-gray-400 italic px-3">
+                  Empty. Click <span className="font-medium">+ New Folder</span> or <span className="font-medium">+ New Product</span> above.
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 italic mb-1">
-                    Drag products to reorder or move between species.
-                  </p>
-                  {bySpecies.map((group) => (
-                    <div key={group.species}
-                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-emerald-400'); }}
-                      onDragLeave={(e) => { e.currentTarget.classList.remove('ring-2', 'ring-emerald-400'); }}
-                      onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('ring-2', 'ring-emerald-400'); onDropToSpecies(group.species); }}
-                      className="rounded-lg bg-gray-50 dark:bg-slate-800/40 p-2"
-                    >
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-1 px-1">
-                        {group.display} <span className="text-gray-400 font-normal">({group.items.length})</span>
-                      </div>
-                      <ul className="space-y-1">
-                        {group.items.map((p) => (
-                          <li key={p.id}
-                            draggable
-                            onDragStart={(e) => { dragId.current = p.id; e.dataTransfer.effectAllowed = 'move'; }}
-                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                            onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDropOnProduct(p.id); }}
-                            onClick={() => setSelectedId(p.id)}
-                            className={`cursor-pointer flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
-                              selectedId === p.id
-                                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 font-medium'
-                                : 'hover:bg-white dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200'
-                            }`}
-                          >
-                            <span className="text-gray-400 text-xs select-none">⋮⋮</span>
-                            <span className="flex-1 truncate">{p.name}</span>
-                            <StatusBadge status={p.status} />
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                <ul className="p-2 space-y-0.5">
+                  {tree.map((node) => (
+                    <TreeNodeView
+                      key={nodeKey(node)}
+                      node={node}
+                      depth={0}
+                      selectedId={selectedId}
+                      expanded={expanded}
+                      renamingFolderId={renamingFolderId}
+                      drag={drag}
+                      onSelectProduct={setSelectedId}
+                      onToggle={(id) => setExpanded((prev) => {
+                        const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+                      })}
+                      onDropOnFolder={dropOnFolder}
+                      onBeginRename={setRenamingFolderId}
+                      onCommitRename={handleRenameFolder}
+                      onNewFolder={handleNewFolder}
+                      onNewProduct={handleNewProduct}
+                      onDeleteFolder={handleDeleteFolder}
+                    />
                   ))}
-                </div>
+                </ul>
               )}
             </aside>
 
             {/* Right: editor */}
             <section className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4">
-              {!selected ? (
+              {!selectedProduct ? (
                 <div className="py-12 text-center text-sm text-gray-400">
-                  Select a product on the left to edit.
+                  Select a product on the left to edit — or create one with <span className="font-medium">+ New Product</span>.
                 </div>
               ) : (
                 <ProductEditor
-                  key={selected.id}
-                  product={selected}
-                  allSpecies={Array.from(new Set(products.map((x) => x.species).filter(Boolean))) as string[]}
+                  key={selectedProduct.id}
+                  product={selectedProduct}
+                  folders={folders}
                   onSave={saveSelected}
                   onDelete={removeSelected}
                   onFileSave={saveFileRow}
@@ -429,14 +495,147 @@ export default function AdminMarketingPage() {
   );
 }
 
+function nodeKey(n: TreeNode): string {
+  return n.kind === 'folder' ? `f:${n.folder.id}` : `p:${n.product.id}`;
+}
+
+// ── Recursive tree node ───────────────────────────────────────
+function TreeNodeView({
+  node, depth, selectedId, expanded, renamingFolderId, drag,
+  onSelectProduct, onToggle, onDropOnFolder,
+  onBeginRename, onCommitRename, onNewFolder, onNewProduct, onDeleteFolder,
+}: {
+  node: TreeNode;
+  depth: number;
+  selectedId: string | null;
+  expanded: Set<string>;
+  renamingFolderId: string | null;
+  drag: React.MutableRefObject<DragPayload | null>;
+  onSelectProduct: (id: string) => void;
+  onToggle: (folderId: string) => void;
+  onDropOnFolder: (folderId: string | null) => void;
+  onBeginRename: (folderId: string | null) => void;
+  onCommitRename: (id: string, name: string) => void;
+  onNewFolder: (parentId: string | null) => void;
+  onNewProduct: (folderId: string | null) => void;
+  onDeleteFolder: (f: Folder) => void;
+}) {
+  const indent = { paddingLeft: `${depth * 14 + 8}px` };
+
+  if (node.kind === 'folder') {
+    const f = node.folder;
+    const open = expanded.has(f.id);
+    const renaming = renamingFolderId === f.id;
+    return (
+      <li>
+        <div
+          style={indent}
+          draggable={!renaming}
+          onDragStart={(e) => { drag.current = { kind: 'folder', id: f.id }; e.dataTransfer.effectAllowed = 'move'; }}
+          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as HTMLElement).classList.add('bg-emerald-50', 'dark:bg-emerald-900/20'); }}
+          onDragLeave={(e) => (e.currentTarget as HTMLElement).classList.remove('bg-emerald-50', 'dark:bg-emerald-900/20')}
+          onDrop={(e) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as HTMLElement).classList.remove('bg-emerald-50', 'dark:bg-emerald-900/20'); onDropOnFolder(f.id); }}
+          className="group flex items-center gap-1 py-1 pr-2 rounded text-sm hover:bg-gray-50 dark:hover:bg-slate-800"
+        >
+          <button onClick={() => onToggle(f.id)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 w-4 text-xs shrink-0">
+            {open ? '▼' : '▶'}
+          </button>
+          <span className="shrink-0">📁</span>
+          {renaming ? (
+            <input autoFocus defaultValue={f.name}
+              onBlur={(e) => onCommitRename(f.id, (e.target as HTMLInputElement).value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+                else if (e.key === 'Escape') onBeginRename(null);
+              }}
+              className="flex-1 min-w-0 border border-emerald-500 rounded px-1 py-0.5 text-sm bg-white dark:bg-slate-800 dark:text-gray-100" />
+          ) : (
+            <span className="flex-1 truncate text-gray-800 dark:text-gray-200 cursor-default"
+              onDoubleClick={() => onBeginRename(f.id)}
+              title="Double-click to rename">
+              {f.name}
+            </span>
+          )}
+          {/* Hover actions */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0">
+            <IconBtn title="New subfolder" onClick={() => onNewFolder(f.id)}>📁+</IconBtn>
+            <IconBtn title="New product" onClick={() => onNewProduct(f.id)}>+</IconBtn>
+            <IconBtn title="Rename" onClick={() => onBeginRename(f.id)}>✎</IconBtn>
+            <IconBtn title="Delete" onClick={() => onDeleteFolder(f)}>🗑</IconBtn>
+          </div>
+        </div>
+        {open && node.children.length > 0 && (
+          <ul className="space-y-0.5">
+            {node.children.map((child) => (
+              <TreeNodeView
+                key={nodeKey(child)}
+                node={child}
+                depth={depth + 1}
+                selectedId={selectedId}
+                expanded={expanded}
+                renamingFolderId={renamingFolderId}
+                drag={drag}
+                onSelectProduct={onSelectProduct}
+                onToggle={onToggle}
+                onDropOnFolder={onDropOnFolder}
+                onBeginRename={onBeginRename}
+                onCommitRename={onCommitRename}
+                onNewFolder={onNewFolder}
+                onNewProduct={onNewProduct}
+                onDeleteFolder={onDeleteFolder}
+              />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
+  // Product leaf
+  const p = node.product;
+  const pending = p.files.filter((f) => f.status === 'pending').length;
+  const rejected = p.files.filter((f) => f.status === 'rejected').length;
+  return (
+    <li>
+      <div
+        style={indent}
+        draggable
+        onDragStart={(e) => { drag.current = { kind: 'product', id: p.id }; e.dataTransfer.effectAllowed = 'move'; }}
+        onClick={() => onSelectProduct(p.id)}
+        className={`flex items-center gap-1 py-1 pr-2 rounded text-sm cursor-pointer ${
+          selectedId === p.id
+            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 font-medium'
+            : 'hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200'
+        }`}
+      >
+        <span className="w-4 shrink-0" />
+        <span className="shrink-0">📄</span>
+        <span className="flex-1 truncate">{p.name}</span>
+        {pending > 0 && <span title={`${pending} pending file(s)`} className="shrink-0 text-[10px] px-1 rounded bg-amber-100 text-amber-800">{pending}</span>}
+        {rejected > 0 && <span title={`${rejected} rejected file(s)`} className="shrink-0 text-[10px] px-1 rounded bg-red-100 text-red-800">{rejected}</span>}
+      </div>
+    </li>
+  );
+}
+
+function IconBtn({ children, title, onClick }: { children: React.ReactNode; title: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }}
+      title={title}
+      className="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 px-1 py-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700">
+      {children}
+    </button>
+  );
+}
+
 // ── Product editor panel ───────────────────────────────────────
 function ProductEditor({
-  product, allSpecies,
+  product, folders,
   onSave, onDelete, onFileSave, onFileDelete, onFileAdd,
   onToast, onError, onReload,
 }: {
   product: Product;
-  allSpecies: string[];
+  folders: Folder[];
   onSave: (patch: Partial<Product>) => Promise<void> | void;
   onDelete: () => void;
   onFileSave: (f: ProductFile, patch: Partial<ProductFile>) => Promise<void> | void;
@@ -450,6 +649,21 @@ function ProductEditor({
   useEffect(() => { setDraft(product); }, [product]);
 
   function patch(p: Partial<Product>) { setDraft((d) => ({ ...d, ...p })); }
+
+  // Folder path breadcrumb — "Turkey / Breast" style display.
+  const folderPath = useMemo(() => {
+    if (!draft.folderId) return 'Root';
+    const map = new Map(folders.map((f) => [f.id, f] as const));
+    const parts: string[] = [];
+    let cur: Folder | undefined = map.get(draft.folderId);
+    const seen = new Set<string>();
+    while (cur && !seen.has(cur.id)) {
+      parts.unshift(cur.name);
+      seen.add(cur.id);
+      cur = cur.parentId ? map.get(cur.parentId) : undefined;
+    }
+    return parts.join(' / ');
+  }, [draft.folderId, folders]);
 
   function updateColumns(colsText: string) {
     const cols = colsText.split(',').map((s) => s.trim()).filter(Boolean);
@@ -471,10 +685,7 @@ function ProductEditor({
       ...d,
       productInfo: {
         columns: d.productInfo.columns.length > 0 ? d.productInfo.columns : ['Value'],
-        rows: [...d.productInfo.rows, {
-          label: '',
-          values: new Array(Math.max(1, d.productInfo.columns.length)).fill(''),
-        }],
+        rows: [...d.productInfo.rows, { label: '', values: new Array(Math.max(1, d.productInfo.columns.length)).fill('') }],
       },
     }));
   }
@@ -484,10 +695,7 @@ function ProductEditor({
   function updateRow(idx: number, p: { label?: string; values?: string[] }) {
     setDraft((d) => ({
       ...d,
-      productInfo: {
-        ...d.productInfo,
-        rows: d.productInfo.rows.map((r, i) => i === idx ? { ...r, ...p } : r),
-      },
+      productInfo: { ...d.productInfo, rows: d.productInfo.rows.map((r, i) => i === idx ? { ...r, ...p } : r) },
     }));
   }
 
@@ -496,47 +704,19 @@ function ProductEditor({
       {/* Header */}
       <div className="flex items-start gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <input value={draft.name}
-              onChange={(e) => patch({ name: e.target.value })}
-              className="flex-1 min-w-0 text-lg font-semibold bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-emerald-500 focus:outline-none text-gray-900 dark:text-gray-100 px-0 py-1" />
-            <StatusBadge status={draft.status} />
-          </div>
+          <input value={draft.name}
+            onChange={(e) => patch({ name: e.target.value })}
+            className="w-full text-lg font-semibold bg-transparent border-0 border-b border-transparent hover:border-gray-300 focus:border-emerald-500 focus:outline-none text-gray-900 dark:text-gray-100 px-0 py-1 mb-1" />
           <div className="flex items-center gap-3 text-xs text-gray-500">
+            <span>📁 {folderPath}</span>
             <span className="font-mono">/products/{draft.slug}</span>
-            {draft.rejectionReason && (
-              <span className="text-red-600">· Rejected: {draft.rejectionReason}</span>
-            )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button onClick={() => onSave(draft)}
-            className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">
-            Save
-          </button>
+            className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Save</button>
           <button onClick={onDelete}
             className="text-sm px-2.5 py-1.5 rounded-lg text-red-600 hover:bg-red-50">Delete</button>
-        </div>
-      </div>
-
-      {/* Species + display order */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Species (sidebar group)</label>
-          <input value={draft.species || ''}
-            onChange={(e) => patch({ species: e.target.value || null })}
-            placeholder="Turkey / Broiler / Swine / Dairy — blank = Ungrouped"
-            list="am-species-options"
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
-          <datalist id="am-species-options">
-            {allSpecies.map((sp) => <option key={sp} value={sp} />)}
-          </datalist>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-1">Order</label>
-          <input type="number" value={draft.displayOrder}
-            onChange={(e) => patch({ displayOrder: Number(e.target.value) || 0 })}
-            className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
         </div>
       </div>
 
@@ -565,10 +745,7 @@ function ProductEditor({
         </div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-[11px] text-gray-500 dark:text-gray-400">Columns (comma-separated):</span>
-          <ColumnsInput
-            initial={draft.productInfo.columns.join(', ')}
-            onCommit={updateColumns}
-          />
+          <ColumnsInput initial={draft.productInfo.columns.join(', ')} onCommit={updateColumns} />
         </div>
         {draft.productInfo.rows.length > 0 && (
           <table className="w-full text-xs">
@@ -594,8 +771,7 @@ function ProductEditor({
                     </td>
                   ))}
                   <td className="py-1 w-8 text-right">
-                    <button onClick={() => removeRow(ri)}
-                      className="text-red-500 hover:text-red-700 text-xs">×</button>
+                    <button onClick={() => removeRow(ri)} className="text-red-500 hover:text-red-700 text-xs">×</button>
                   </td>
                 </tr>
               ))}
@@ -617,10 +793,7 @@ function ProductEditor({
                   <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase">
                     {cat.emoji} {cat.label}
                   </span>
-                  <FileUploadButton
-                    label="+ Upload"
-                    onPick={(file) => onFileAdd(product.id, cat.key, file)}
-                  />
+                  <FileUploadButton label="+ Upload" onPick={(file) => onFileAdd(product.id, cat.key, file)} />
                 </div>
                 {items.length === 0 ? (
                   <div className="text-[11px] text-gray-400 italic">No files.</div>

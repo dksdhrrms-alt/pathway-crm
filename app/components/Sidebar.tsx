@@ -146,41 +146,110 @@ export default function Sidebar() {
   // Old external-URL rows were auto-migrated in
   // data-migration/25-product-catalog.sql.
   const [productsOpen, setProductsOpen] = useState(false);
-  // Products carry a `species` label (Turkey, Broiler, Swine, ...).
-  // The sidebar renders them two levels deep:
-  //   Products ▸ Turkey ▸ Lipidol Prime
-  // Null / blank species falls into an "Ungrouped" bucket at the end.
-  const [productLinks, setProductLinks] = useState<{ id: string; slug: string; name: string; species: string | null }[]>([]);
-  // Tracks which species groups are expanded. Keyed by species label
-  // (or '__ungrouped__' for the null bucket).
-  const [openSpecies, setOpenSpecies] = useState<Set<string>>(new Set());
+  // Catalog uses folder entities (data-migration/34). We fetch
+  // folders + products and render a recursive tree in the sidebar
+  // that mirrors the Admin-Marketing drag-and-drop view.
+  type SbProduct = { id: string; slug: string; name: string; folderId: string | null };
+  type SbFolder = { id: string; name: string; parentId: string | null; displayOrder: number };
+  const [productLinks, setProductLinks] = useState<SbProduct[]>([]);
+  const [sbFolders, setSbFolders] = useState<SbFolder[]>([]);
+  // Which folders are currently expanded. Keyed by folder id.
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   useEffect(() => {
     let cancelled = false;
-    import('@/lib/productCatalog').then(({ listProducts }) =>
-      listProducts()
-        .then((rows) => { if (!cancelled) setProductLinks(rows.map((r) => ({ id: r.id, slug: r.slug, name: r.name, species: r.species }))); })
+    import('@/lib/productCatalog').then(({ listProducts, listFolders }) =>
+      Promise.all([listProducts(), listFolders()])
+        .then(([pr, fo]) => {
+          if (cancelled) return;
+          setProductLinks(pr.map((r) => ({ id: r.id, slug: r.slug, name: r.name, folderId: r.folderId })));
+          setSbFolders(fo.map((f) => ({ id: f.id, name: f.name, parentId: f.parentId, displayOrder: f.displayOrder })));
+          // First load: auto-expand every folder so the full tree is
+          // visible. Users can collapse later; subsequent reloads keep
+          // their choices.
+          setOpenFolders((prev) => prev.size === 0 ? new Set(fo.map((x) => x.id)) : prev);
+        })
         .catch(() => { /* silent — sidebar just hides the section */ }),
     );
     return () => { cancelled = true; };
   }, []);
 
-  // Group products by species for the sidebar tree. Preserves the
-  // array order (lib/productCatalog sorts by species → display_order
-  // → name) so species appear in alphabetical order.
-  const productsBySpecies: { species: string; display: string; items: typeof productLinks }[] = (() => {
-    const map = new Map<string, typeof productLinks>();
-    for (const p of productLinks) {
-      const key = p.species && p.species.trim() ? p.species.trim() : '__ungrouped__';
-      const arr = map.get(key) || [];
-      arr.push(p);
-      map.set(key, arr);
+  // Lookup indexes for the recursive renderer.
+  const foldersByParent = (() => {
+    const map = new Map<string | null, SbFolder[]>();
+    for (const f of sbFolders) {
+      const arr = map.get(f.parentId) || [];
+      arr.push(f);
+      map.set(f.parentId, arr);
     }
-    return Array.from(map.entries()).map(([species, items]) => ({
-      species,
-      display: species === '__ungrouped__' ? 'Ungrouped' : species,
-      items,
-    }));
+    for (const [, arr] of map) arr.sort((a, b) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name));
+    return map;
   })();
+  const productsByFolder = (() => {
+    const map = new Map<string | null, SbProduct[]>();
+    for (const p of productLinks) {
+      const arr = map.get(p.folderId) || [];
+      arr.push(p);
+      map.set(p.folderId, arr);
+    }
+    for (const [, arr] of map) arr.sort((a, b) => a.name.localeCompare(b.name));
+    return map;
+  })();
+
+  function toggleFolder(id: string) {
+    setOpenFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // Recursive renderer — returns the nodes under one parent (null = root).
+  function renderFolderChildren(parentId: string | null, depth: number): React.ReactNode[] {
+    const subFolders = foldersByParent.get(parentId) || [];
+    const subProducts = productsByFolder.get(parentId) || [];
+    const indent = `${depth * 10 + 4}px`;
+    const nodes: React.ReactNode[] = [];
+    for (const f of subFolders) {
+      const open = openFolders.has(f.id);
+      const childCount = (foldersByParent.get(f.id)?.length || 0) + (productsByFolder.get(f.id)?.length || 0);
+      nodes.push(
+        <div key={`f-${f.id}`}>
+          <button
+            onClick={() => toggleFolder(f.id)}
+            style={{ paddingLeft: indent }}
+            className="w-full flex items-center gap-1.5 pr-2 py-1 rounded-md text-sm transition-all text-white/60 hover:text-white hover:bg-white/5"
+          >
+            <svg className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <span className="truncate flex-1 text-left">{f.name}</span>
+            <span className="text-[10px] text-white/40">{childCount}</span>
+          </button>
+          {open && (
+            <div>{renderFolderChildren(f.id, depth + 1)}</div>
+          )}
+        </div>
+      );
+    }
+    for (const p of subProducts) {
+      const active = pathname === `/products/${p.slug}` || pathname.startsWith(`/products/${p.slug}/`);
+      nodes.push(
+        <Link
+          key={`p-${p.id}`}
+          href={`/products/${p.slug}`}
+          onClick={() => setMobileOpen(false)}
+          style={{ paddingLeft: indent }}
+          className={`block pr-2 py-1 rounded-md text-sm transition-all truncate ${
+            active ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
+          }`}
+          title={p.name}
+        >
+          {p.name}
+        </Link>
+      );
+    }
+    return nodes;
+  }
   const { data: session } = useSession();
   const role = (session?.user as { role?: string })?.role ?? '';
   const userId = session?.user?.id ?? '';
@@ -389,11 +458,11 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* Products — expandable list of Pathway USA Library
-            shortcuts. Everyone can see it (no permission gate); the
-            list is curated by admins via Admin → Product Library.
-            Each item opens the library in a new tab (external site). */}
-        {productLinks.length > 0 && (
+        {/* Products — recursive folder tree, mirrors Admin-Marketing.
+            Everyone can see it; the structure is curated via
+            /admin-marketing. Folders expand/collapse; products link
+            to their catalog page. */}
+        {(productLinks.length > 0 || sbFolders.length > 0) && (
           <div>
             <button
               onClick={() => setProductsOpen(!productsOpen)}
@@ -406,78 +475,8 @@ export default function Sidebar() {
               </svg>
             </button>
             {productsOpen && (
-              <div className="ml-8 mt-1 space-y-0.5">
-                {productsBySpecies.map((group) => {
-                  const isOpen = openSpecies.has(group.species);
-                  // Deep-link friendly: if the user is on a product
-                  // whose species matches this group, auto-expand so
-                  // their current selection is visible without an
-                  // extra click.
-                  const anyActive = group.items.some(
-                    (it) => pathname === `/products/${it.slug}` || pathname.startsWith(`/products/${it.slug}/`),
-                  );
-                  const expanded = isOpen || anyActive;
-                  // When there's only ONE species group (common for
-                  // small teams that haven't set species yet), skip
-                  // the extra indent and render products flat.
-                  const flat = productsBySpecies.length === 1;
-                  if (flat) {
-                    return group.items.map((link) => (
-                      <Link
-                        key={link.id}
-                        href={`/products/${link.slug}`}
-                        onClick={() => setMobileOpen(false)}
-                        className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
-                          pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
-                            ? 'bg-white/15 text-white font-medium'
-                            : 'text-white/50 hover:text-white hover:bg-white/5'
-                        }`}
-                        title={link.name}
-                      >
-                        {link.name}
-                      </Link>
-                    ));
-                  }
-                  return (
-                    <div key={group.species}>
-                      <button
-                        onClick={() => setOpenSpecies((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(group.species)) next.delete(group.species); else next.add(group.species);
-                          return next;
-                        })}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-all ${
-                          anyActive ? 'text-white font-medium' : 'text-white/60 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <svg className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span>{group.display}</span>
-                        <span className="ml-auto text-[10px] text-white/40">{group.items.length}</span>
-                      </button>
-                      {expanded && (
-                        <div className="ml-5 mt-0.5 space-y-0.5">
-                          {group.items.map((link) => (
-                            <Link
-                              key={link.id}
-                              href={`/products/${link.slug}`}
-                              onClick={() => setMobileOpen(false)}
-                              className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
-                                pathname === `/products/${link.slug}` || pathname.startsWith(`/products/${link.slug}/`)
-                                  ? 'bg-white/15 text-white font-medium'
-                                  : 'text-white/50 hover:text-white hover:bg-white/5'
-                              }`}
-                              title={link.name}
-                            >
-                              {link.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="ml-5 mt-1 space-y-0.5">
+                {renderFolderChildren(null, 0)}
               </div>
             )}
           </div>
