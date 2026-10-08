@@ -43,6 +43,8 @@ export interface CommodityConfig {
   mmnFilter?: MmnFilter;
   /** Which numeric field on a matching row is the price. */
   mmnPriceField?: string;
+  /** MMN report section to read. Defaults to 'Report Detail'. */
+  mmnSection?: string;
   /** Short descriptor used in the dashboard tooltip. */
   description: string;
 }
@@ -131,17 +133,17 @@ export const COMMODITIES: CommodityConfig[] = [
     unit: 'cents/doz',
     source: 'usda-ams',
     mmnSlug: '2843',   // Daily National Shell Egg Index Report (AMS_2843) — graded loose large white
-    // Detail rows carry no price column — the index lives in the
-    // narrative text, parsed with mmnNarrativeRegex in the cron.
-    mmnFilter: { market_location_name: 'National 5 Day Weighted Index' },
-    mmnPriceField: 'report_narrative',
+    // 'Report Detail' on this report is narrative-only; prices live in
+    // another section (cron lists the available ones on a miss).
+    mmnSection: 'Report Details',
+    mmnFilter: {},
+    mmnPriceField: 'wtd_avg_price',
     description: 'USDA AMS — Daily National Shell Egg Index (loose large white).',
   },
 
   // ── Red meat & dairy price watch ──────────────────────────────
   // Lean Hogs + Live Cattle are CME futures (Yahoo chart API, same path
-  // as corn/soy). Class III Milk trades on CME too; Class IV is tracked
-  // via the USDA AMS Advance / Monthly Class Price announcement.
+  // as corn/soy). Class III and Class IV Milk trade on CME too.
   {
     key: 'lean_hogs',
     label: 'Lean Hogs',
@@ -170,15 +172,12 @@ export const COMMODITIES: CommodityConfig[] = [
     key: 'class_iv_milk',
     label: 'Class IV Milk',
     unit: 'USD/cwt',
-    source: 'usda-ams',
-    // Final Class Prices by Order (AMS_3355, monthly FCPO-MMYY release).
-    // Verified via mymarketnews.ams.usda.gov on 2026-10-08. Reports
-    // ~2nd calendar day of each month covering the previous month, so
-    // the dashboard value may lag 2-30 days — normal for Class IV.
-    mmnSlug: '2991',   // Announcement of Class and Component Prices (DYMCLASSPRICES)
-    mmnFilter: { commodity: 'Class IV' },
-    mmnPriceField: 'price',
-    description: 'USDA AMS — Final Federal Milk Order Class IV minimum price (butter / NDM basis).',
+    source: 'cbot',
+    // USDA's monthly Class price announcements (MMN 2991 / 3355) are
+    // PDF/TXT-only — no JSON Report Detail — so use the CME Class IV
+    // futures on Yahoo instead, same path as Class III.
+    yahooSymbol: 'GDK=F',
+    description: 'CME Class IV Milk front-month futures.',
   },
 ];
 

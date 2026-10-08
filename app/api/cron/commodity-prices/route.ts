@@ -91,13 +91,18 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
   if (!apiKey) return { ok: false, error: 'no-mmn-api-key' };
   if (!c.mmnSlug || !c.mmnPriceField) return { ok: false, error: 'no-mmn-config' };
   try {
-    const url = `https://marsapi.ams.usda.gov/services/v1.2/reports/${encodeURIComponent(c.mmnSlug)}/${encodeURIComponent('Report Detail')}`;
+    const section = c.mmnSection || 'Report Detail';
+    const url = `https://marsapi.ams.usda.gov/services/v1.2/reports/${encodeURIComponent(c.mmnSlug)}/${encodeURIComponent(section)}`;
     const basic = Buffer.from(`${apiKey}:`).toString('base64');
-    const res = await fetch(url, {
-      headers: { Authorization: `Basic ${basic}`, Accept: 'application/json' },
-      signal: AbortSignal.timeout(20_000),
-    });
+    const headers = { Authorization: `Basic ${basic}`, Accept: 'application/json' };
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(20_000) });
     if (!res.ok) {
+      // A non-default section 404s when the name is wrong — list the
+      // report's real section names so the config can be fixed.
+      if (res.status === 404 && c.mmnSection) {
+        const sections = await listMmnSections(c.mmnSlug, headers);
+        return { ok: false, error: `mmn 404 for section "${section}"; available: ${sections}` };
+      }
       // Help the operator diagnose from Vercel logs rather than guessing.
       // 404 almost always means USDA re-numbered the report — the
       // lib/commodities.ts entry needs a new mmnSlug (look it up at
@@ -166,6 +171,26 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
     return { ok: true, points };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Diagnostic: section names (+ first-row fields) for an MMN report. */
+async function listMmnSections(slug: string, headers: Record<string, string>): Promise<string> {
+  try {
+    const res = await fetch(
+      `https://marsapi.ams.usda.gov/services/v1.2/reports/${encodeURIComponent(slug)}?allSections=true&lastReports=1`,
+      { headers, signal: AbortSignal.timeout(15_000) },
+    );
+    if (!res.ok) return `(allSections ${res.status})`;
+    const data = await res.json() as Array<{ reportSection?: string; results?: Array<Record<string, unknown>> }>
+      | Record<string, unknown>;
+    if (!Array.isArray(data)) return JSON.stringify(data).slice(0, 600);
+    return JSON.stringify(data.map((s) => ({
+      section: s.reportSection,
+      fields: Object.keys(s.results?.[0] || {}),
+    }))).slice(0, 1500);
+  } catch (err) {
+    return `(allSections error ${err instanceof Error ? err.message : String(err)})`;
   }
 }
 
