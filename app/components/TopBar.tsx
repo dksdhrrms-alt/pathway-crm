@@ -81,6 +81,25 @@ export default function TopBar({ searchValue, onSearchChange, placeholder = 'Sea
           tab is visible so admin Team Overview shows a real
           "Last Active" timestamp. */}
       <PresenceHeartbeat />
+
+      {/* Pathway symbol — small brand mark on the left. Deliberately
+          minimal to avoid the earlier layout glitches:
+            · `ml-10 md:ml-0`  keeps the mobile hamburger (fixed
+              left-3 top-3, w-9) from overlapping the logo. On md+
+              the sidebar sits outside the TopBar entirely, so no
+              extra left margin is needed.
+            · `h-7 w-auto` + `shrink-0` — the logo is portrait
+              (258×479), so sizing by height keeps it compact and
+              never squishes when the viewport narrows.
+            · Clicking goes to Home — same convention as the sidebar
+              wordmark. */}
+      <Link href="/dashboard" aria-label="Home" className="shrink-0 flex items-center ml-10 md:ml-0 mr-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/pathway-logo.png" alt=""
+          className="h-7 w-auto block select-none"
+          draggable={false} />
+      </Link>
+
       {/* Search — visible on mobile for list pages.
           Two modes:
           (1) Page passes searchValue + onSearchChange → input filters
