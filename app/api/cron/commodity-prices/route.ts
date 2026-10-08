@@ -158,7 +158,8 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
     if (byDate.size === 0) {
       const labels = [...new Set(matching.map((r) =>
         [r.type, r.class, r.color, r.environment, r.grade, r.size, r.item].filter(Boolean).join(' / ')))].slice(0, 30);
-      return { ok: false, error: `no-priced-rows (${matching.length} matched; labels: ${JSON.stringify(labels)}; sample: ${String(JSON.stringify(matching[0] ?? null)).slice(0, 1200)})` };
+      const sections = await listMmnSections(c.mmnSlug, headers);
+      return { ok: false, error: `no-priced-rows (${matching.length} matched; labels: ${JSON.stringify(labels)}; sections: ${sections})` };
     }
     // Sort dates descending. report_date format is MM/dd/yyyy.
     const dates = [...byDate.keys()].sort((a, b) => mmddyyyyToTime(b) - mmddyyyyToTime(a));
