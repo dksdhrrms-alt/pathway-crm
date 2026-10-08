@@ -318,15 +318,24 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <div className="flex flex-col h-screen" style={{ backgroundColor: PRIMARY_COLOR }}>
-      {/* Logo / Brand — clicking the wordmark returns to the dashboard. */}
+      {/* Logo / Brand — Pathway symbol + wordmark, clicks go Home.
+          Symbol is sized by height (h-12) so the portrait 258×479
+          glyph stays slim and sits snug against the text block
+          without inflating the brand row. `shrink-0` prevents the
+          sidebar's 240px width from squeezing it on narrow dark
+          mode / zoom situations. */}
       <Link
         href="/dashboard"
         onClick={() => setMobileOpen(false)}
-        className="px-4 py-5 border-b border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors"
+        className="px-4 py-5 border-b border-white/10 flex items-center justify-center gap-2.5 hover:bg-white/5 transition-colors"
         aria-label="Pathway Intermediates USA — go to Home"
         title="Go to Home"
       >
-        <div className="text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/pathway-logo.png" alt=""
+          className="h-12 w-auto shrink-0 block select-none"
+          draggable={false} />
+        <div className="text-left">
           <span className="text-white font-bold text-base block" style={{ letterSpacing: '-0.3px', lineHeight: '1.2' }}>Pathway</span>
           <span className="text-white font-bold text-base block" style={{ letterSpacing: '-0.3px', lineHeight: '1.2' }}>Intermediates</span>
           <span className="block mt-0.5 text-xs font-medium tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.6)' }}>USA</span>
