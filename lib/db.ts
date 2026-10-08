@@ -54,6 +54,10 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // Activities.is_important — per-activity "star" flag for the
   // Weekly Report (data-migration/21-activity-important-flag.sql).
   isImportant: 'is_important',
+  // Activity "action item" + auto-generated Task back-reference
+  // (data-migration/38-activity-action-item.sql).
+  actionItem: 'action_item',
+  sourceActivityId: 'source_activity_id',
   // Users.daily_email — opt-in flag for the weekday morning brief
   // (data-migration/22-daily-email-flag.sql).
   dailyEmail: 'daily_email',

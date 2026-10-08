@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
-import { generateId, ActivityType, ACTIVITY_PURPOSES } from '@/lib/data';
+import { generateId, ActivityType, ACTIVITY_PURPOSES, type Task } from '@/lib/data';
 import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
 import ActivityAttachmentsField, { type ActivityAttachmentsFieldHandle } from './ActivityAttachmentsField';
@@ -23,7 +23,7 @@ interface Props {
 
 export default function QuickLogModal({ onClose, initialType }: Props) {
   const { data: session } = useSession();
-  const { accounts, contacts, addActivity } = useCRM();
+  const { accounts, contacts, addActivity, addTask } = useCRM();
   const { users: allUsers } = useUsers();
   const activeUsers = allUsers.filter((u) => u.status === 'active').sort((a, b) => a.name.localeCompare(b.name));
 
@@ -45,6 +45,16 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
   const [showParticipants, setShowParticipants] = useState(false);
   // Star flag → Weekly Report renders the full description verbatim.
   const [isImportant, setIsImportant] = useState(false);
+  // Follow-up "Action Item" — saved as a separate Task row with
+  // source_activity_id back to this activity. Directors see it in the
+  // Weekly Report's "Next Week" column; reps see/close it from the
+  // Tasks menu. Checkbox stays ON by default (sales reps asked for a
+  // one-save flow — the overwhelming majority of logs have a next
+  // step), but un-checking skips the task creation entirely so the
+  // modal stays as lightweight as before when there's no follow-up.
+  const [createFollowUp, setCreateFollowUp] = useState(true);
+  const [actionItem, setActionItem] = useState('');
+  const [actionDueDate, setActionDueDate] = useState('');
   // Attachments — queued locally in pre-save mode; uploaded after
   // addActivity resolves. See ActivityAttachmentsField.
   const attachmentsRef = useRef<ActivityAttachmentsFieldHandle | null>(null);
@@ -118,6 +128,8 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
       // multiple contacts).
       let firstId: string | null = null;
       const ownerForRow = ownerId || session?.user?.id || '';
+      const actionItemText = actionItem.trim();
+      const willCreateTask = createFollowUp && actionItemText.length > 0;
       contactList.forEach((cid) => {
         const newId = generateId();
         if (!firstId) firstId = newId;
@@ -133,8 +145,40 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           purpose: purpose || undefined,
           internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
           isImportant,
+          // Reference copy of the follow-up text on the activity row
+          // itself. Not read by the Weekly Report — that uses tasks —
+          // but preserved so an admin can see what spawned the task
+          // even if someone later edits the task's subject.
+          actionItem: willCreateTask ? actionItemText : undefined,
         });
       });
+      // Spawn the follow-up Task once, linked back to the first
+      // activity row. Default due = 7 days from the activity date, so
+      // "I spoke to X on Monday" rolls into "follow up by next Monday".
+      if (willCreateTask && firstId) {
+        const due = actionDueDate || (() => {
+          const base = new Date(date + 'T00:00:00');
+          base.setDate(base.getDate() + 7);
+          return base.toISOString().split('T')[0];
+        })();
+        const firstContactId = Array.from(selectedContactIds)[0];
+        const taskPayload: Task = {
+          id: generateId(),
+          subject: actionItemText,
+          dueDate: due,
+          priority: 'Medium',
+          status: 'Open',
+          ownerId: ownerForRow,
+          relatedAccountId: accountId || undefined,
+          relatedContactId: firstContactId || undefined,
+          description: '',
+          isImportant: false,
+          sourceActivityId: firstId,
+        };
+        try { addTask(taskPayload); } catch (e) {
+          console.error('[QuickLogModal] follow-up task create failed:', e);
+        }
+      }
       if (firstId && attachmentsRef.current?.hasPending()) {
         try {
           await attachmentsRef.current.uploadPending(firstId, ownerForRow);
@@ -484,6 +528,35 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
           <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
         </button>
+
+        {/* ── Follow-up Action Item ──────────────────────────────
+            Lets the rep save "what's next" in the same modal. When
+            left on (default), typing a subject spawns a Task row
+            linked back to this activity. Shows up in Jason's Weekly
+            Report Next Week column. */}
+        <div className="mb-2.5 rounded-lg border border-gray-200 dark:border-slate-700">
+          <label className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
+            <input type="checkbox" checked={createFollowUp} onChange={(e) => setCreateFollowUp(e.target.checked)}
+              className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+            <span className="font-medium">Add a follow-up task</span>
+            <span className="text-[11px] text-gray-400 ml-auto">→ Weekly Report&apos;s Next Week</span>
+          </label>
+          {createFollowUp && (
+            <div className="px-3 pb-3 pt-1 space-y-2">
+              <input
+                value={actionItem}
+                onChange={(e) => setActionItem(e.target.value)}
+                placeholder="Action item — what will you do next? (e.g. Send pricing follow-up)"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2.5 py-1.5 text-sm" />
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">Due</label>
+                <input type="date" value={actionDueDate} onChange={(e) => setActionDueDate(e.target.value)}
+                  className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                <span className="text-[11px] text-gray-400">(blank → +7 days)</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Attachments — queued locally and uploaded in handleSave
             after the activity row is created. */}

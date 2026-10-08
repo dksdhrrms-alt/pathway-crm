@@ -319,7 +319,12 @@ async function generateMonogastricReport(
         t.dueDate ? `Due ${(t.dueDate || '').slice(5).replace('-', '/')}` : '',
       ].filter((p) => p && String(p).trim()).map((p) => sanitize(String(p)));
       const starred = !!t.isImportant;
-      const line1 = `- ${starred ? '★ ' : ''}${parts.join(' | ')}`;
+      // "↳" marks tasks auto-spawned from an Activity's action-item
+      // field (data-migration/38) so Jason can see at a glance which
+      // follow-ups came from logged activity vs. standalone tasks.
+      const fromLog = !!(t.sourceActivityId || t.source_activity_id);
+      const prefix = starred ? '★ ' : (fromLog ? '↳ ' : '');
+      const line1 = `- ${prefix}${parts.join(' | ')}`;
       const description = (t.description || '').trim();
       // Full description only for starred tasks — mirrors the
       // starred-activity treatment so leadership gets detail where
@@ -1149,7 +1154,10 @@ export async function POST(request: Request) {
             const due = sanitize(t.dueDate || t.due_date || '');
             const account = sanitize(t.relatedAccountName || t.related_account_name || '');
             const priority = sanitize(t.priority || 'Medium');
-            let line = `[${priority.toUpperCase()}] "${subject}"`;
+            // "↳" prefix for tasks spawned from a logged Activity's
+            // action-item field (data-migration/38).
+            const fromLog = !!(t.sourceActivityId || t.source_activity_id);
+            let line = `[${priority.toUpperCase()}] ${fromLog ? '↳ ' : ''}"${subject}"`;
             if (due) line += ` | Due: ${due}`;
             if (account) line += ` | Account: ${account}`;
             return line;

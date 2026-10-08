@@ -239,6 +239,11 @@ export interface Activity {
   // the Weekly Report to carry the full description. Default false =
   // report shows just the meta bullet.
   isImportant?: boolean;
+  // "Next step" the rep typed on the Log Activity modal — kept here
+  // only as a reference copy. The real follow-up lives in `tasks` with
+  // `source_activity_id` pointing back at this activity. See
+  // data-migration/38-activity-action-item.sql.
+  actionItem?: string;
 }
 
 export const ACTIVITY_PURPOSES = [
@@ -268,6 +273,12 @@ export interface Task {
   // carries the full subject + description instead of a one-line
   // summary. Default false. See data-migration/29-task-important.sql.
   isImportant?: boolean;
+  // When set, this task was auto-created from an Activity log's
+  // action-item field (Log Activity modal → "Add this as a follow-up
+  // task" checkbox). Shown in Tasks list with a 🔗 badge and marked
+  // with "↳" in the Weekly Report's Next Week column. Nullable FK;
+  // see data-migration/38-activity-action-item.sql.
+  sourceActivityId?: string;
 }
 
 export interface AccountBudget {

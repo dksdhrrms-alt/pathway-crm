@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId } from '@/lib/data';
+import { Activity, ActivityType, ACTIVITY_PURPOSES, generateId, type Task } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import VoiceInputButton from './VoiceInputButton';
@@ -28,7 +28,7 @@ export default function LogActivityModal({
   onSave,
 }: LogActivityModalProps) {
   const { data: session } = useSession();
-  const { addActivity, accounts, contacts } = useCRM();
+  const { addActivity, addTask, accounts, contacts } = useCRM();
   const { users: allUsers } = useUsers();
 
   const userId = session?.user?.id ?? '';
@@ -53,6 +53,12 @@ export default function LogActivityModal({
   // Off by default so the report stays scannable; reps opt in per
   // activity when the meeting notes are worth surfacing to leadership.
   const [isImportant, setIsImportant] = useState(false);
+  // Follow-up Action Item — same pattern as QuickLogModal. Default on;
+  // typing nothing is a safe no-op (no Task created). See
+  // data-migration/38-activity-action-item.sql for the DB side.
+  const [createFollowUp, setCreateFollowUp] = useState(true);
+  const [actionItem, setActionItem] = useState('');
+  const [actionDueDate, setActionDueDate] = useState('');
   // Buffers queued files until after the activity row is created.
   // See ActivityAttachmentsField for the two-mode (pre-save / post-save)
   // lifecycle.
@@ -106,6 +112,8 @@ export default function LogActivityModal({
       const contactList: (string | undefined)[] = ids.length > 0 ? ids : [undefined];
       let last: Activity | null = null;
       const createdIds: string[] = [];
+      const actionItemText = actionItem.trim();
+      const willCreateTask = createFollowUp && actionItemText.length > 0;
       contactList.forEach((cid) => {
         const newActivity: Activity = {
           id: generateId(),
@@ -119,11 +127,40 @@ export default function LogActivityModal({
           purpose: purpose || undefined,
           internalParticipants: internalParticipants.size > 0 ? Array.from(internalParticipants) : undefined,
           isImportant,
+          actionItem: willCreateTask ? actionItemText : undefined,
         };
         addActivity(newActivity);
         createdIds.push(newActivity.id);
         last = newActivity;
       });
+      // Spawn a single follow-up Task tied to the first activity row.
+      // Default due = activity date + 7 days ("I did X on Monday → remind
+      // me next Monday"). Same shape as QuickLogModal so Director Weekly
+      // Report / Tasks list treat the row identically.
+      if (willCreateTask && createdIds[0]) {
+        const due = actionDueDate || (() => {
+          const base = new Date(date + 'T00:00:00');
+          base.setDate(base.getDate() + 7);
+          return base.toISOString().split('T')[0];
+        })();
+        const firstContactId = Array.from(selectedContactIds)[0];
+        const taskPayload: Task = {
+          id: generateId(),
+          subject: actionItemText,
+          dueDate: due,
+          priority: 'Medium',
+          status: 'Open',
+          ownerId,
+          relatedAccountId: accountId || undefined,
+          relatedContactId: firstContactId || undefined,
+          description: '',
+          isImportant: false,
+          sourceActivityId: createdIds[0],
+        };
+        try { addTask(taskPayload); } catch (e) {
+          console.error('[LogActivityModal] follow-up task create failed:', e);
+        }
+      }
       // Upload any queued attachments. If the rep logged against
       // multiple contacts we attach the files to the FIRST activity
       // row to avoid uploading the same PDF 5 times — the Activity
@@ -317,6 +354,35 @@ export default function LogActivityModal({
               <span className="text-base leading-none">{isImportant ? '★' : '☆'}</span>
               <span>{isImportant ? 'Weekly Report: full detail' : 'Mark as important for Weekly Report'}</span>
             </button>
+          </div>
+
+          {/* ── Follow-up Action Item ──────────────────────────────
+              Reps asked for a one-save flow: capture "what's next"
+              in the same modal so a Task row is spawned automatically
+              for Jason's Weekly Report Next Week column. Toggle off
+              when there's no follow-up. */}
+          <div className="rounded-lg border border-gray-200 dark:border-slate-700">
+            <label className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
+              <input type="checkbox" checked={createFollowUp} onChange={(e) => setCreateFollowUp(e.target.checked)}
+                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+              <span className="font-medium">Add a follow-up task</span>
+              <span className="text-[11px] text-gray-400 ml-auto">→ Weekly Report&apos;s Next Week</span>
+            </label>
+            {createFollowUp && (
+              <div className="px-3 pb-3 pt-1 space-y-2">
+                <input
+                  value={actionItem}
+                  onChange={(e) => setActionItem(e.target.value)}
+                  placeholder="Action item — what will you do next? (e.g. Send pricing follow-up)"
+                  className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2.5 py-1.5 text-sm" />
+                <div className="flex items-center gap-2">
+                  <label className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">Due</label>
+                  <input type="date" value={actionDueDate} onChange={(e) => setActionDueDate(e.target.value)}
+                    className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                  <span className="text-[11px] text-gray-400">(blank → +7 days)</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Attachments — queued locally and uploaded in handleSubmit

@@ -232,6 +232,18 @@ export default function TasksPage() {
                           <span className={`font-medium text-gray-800 dark:text-gray-100 ${task.status === 'Completed' ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
                             {task.subject}
                           </span>
+                          {task.sourceActivityId && (
+                            // Auto-created follow-up from a Log Activity
+                            // modal (data-migration/38). Small 🔗 badge
+                            // so reps can tell at a glance which tasks
+                            // came from an activity vs. manual entry.
+                            <span
+                              className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800 align-middle"
+                              title="Auto-created from a logged activity"
+                            >
+                              🔗 from log
+                            </span>
+                          )}
                           {task.description && (
                             // Full description wraps naturally — the old
                             // `line-clamp-1` cut multi-line notes to a
