@@ -116,12 +116,8 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
     };
     const rows = data.results || [];
     const f = c.mmnFilter || {};
-    const matching = rows.filter((r) => {
-      if (f.commodity && r.commodity !== f.commodity) return false;
-      if (f.trade_loc && r.trade_loc !== f.trade_loc) return false;
-      if (f.variety && r.variety !== f.variety) return false;
-      return true;
-    });
+    const matching = rows.filter((r) =>
+      Object.entries(f).every(([field, value]) => r[field] === value));
     if (matching.length === 0) {
       // Common when USDA renames a column — e.g. "Breast, B/S" → "B/S Breast".
       // Log a sample so the operator can see what the actual field values
@@ -144,13 +140,19 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
     const byDate = new Map<string, number[]>();
     for (const r of matching) {
       const rd = String(r.report_date || '');
-      const p = Number(r[c.mmnPriceField]);
+      const raw = r[c.mmnPriceField];
+      // Number(null) / Number('') are 0 — skip blanks so an unpriced
+      // row doesn't drag the average to zero.
+      if (raw == null || raw === '') continue;
+      const p = Number(raw);
       if (!rd || !isFinite(p)) continue;
       const arr = byDate.get(rd) ?? [];
       arr.push(p);
       byDate.set(rd, arr);
     }
-    if (byDate.size === 0) return { ok: false, error: 'no-priced-rows' };
+    if (byDate.size === 0) {
+      return { ok: false, error: `no-priced-rows (${matching.length} matched; ${c.mmnPriceField}=${JSON.stringify(matching[0]?.[c.mmnPriceField]).slice(0, 900)})` };
+    }
     // Sort dates descending. report_date format is MM/dd/yyyy.
     const dates = [...byDate.keys()].sort((a, b) => mmddyyyyToTime(b) - mmddyyyyToTime(a));
     const points: PricePoint[] = [];

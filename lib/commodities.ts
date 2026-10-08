@@ -25,11 +25,9 @@ export type CommodityKey =
   | 'class_iv_milk';
 
 /** Filter conditions matched against rows in the MMN Report Detail. */
-export interface MmnFilter {
-  commodity?: string;
-  trade_loc?: string;
-  variety?: string;
-}
+/** Field → exact value. Any MMN Report Detail column can be used
+ *  (e.g. `item`, `class`, `condition` on the poultry reports). */
+export type MmnFilter = Record<string, string>;
 
 export interface CommodityConfig {
   key: CommodityKey;
@@ -44,7 +42,7 @@ export interface CommodityConfig {
   /** Row filter applied to the MMN Report Detail rows. */
   mmnFilter?: MmnFilter;
   /** Which numeric field on a matching row is the price. */
-  mmnPriceField?: 'price' | 'avg_price';
+  mmnPriceField?: string;
   /** Short descriptor used in the dashboard tooltip. */
   description: string;
 }
@@ -113,8 +111,8 @@ export const COMMODITIES: CommodityConfig[] = [
     unit: 'cents/lb',
     source: 'usda-ams',
     mmnSlug: '3646',   // Weekly National Chicken Report (AMS_3646) — carries B/S breast line
-    mmnFilter: { commodity: 'Breast, B/S' },
-    mmnPriceField: 'avg_price',
+    mmnFilter: { item: 'Breast - B/S', trade_status: 'Domestic', condition: 'Fresh' },
+    mmnPriceField: 'wtd_avg_price',
     description: 'USDA AMS — National Chicken Breast (boneless skinless, fresh domestic).',
   },
   {
@@ -123,8 +121,8 @@ export const COMMODITIES: CommodityConfig[] = [
     unit: 'cents/lb',
     source: 'usda-ams',
     mmnSlug: '3647',   // Weekly National Turkey Report (AMS_3647) — includes 8-16 lb frozen hens
-    mmnFilter: { commodity: 'Whole Young Hen' },
-    mmnPriceField: 'avg_price',
+    mmnFilter: { item: 'Whole Young', class: 'Hen', trade_status: 'Domestic' },
+    mmnPriceField: 'wtd_avg_price',
     description: 'USDA AMS — Weekly National Turkey Report (whole young hen).',
   },
   {
@@ -133,8 +131,10 @@ export const COMMODITIES: CommodityConfig[] = [
     unit: 'cents/doz',
     source: 'usda-ams',
     mmnSlug: '2843',   // Daily National Shell Egg Index Report (AMS_2843) — graded loose large white
-    mmnFilter: { commodity: 'Shell Eggs', variety: 'Large' },
-    mmnPriceField: 'avg_price',
+    // Detail rows carry no price column — the index lives in the
+    // narrative text, parsed with mmnNarrativeRegex in the cron.
+    mmnFilter: { market_location_name: 'National 5 Day Weighted Index' },
+    mmnPriceField: 'report_narrative',
     description: 'USDA AMS — Daily National Shell Egg Index (loose large white).',
   },
 
@@ -175,7 +175,7 @@ export const COMMODITIES: CommodityConfig[] = [
     // Verified via mymarketnews.ams.usda.gov on 2026-10-08. Reports
     // ~2nd calendar day of each month covering the previous month, so
     // the dashboard value may lag 2-30 days — normal for Class IV.
-    mmnSlug: '3355',
+    mmnSlug: '2991',   // Announcement of Class and Component Prices (DYMCLASSPRICES)
     mmnFilter: { commodity: 'Class IV' },
     mmnPriceField: 'price',
     description: 'USDA AMS — Final Federal Milk Order Class IV minimum price (butter / NDM basis).',
