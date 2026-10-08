@@ -75,6 +75,101 @@ function fmtCompact(n: number) {
 }
 function achColor(p: number) { return p >= 100 ? '0F6E56' : p >= 50 ? '854F0B' : 'A32D2D'; }
 
+// ── Trial Tracker integration ────────────────────────────────
+// Weekly reports used to leave the "Trials / Trial / MKT / Trials"
+// rows blank. Marketing now records trial updates in the CRM's
+// Trial Tracker (/trials, data-migration/36-trials.sql); the helpers
+// below pull the active week's updates and render them into the
+// "This week" / "Next step" cells so Jason's report is a true
+// single-source document (no copy/paste from a side tracker).
+type AnimalGroupTag = 'Poultry' | 'Swine' | 'Poultry/Swine' | 'Ruminants' | 'LATAM';
+
+/** Snap any Date to its week's Wednesday in YYYY-MM-DD (local time).
+ *  Mirrors wednesdayOf() in lib/trials.ts — kept inline here so this
+ *  route stays self-contained with no new cross-file imports. */
+function wednesdayISO(d: Date): string {
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const offset = 3 - day;
+  const w = new Date(d);
+  w.setDate(w.getDate() + offset);
+  const y = w.getFullYear();
+  const m = String(w.getMonth() + 1).padStart(2, '0');
+  const dd = String(w.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+/** Fetch this reporting week's trial updates for the given animal
+ *  groups and render them as `{ thisWeek, nextWeek }` text blocks
+ *  shaped for the Weekly Report's two-column activity cells.
+ *
+ *  Rendering intent (one trial per bullet, two lines when there's a
+ *  body paragraph, grouped visually by phase):
+ *    - [Green] Trial Name (Broiler) · Active Trial
+ *      Dropped the day samples at UGA on Tuesday …
+ *
+ *  Finished trials are excluded (the Trial Tracker UI does the same
+ *  for its public report view). */
+async function fetchTrialSection(
+  now: Date, groups: AnimalGroupTag[],
+): Promise<{ thisWeek: string; nextWeek: string }> {
+  const weekEnding = wednesdayISO(now);
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const sbKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  try {
+    const sb = createClient(sbUrl, sbKey);
+    const [uRes, tRes] = await Promise.all([
+      sb.from('trial_updates').select('*').eq('week_ending', weekEnding),
+      sb.from('trials').select('*')
+        .in('animal_group', groups as unknown as string[])
+        .is('finished_at', null),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trials = (tRes.data as any[]) || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates = (uRes.data as any[]) || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trialById = new Map(trials.map((t: any) => [t.id, t]));
+    const pairs = updates
+      .filter((u) => trialById.has(u.trial_id))
+      .map((u) => ({ trial: trialById.get(u.trial_id)!, update: u }))
+      .sort((a, b) => {
+        const pa = String(a.trial.phase || ''); const pb = String(b.trial.phase || '');
+        if (pa !== pb) return pa.localeCompare(pb);
+        return String(a.trial.name || '').localeCompare(String(b.trial.name || ''));
+      });
+
+    if (pairs.length === 0) {
+      return { thisWeek: '- No trial updates recorded for this week', nextWeek: '' };
+    }
+
+    const thisWeek = pairs.map(({ trial, update }) => {
+      const health = update.health ? `[${update.health}] ` : '';
+      const stage = update.stage ? ` · ${update.stage}` : '';
+      const owner = update.owner ? ` (${update.owner})` : '';
+      const line1 = `- ${health}${trial.name} — ${trial.phase}${stage}${owner}`;
+      const what = (update.what_happened || '').trim();
+      if (!what) return line1;
+      const safe = sanitize(what).replace(/\s*\n+\s*/g, ' ');
+      return `${line1}\n  ${safe}`;
+    }).join('\n');
+
+    const nextWeek = pairs.map(({ trial, update }) => {
+      const due = update.due_date ? ` (Due ${String(update.due_date).slice(5).replace('-', '/')})` : '';
+      const line1 = `- ${trial.name}${due}`;
+      const next = (update.next_step || '').trim();
+      if (!next) return line1;
+      const safe = sanitize(next).replace(/\s*\n+\s*/g, ' ');
+      return `${line1}\n  ${safe}`;
+    }).join('\n');
+
+    return { thisWeek, nextWeek };
+  } catch {
+    // Table might not exist in older environments; silently fall back
+    // to the pre-integration empty cells rather than failing the report.
+    return { thisWeek: '', nextWeek: '' };
+  }
+}
+
 // Sanitize text for Claude API — strip non-ASCII that causes ByteString errors
 function sanitize(text: string): string {
   if (!text) return '';
@@ -271,6 +366,11 @@ async function generateMonogastricReport(
   const ttAch = totBudget > 0 ? Math.round((teamTotal.v3 / totBudget) * 100) : 0;
   const ttCumAch = annBudget > 0 ? Math.round((teamTotal.cum / annBudget) * 100) : 0;
 
+  // Trial Tracker section — populates what used to be a blank "Trials"
+  // row. Pulls this week's updates for every monogastric animal group
+  // (poultry/swine/mixed) and renders them into the activity cells.
+  const trialMono = await fetchTrialSection(now, ['Poultry', 'Swine', 'Poultry/Swine']);
+
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
     sections: [{
@@ -363,7 +463,7 @@ async function generateMonogastricReport(
             cell('This week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[1], header: true }),
             cell('Next week', { bold: true, bg: '1a4731', color: 'FFFFFF', center: true, width: actColW[2], header: true }),
           ] }),
-          new TableRow({ children: [teamCell('Trials', { bg: 'FAEEDA', width: actColW[0], color: '854F0B' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
+          new TableRow({ children: [teamCell('Trials', { bg: 'FAEEDA', width: actColW[0], color: '854F0B' }), activityCell(trialMono.thisWeek, { width: actColW[1] }), activityCell(trialMono.nextWeek, { width: actColW[2] })] }),
           new TableRow({ children: [teamCell('Travel', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
           new TableRow({ children: [teamCell('Other', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }), activityCell('', { width: actColW[1] }), activityCell('', { width: actColW[2] })] }),
         ] }),
@@ -524,6 +624,9 @@ async function generateRuminantReport(
   const ttAch = totBudget > 0 ? Math.round((teamTotal.v3 / totBudget) * 100) : 0;
   const ttCumAch = annBdg > 0 ? Math.round((teamTotal.cum / annBdg) * 100) : 0;
 
+  // Trial Tracker section — ruminant animal group only.
+  const trialRum = await fetchTrialSection(now, ['Ruminants']);
+
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
     sections: [{
@@ -589,8 +692,8 @@ async function generateRuminantReport(
           ] }),
           new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
             teamCell('Trial', { bg: 'FAEEDA', width: actColW[0], color: '854F0B' }),
-            activityCell('', { width: actColW[1] }),
-            activityCell('', { width: actColW[2] }),
+            activityCell(trialRum.thisWeek, { width: actColW[1] }),
+            activityCell(trialRum.nextWeek, { width: actColW[2] }),
           ] }),
           new TableRow({ height: { value: 400, rule: 'atLeast' as const }, children: [
             teamCell('Travel', { bg: 'F1EFE8', width: actColW[0], color: '5F5E5A' }),
@@ -752,14 +855,29 @@ async function generateLATAMReport(
   const ttM3Ach = totBgt > 0 ? Math.round((teamTot.v3 / totBgt) * 100) : 0;
   const ttCumAch = annBdg > 0 ? Math.round((teamTot.cum / annBdg) * 100) : 0;
 
+  // Trial Tracker section — LATAM animal group. Rendered into the
+  // "MKT / Trials" row (idx 9 in countryLabels below).
+  const trialLatam = await fetchTrialSection(now, ['LATAM']);
+
   // Country rows for activities
   const countryLabels = ['Mexico', 'Colombia', 'Peru / Bolivia', 'Central America', 'Panama / Costa R.', 'Ecuador', 'Chile', 'Venezuela', 'Other Countries', 'MKT / Trials', 'Market News', 'Registration', 'Travel'];
+  const TRIAL_IDX = countryLabels.indexOf('MKT / Trials');
   const countryRows = countryLabels.map((label, idx) => new TableRow({
     height: { value: idx === 0 ? 600 : 340, rule: 'atLeast' as const },
     children: [
       teamCell(label, { bg: idx === 0 ? 'FAEEDA' : idx % 2 === 0 ? 'FAFAFA' : 'FFFFFF', width: actColW[0], color: idx === 0 ? LATAM_COLOR : '444444' }),
-      activityCell(idx === 0 ? (latSummary.thisWeek || '') : '', { width: actColW[1] }),
-      activityCell(idx === 0 ? (latSummary.nextWeek || '') : '', { width: actColW[2] }),
+      activityCell(
+        idx === 0 ? (latSummary.thisWeek || '')
+        : idx === TRIAL_IDX ? trialLatam.thisWeek
+        : '',
+        { width: actColW[1] },
+      ),
+      activityCell(
+        idx === 0 ? (latSummary.nextWeek || '')
+        : idx === TRIAL_IDX ? trialLatam.nextWeek
+        : '',
+        { width: actColW[2] },
+      ),
     ],
   }));
 

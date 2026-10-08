@@ -2,7 +2,7 @@ import { UserRole } from './users';
 
 export const MENU_ITEMS = [
   'Home', 'Accounts', 'Contacts', 'Opportunities', 'Tasks',
-  'Reports', 'Insights', 'Sales', 'Sales Dashboard', 'R&D', 'Projects', 'Inventory',
+  'Reports', 'Insights', 'Sales', 'Sales Dashboard', 'R&D', 'Trials', 'Inventory',
   'Marketing', 'Marketing Approver', 'Admin',
 ] as const;
 
@@ -33,31 +33,31 @@ const DEFAULT_PERMISSIONS: PermissionsMap = {
   sales: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
     Tasks: true, Reports: false, Insights: false, Sales: false, 'Sales Dashboard': false,
-    'R&D': true, Projects: true, Inventory: false,
+    'R&D': true, Trials: true, Inventory: false,
     Marketing: false, 'Marketing Approver': false, Admin: false,
   },
   marketing: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
     Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false,
-    'R&D': true, Projects: true, Inventory: false,
+    'R&D': true, Trials: true, Inventory: false,
     Marketing: true, 'Marketing Approver': false, Admin: false,
   },
   sales_director: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
     Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true,
-    'R&D': true, Projects: true, Inventory: false,
+    'R&D': true, Trials: true, Inventory: false,
     Marketing: false, 'Marketing Approver': false, Admin: false,
   },
   coo: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
     Tasks: true, Reports: true, Insights: true, Sales: true, 'Sales Dashboard': true,
-    'R&D': true, Projects: true, Inventory: true,
+    'R&D': true, Trials: true, Inventory: true,
     Marketing: false, 'Marketing Approver': false, Admin: false,
   },
   technical_manager: {
     Home: true, Accounts: true, Contacts: true, Opportunities: true,
     Tasks: true, Reports: true, Insights: true, Sales: false, 'Sales Dashboard': false,
-    'R&D': true, Projects: true, Inventory: false,
+    'R&D': true, Trials: true, Inventory: false,
     Marketing: false, 'Marketing Approver': false, Admin: false,
   },
 };

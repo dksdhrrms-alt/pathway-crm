@@ -137,7 +137,7 @@ export default function Sidebar() {
   // user is already on one of the child routes so they don't have to
   // click it back open on every navigation.
   const [rndMarketingOpen, setRndMarketingOpen] = useState(
-    pathname.startsWith('/rnd') || pathname.startsWith('/projects'),
+    pathname.startsWith('/rnd') || pathname.startsWith('/trials'),
   );
   // Products parent menu — expandable, admin-curated list of external
   // Product catalog — sidebar shows the admin-curated product list.
@@ -284,7 +284,7 @@ export default function Sidebar() {
     '/opportunities': 'opportunities', '/tasks': 'tasks',
     '/archive': 'archive',
     '/rnd': 'rnd',
-    '/projects': 'projects',
+    '/trials': 'trials',
     '/reports': 'reports',
     '/insights': 'insights', '/scan-card': 'contacts', '/sales': 'sales',
     '/admin-marketing': 'marketing',
@@ -413,23 +413,26 @@ export default function Sidebar() {
         )}
 
         {/* R&D / Marketing — expandable parent. Sub-items:
-              · Budget Tracker → /rnd  (R&D + Event budget grid)
-              · Project        → /projects  (marketing project Gantt) */}
-        {(canAccess('rnd') || canAccess('projects')) && (
+              · Budget Tracker → /rnd    (R&D + Event budget grid)
+              · Trial Tracker  → /trials (weekly trial updates +
+                                          auto-fed Weekly Report)
+            Replaced the old "Project Tracker" Gantt view (see
+            data-migration/36 CASCADE drop of `projects`). */}
+        {(canAccess('rnd') || canAccess('trials')) && (
           <div>
             <button
               onClick={() => setRndMarketingOpen(!rndMarketingOpen)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith('/rnd') || pathname.startsWith('/projects') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+                pathname.startsWith('/rnd') || pathname.startsWith('/trials') ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
               }`}
             >
               <RndIcon />
               <span>R&amp;D / Marketing</span>
-              <svg className={`w-4 h-4 ml-auto transition-transform ${rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/projects') ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={`w-4 h-4 ml-auto transition-transform ${rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/trials') ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            {(rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/projects')) && (
+            {(rndMarketingOpen || pathname.startsWith('/rnd') || pathname.startsWith('/trials')) && (
               <div className="ml-8 mt-1 space-y-0.5">
                 {canAccess('rnd') && (
                   <Link
@@ -442,15 +445,15 @@ export default function Sidebar() {
                     Budget Tracker
                   </Link>
                 )}
-                {canAccess('projects') && (
+                {canAccess('trials') && (
                   <Link
-                    href="/projects"
+                    href="/trials"
                     onClick={() => setMobileOpen(false)}
                     className={`block px-3 py-1.5 rounded-md text-sm transition-all ${
-                      pathname === '/projects' || pathname.startsWith('/projects/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
+                      pathname === '/trials' || pathname.startsWith('/trials/') ? 'bg-white/15 text-white font-medium' : 'text-white/50 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    Project Tracker
+                    Trial Tracker
                   </Link>
                 )}
               </div>

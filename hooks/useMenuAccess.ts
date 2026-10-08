@@ -9,17 +9,17 @@ import { supabase, supabaseEnabled } from '@/lib/supabase';
 // Admin/CEO/etc. additionally get a user picker on the Archive page to
 // view other people's archives (gated server-side / page-side, not here).
 const ROLE_DEFAULTS: Record<string, Set<string>> = {
-  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
-  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
-  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
-  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory']),
-  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'sales', 'sales_dashboard']),
-  sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects']),
-  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights', 'marketing']),
+  administrative_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
+  admin: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
+  ceo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory', 'marketing', 'marketing_approver', 'admin']),
+  coo: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'sales', 'sales_dashboard', 'inventory']),
+  sales_director: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'sales', 'sales_dashboard']),
+  sales: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials']),
+  marketing: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights', 'marketing']),
   // Technical Manager — same surface as marketing (R&D + Reports +
   // Insights) plus full CRM access. Not granted /admin or sales_dashboard
   // by default; can still be unlocked per-user via user_permissions.
-  technical_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'projects', 'reports', 'insights']),
+  technical_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights']),
 };
 
 const FULL_ACCESS = ['admin', 'administrative_manager', 'ceo'];
