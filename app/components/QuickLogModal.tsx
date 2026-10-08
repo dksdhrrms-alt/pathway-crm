@@ -543,12 +543,13 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
             <span className="text-[11px] text-gray-400 ml-auto">→ Weekly Report&apos;s Next Week</span>
           </label>
           {createFollowUp && (
-            <div className="px-4 pb-4 pt-1 space-y-3">
-              <input
+            <div className="px-4 pb-4 pt-2 space-y-3">
+              <textarea
                 value={actionItem}
                 onChange={(e) => setActionItem(e.target.value)}
-                placeholder="Action item — what will you do next? (e.g. Send pricing follow-up)"
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2.5 text-sm" />
+                placeholder="Action item — what will you do next?&#10;(e.g. Send pricing follow-up, confirm shipment timing)"
+                rows={3}
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2.5 text-sm resize-y leading-relaxed" />
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap font-medium">Due</label>
                 <input type="date" value={actionDueDate} onChange={(e) => setActionDueDate(e.target.value)}
