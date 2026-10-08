@@ -154,7 +154,10 @@ export default function LogActivityModal({
           relatedAccountId: accountId || undefined,
           relatedContactId: firstContactId || undefined,
           description: '',
-          isImportant: false,
+          // Inherit the activity's star — if "the call matters" to the
+          // rep, the follow-up Task should carry that signal into
+          // Jason's Weekly Report too.
+          isImportant,
           sourceActivityId: createdIds[0],
         };
         try { addTask(taskPayload); } catch (e) {
@@ -362,23 +365,23 @@ export default function LogActivityModal({
               for Jason's Weekly Report Next Week column. Toggle off
               when there's no follow-up. */}
           <div className="rounded-lg border border-gray-200 dark:border-slate-700">
-            <label className="flex items-center gap-2 px-3 py-2 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
+            <label className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none text-sm text-gray-700 dark:text-gray-200">
               <input type="checkbox" checked={createFollowUp} onChange={(e) => setCreateFollowUp(e.target.checked)}
-                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
               <span className="font-medium">Add a follow-up task</span>
               <span className="text-[11px] text-gray-400 ml-auto">→ Weekly Report&apos;s Next Week</span>
             </label>
             {createFollowUp && (
-              <div className="px-3 pb-3 pt-1 space-y-2">
+              <div className="px-4 pb-4 pt-1 space-y-3">
                 <input
                   value={actionItem}
                   onChange={(e) => setActionItem(e.target.value)}
                   placeholder="Action item — what will you do next? (e.g. Send pricing follow-up)"
-                  className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2.5 py-1.5 text-sm" />
+                  className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2.5 text-sm" />
                 <div className="flex items-center gap-2">
-                  <label className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">Due</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap font-medium">Due</label>
                   <input type="date" value={actionDueDate} onChange={(e) => setActionDueDate(e.target.value)}
-                    className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded px-2 py-1 text-xs" />
+                    className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm" />
                   <span className="text-[11px] text-gray-400">(blank → +7 days)</span>
                 </div>
               </div>
