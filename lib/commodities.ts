@@ -8,11 +8,21 @@
  */
 
 export type CommodityKey =
+  // Feed inputs (original 5)
   | 'soybean_oil'
   | 'corn'
   | 'soybean_meal'
   | 'ddgs'
-  | 'choice_white_grease';
+  | 'choice_white_grease'
+  // Poultry & egg protein watch (added 2026-10)
+  | 'bs_breast'
+  | 'turkey_whole_hen'
+  | 'shell_eggs_layer'
+  // Red meat & dairy watch (added 2026-10)
+  | 'lean_hogs'
+  | 'live_cattle'
+  | 'class_iii_milk'
+  | 'class_iv_milk';
 
 /** Filter conditions matched against rows in the MMN Report Detail. */
 export interface MmnFilter {
@@ -86,6 +96,82 @@ export const COMMODITIES: CommodityConfig[] = [
     mmnPriceField: 'avg_price',
     description: 'USDA AMS — National Weekly Choice White Grease (avg across regions).',
   },
+
+  // ── Poultry & egg price watch ──────────────────────────────────
+  // All three are USDA AMS cash references (no futures market exists).
+  // Slugs are best-guesses against the MMN report directory — if a
+  // slug 404s in the cron logs, update it here with the live id from
+  //   https://marsapi.ams.usda.gov/services/v1.2/reports
+  // (requires USDA_MMN_API_KEY in a browser or curl).
+  {
+    key: 'bs_breast',
+    label: 'B/S Chicken Breast',
+    unit: 'cents/lb',
+    source: 'usda-ams',
+    mmnSlug: '2591',
+    mmnFilter: { commodity: 'Breast, B/S' },
+    mmnPriceField: 'avg_price',
+    description: 'USDA AMS — National Chicken Breast (boneless skinless, fresh domestic).',
+  },
+  {
+    key: 'turkey_whole_hen',
+    label: 'Turkey Whole Hen',
+    unit: 'cents/lb',
+    source: 'usda-ams',
+    mmnSlug: '2904',
+    mmnFilter: { commodity: 'Whole Young Hen' },
+    mmnPriceField: 'avg_price',
+    description: 'USDA AMS — Weekly Turkey Markets (whole young hen, fresh conventional).',
+  },
+  {
+    key: 'shell_eggs_layer',
+    label: 'Shell Eggs (Layer)',
+    unit: 'cents/doz',
+    source: 'usda-ams',
+    mmnSlug: '2848',
+    mmnFilter: { commodity: 'Shell Eggs', variety: 'Large' },
+    mmnPriceField: 'avg_price',
+    description: 'USDA AMS — National Weekly Shell Eggs (loose large white, f.o.b. dock).',
+  },
+
+  // ── Red meat & dairy price watch ──────────────────────────────
+  // Lean Hogs + Live Cattle are CME futures (Yahoo chart API, same path
+  // as corn/soy). Class III Milk trades on CME too; Class IV is tracked
+  // via the USDA AMS Advance / Monthly Class Price announcement.
+  {
+    key: 'lean_hogs',
+    label: 'Lean Hogs',
+    unit: 'cents/lb',
+    source: 'cbot',
+    yahooSymbol: 'HE=F',
+    description: 'CME Lean Hogs front-month futures.',
+  },
+  {
+    key: 'live_cattle',
+    label: 'Live Cattle',
+    unit: 'cents/lb',
+    source: 'cbot',
+    yahooSymbol: 'LE=F',
+    description: 'CME Live Cattle front-month futures.',
+  },
+  {
+    key: 'class_iii_milk',
+    label: 'Class III Milk',
+    unit: 'USD/cwt',
+    source: 'cbot',
+    yahooSymbol: 'DC=F',
+    description: 'CME Class III Milk front-month futures.',
+  },
+  {
+    key: 'class_iv_milk',
+    label: 'Class IV Milk',
+    unit: 'USD/cwt',
+    source: 'usda-ams',
+    mmnSlug: '3148',
+    mmnFilter: { commodity: 'Class IV' },
+    mmnPriceField: 'price',
+    description: 'USDA AMS — Monthly Federal Milk Order Class IV minimum price (butter / NDM basis).',
+  },
 ];
 
 export interface PriceRow {
@@ -118,8 +204,13 @@ export function pctDelta(latest: number | null | undefined, prior: number | null
 
 /** Format price with right precision per unit. */
 export function fmtPrice(value: number, unit: string): string {
+  // Cents + per-unit prices → 2 decimals so a 1 cent swing on
+  // chicken breast or hogs is visible.
   if (unit === 'cents/lb') return value.toFixed(2);
+  if (unit === 'cents/doz') return value.toFixed(2);
   if (unit === 'USD/bu') return value.toFixed(2);
+  if (unit === 'USD/cwt') return value.toFixed(2);
+  // USD/ton (DDGS, SBM) — whole-dollar precision.
   return Math.round(value).toLocaleString('en-US');
 }
 

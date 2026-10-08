@@ -120,7 +120,7 @@ export default function TodayMarketCard() {
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-5 shadow-sm">
       <div className="flex items-baseline justify-between mb-3">
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Today&apos;s Feed Market
+          Today&apos;s Market
         </h2>
         {latestAnyDate && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
