@@ -134,9 +134,9 @@ export const COMMODITIES: CommodityConfig[] = [
     source: 'usda-ams',
     mmnSlug: '2843',   // Daily National Shell Egg Index Report (AMS_2843) — graded loose large white
     // 'Report Detail' on this report is narrative-only; prices live in
-    // another section (cron lists the available ones on a miss).
-    mmnSection: 'Report Details',
-    mmnFilter: {},
+    // 'Report Detail Weighted' (one row per egg type/environment/class).
+    mmnSection: 'Report Detail Weighted',
+    mmnFilter: { class: 'Large', color: 'White', environment: 'Caged' },
     mmnPriceField: 'wtd_avg_price',
     description: 'USDA AMS — Daily National Shell Egg Index (loose large white).',
   },

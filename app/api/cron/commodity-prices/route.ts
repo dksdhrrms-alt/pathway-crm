@@ -138,7 +138,8 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
       // Surface the distinct labels in the response too, so the operator
       // can fix the filter from the cron output without digging in logs.
       const labels = [...new Set(rows.map((r) =>
-        [r.commodity, r.variety, r.item, r.class].filter(Boolean).join(' / ')))].slice(0, 40);
+        [r.commodity, r.variety, r.item, r.egg_type, r.environment, r.color, r.class, r.grade]
+          .filter(Boolean).join(' / ')))].slice(0, 40);
       return { ok: false, error: `no-matching-rows (${rows.length} rows; labels: ${JSON.stringify(labels)}; fields: ${JSON.stringify(Object.keys(rows[0] || {}))}; sample: ${JSON.stringify(rows[0] || {}).slice(0, 600)})` };
     }
     // Group by report_date (MM/dd/yyyy), pick the most recent.
