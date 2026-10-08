@@ -29,7 +29,7 @@ import { COMMODITIES, type CommodityConfig } from '@/lib/commodities';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 interface PricePoint { date: string; price: number }
 interface FetchOk { ok: true; points: PricePoint[] }
@@ -49,6 +49,7 @@ async function fetchYahoo(symbol: string): Promise<FetchResult> {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2y`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 PathwayCRM/1.0' },
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) return { ok: false, error: `yahoo ${res.status}` };
     const data = await res.json() as {
@@ -96,7 +97,20 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
       headers: { Authorization: `Basic ${basic}`, Accept: 'application/json' },
       signal: AbortSignal.timeout(20_000),
     });
-    if (!res.ok) return { ok: false, error: `mmn ${res.status}` };
+    if (!res.ok) {
+      // Help the operator diagnose from Vercel logs rather than guessing.
+      // 404 almost always means USDA re-numbered the report — the
+      // lib/commodities.ts entry needs a new mmnSlug (look it up at
+      // https://mymarketnews.ams.usda.gov/ by title and update there).
+      if (res.status === 404) {
+        console.warn(
+          `[commodity-prices] MMN 404 for ${c.key} slug=${c.mmnSlug}. ` +
+          `USDA likely re-numbered this report — find the new slug on ` +
+          `mymarketnews.ams.usda.gov (search by title) and update lib/commodities.ts.`,
+        );
+      }
+      return { ok: false, error: `mmn ${res.status}` };
+    }
     const data = await res.json() as {
       results?: Array<Record<string, unknown>>;
     };
@@ -108,7 +122,20 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
       if (f.variety && r.variety !== f.variety) return false;
       return true;
     });
-    if (matching.length === 0) return { ok: false, error: 'no-matching-rows' };
+    if (matching.length === 0) {
+      // Common when USDA renames a column — e.g. "Breast, B/S" → "B/S Breast".
+      // Log a sample so the operator can see what the actual field values
+      // look like and loosen the filter in lib/commodities.ts.
+      const sample = rows.slice(0, 2).map((r) => ({
+        commodity: r.commodity, trade_loc: r.trade_loc, variety: r.variety,
+      }));
+      console.warn(
+        `[commodity-prices] no rows matched ${c.key} filter=${JSON.stringify(f)}. ` +
+        `Sample fields in report: ${JSON.stringify(sample)}. ` +
+        `Loosen the mmnFilter in lib/commodities.ts if the labels have changed.`,
+      );
+      return { ok: false, error: 'no-matching-rows' };
+    }
     // Group by report_date (MM/dd/yyyy), pick the most recent.
     const byDate = new Map<string, number[]>();
     for (const r of matching) {
@@ -182,8 +209,14 @@ export async function GET(request: NextRequest) {
 
   const results: Array<{ key: string; status: 'ok' | 'failed' | 'skipped'; detail?: string }> = [];
 
-  for (const c of COMMODITIES) {
-    const r = await fetchOne(c);
+  // Fetch every source in parallel — with 12 commodities a sequential
+  // loop (up to 20s per MMN call) blows past maxDuration and the whole
+  // cron 504s. Upserts stay sequential below so results read in order.
+  const fetched = await Promise.all(COMMODITIES.map((c) => fetchOne(c)));
+
+  for (let i = 0; i < COMMODITIES.length; i++) {
+    const c = COMMODITIES[i];
+    const r = fetched[i];
     if (!r.ok) {
       results.push({ key: c.key, status: 'failed', detail: r.error });
       continue;
