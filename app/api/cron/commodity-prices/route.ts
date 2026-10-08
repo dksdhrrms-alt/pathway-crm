@@ -134,7 +134,11 @@ async function fetchMmn(c: CommodityConfig): Promise<FetchResult> {
         `Sample fields in report: ${JSON.stringify(sample)}. ` +
         `Loosen the mmnFilter in lib/commodities.ts if the labels have changed.`,
       );
-      return { ok: false, error: 'no-matching-rows' };
+      // Surface the distinct labels in the response too, so the operator
+      // can fix the filter from the cron output without digging in logs.
+      const labels = [...new Set(rows.map((r) =>
+        [r.commodity, r.variety].filter(Boolean).join(' / ')))].slice(0, 15);
+      return { ok: false, error: `no-matching-rows (${rows.length} rows; labels: ${JSON.stringify(labels)}; fields: ${JSON.stringify(Object.keys(rows[0] || {}).slice(0, 30))})` };
     }
     // Group by report_date (MM/dd/yyyy), pick the most recent.
     const byDate = new Map<string, number[]>();
