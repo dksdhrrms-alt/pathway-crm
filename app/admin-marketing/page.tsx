@@ -26,6 +26,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
@@ -173,9 +174,12 @@ export default function AdminMarketingPage() {
 
   useEffect(() => { if (permsLoaded && canEdit) load(); }, [permsLoaded, canEdit, load]);
 
-  useEffect(() => {
-    if (permsLoaded && !canEdit) router.replace('/dashboard');
-  }, [permsLoaded, canEdit, router]);
+  // No silent redirect — users without access ended up bounced to
+  // /dashboard with no clue why, which made this very annoying for
+  // the "I thought I had permission" case. Render a clear "No access"
+  // panel (below) that tells them exactly which permission they need
+  // and what to do.
+  void router;
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedId) ?? null,
@@ -418,7 +422,9 @@ export default function AdminMarketingPage() {
 
   // ── Render ────────────────────────────────────────────────────
   if (!permsLoaded) return null;
-  if (!canEdit) return null;
+  if (!canEdit) {
+    return <NoAccessPanel userId={userId} canAccess={canAccess} />;
+  }
 
   return (
     <>
@@ -732,6 +738,172 @@ function TreeNodeView({
 // indent-per-depth so the admin picks the right species. "Root"
 // is always offered as the first option; the source folder is
 // disabled to prevent an accidental same-place copy.
+// Shown when the logged-in user lacks the `marketing` permission.
+// Instead of a silent redirect we hit Supabase in-page with the
+// user's own id and dump what the DB actually has for them, so an
+// operator can tell at a glance whether:
+//   · the admin never saved the row  (DB returns empty)
+//   · the row saved but under a mismatched user_id  (DB has rows for
+//     this id but no `marketing` key)
+//   · it saved as 'marketing_approver' instead of 'marketing'
+//   · the row is correct but their session is stale (requires re-login)
+function NoAccessPanel({
+  userId, canAccess,
+}: {
+  userId: string;
+  canAccess: (menuItem: string) => boolean;
+}) {
+  type Row = { menu_item: string; permission: string };
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [queryErr, setQueryErr] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        if (!url || !key) {
+          if (!cancelled) { setQueryErr('Supabase env not configured — permissions can\'t load.'); setChecking(false); }
+          return;
+        }
+        if (!userId) {
+          if (!cancelled) { setQueryErr('Not signed in (no user id in session).'); setChecking(false); }
+          return;
+        }
+        const sb = createClient(url, key, { auth: { persistSession: false } });
+        const { data, error } = await sb
+          .from('user_permissions')
+          .select('menu_item, permission')
+          .eq('user_id', userId);
+        if (cancelled) return;
+        if (error) { setQueryErr(error.message); setChecking(false); return; }
+        setRows((data || []) as Row[]);
+        setChecking(false);
+      } catch (e) {
+        if (!cancelled) { setQueryErr(e instanceof Error ? e.message : String(e)); setChecking(false); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const marketingRow = rows?.find((r) => r.menu_item === 'marketing');
+  const approverRow = rows?.find((r) => r.menu_item === 'marketing_approver');
+
+  // Figure out which likely cause applies, so the panel's main message
+  // tells the user exactly what to do.
+  let diagnosis: { title: string; action: string; tone: 'amber' | 'red' | 'blue' } = {
+    title: 'Checking your access…', action: '', tone: 'blue',
+  };
+  if (!checking) {
+    if (queryErr) {
+      diagnosis = { title: 'Can\'t reach the permissions table', action: queryErr, tone: 'red' };
+    } else if (!rows || rows.length === 0) {
+      diagnosis = {
+        title: 'No permissions saved for your account',
+        action: 'An admin needs to open Admin → User Permissions, find your name, set "Marketing" to ✓ Allow, and click Save.',
+        tone: 'amber',
+      };
+    } else if (marketingRow?.permission === 'deny') {
+      diagnosis = {
+        title: 'Marketing access is explicitly denied',
+        action: 'An admin set your Marketing permission to ✗ Deny. Ask them to switch it to ✓ Allow and Save.',
+        tone: 'red',
+      };
+    } else if (!marketingRow && approverRow?.permission === 'allow') {
+      diagnosis = {
+        title: 'You have Marketing Approver but not Marketing',
+        action: 'Marketing Approver only grants approval authority — it does NOT grant page access. Ask an admin to also tick "Marketing" to ✓ Allow.',
+        tone: 'amber',
+      };
+    } else if (marketingRow?.permission === 'allow') {
+      diagnosis = {
+        title: 'Permission is saved — your session is stale',
+        action: 'Your DB row says Allow but the browser is still using an older session. Sign out and sign back in, then try again.',
+        tone: 'blue',
+      };
+    } else {
+      diagnosis = {
+        title: 'Marketing permission not set to Allow',
+        action: 'Your account has other permissions saved, but not Marketing. Ask an admin to tick it to ✓ Allow and Save.',
+        tone: 'amber',
+      };
+    }
+  }
+
+  const toneCls = {
+    amber: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200',
+    red:   'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200',
+    blue:  'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200',
+  }[diagnosis.tone];
+
+  return (
+    <>
+      <TopBar />
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pt-16 flex items-start justify-center">
+        <div className="max-w-xl w-full m-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">🔒</div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">You don&apos;t have access to Admin-Marketing yet</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">This page needs the <span className="font-mono px-1 py-0.5 rounded bg-gray-100 dark:bg-slate-800">Marketing</span> permission.</p>
+            </div>
+          </div>
+
+          {/* Diagnosis — written from the live DB query result below */}
+          <div className={`rounded-lg border px-4 py-3 ${toneCls}`}>
+            <p className="text-sm font-semibold">{diagnosis.title}</p>
+            {diagnosis.action && <p className="text-xs mt-1 opacity-90">{diagnosis.action}</p>}
+          </div>
+
+          {/* Live Supabase dump — the operator can see exactly what's
+              in the user_permissions table for this user id. */}
+          <details className="mt-4" open>
+            <summary className="text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+              What&apos;s in the database for your account?
+            </summary>
+            <div className="mt-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/40 p-3 text-xs">
+              {checking ? (
+                <p className="text-gray-500">Querying Supabase…</p>
+              ) : queryErr ? (
+                <p className="text-red-600 dark:text-red-300 font-mono break-all">{queryErr}</p>
+              ) : !rows || rows.length === 0 ? (
+                <p className="text-gray-500 italic">(no rows in user_permissions for user_id = <span className="font-mono">{userId || 'empty'}</span>)</p>
+              ) : (
+                <table className="w-full font-mono text-[11px]">
+                  <thead><tr className="text-left border-b border-gray-200 dark:border-slate-700">
+                    <th className="pb-1 pr-3">menu_item</th><th className="pb-1">permission</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i} className={r.menu_item === 'marketing' ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}>
+                        <td className="py-0.5 pr-3">{r.menu_item}</td>
+                        <td className="py-0.5">{r.permission}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <div className="mt-3 pt-2 border-t border-gray-200 dark:border-slate-700 space-y-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                <div>user_id in session: <span className="font-mono text-gray-700 dark:text-gray-200">{userId || '(none)'}</span></div>
+                <div>canAccess(marketing): <span className="font-mono text-gray-700 dark:text-gray-200">{String(canAccess('marketing'))}</span></div>
+                <div>canAccess(marketing_approver): <span className="font-mono text-gray-700 dark:text-gray-200">{String(canAccess('marketing_approver'))}</span></div>
+              </div>
+            </div>
+          </details>
+
+          <div className="mt-5 flex items-center gap-2">
+            <Link href="/dashboard" className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium">Back to dashboard</Link>
+            <button onClick={() => window.location.reload()} className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-800">Reload</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function FolderPickerModal({
   title, folders, disabledFolderId, onPick, onClose,
 }: {

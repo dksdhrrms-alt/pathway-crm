@@ -23,9 +23,17 @@ export default auth((req) => {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
-  // Check protected routes (first match wins)
+  // Check protected routes (first match wins).
+  //
+  // IMPORTANT — exact segment match, not prefix match. A naive
+  // `pathname.startsWith('/admin')` also matches '/admin-marketing',
+  // which silently redirected Andrew/Edwin (both lack the admin role)
+  // out of a page they DID have permission for. The marketing/trial
+  // surfaces are governed by useMenuAccess (per-user Marketing
+  // permission), not by this role list.
   for (const [path, allowedRoles] of PROTECTED_ROUTES) {
-    if (pathname.startsWith(path)) {
+    const matches = pathname === path || pathname.startsWith(path + '/');
+    if (matches) {
       if (!allowedRoles.includes(role)) {
         return NextResponse.redirect(new URL('/dashboard', req.url));
       }
