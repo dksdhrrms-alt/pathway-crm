@@ -134,6 +134,11 @@ export default function AdminMarketingPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? '';
+  // Super-admin tier — only these roles can assign per-species approvers.
+  // Rank-and-file Marketing editors can create folders and upload files
+  // but can't change who gates what; that's an org-governance decision.
+  const role = ((session?.user as { role?: string })?.role ?? '').toLowerCase().trim();
+  const canManageApprovers = ['admin', 'administrative_manager', 'ceo'].includes(role);
   const { canAccess, loaded: permsLoaded } = useMenuAccess();
 
   const canEdit = canAccess('marketing');
@@ -524,7 +529,7 @@ export default function AdminMarketingPage() {
                       onNewFolder={handleNewFolder}
                       onNewProduct={handleNewProduct}
                       onDeleteFolder={handleDeleteFolder}
-                      onEditApprovers={setApproversModalFolder}
+                      onEditApprovers={canManageApprovers ? setApproversModalFolder : undefined}
                       onDuplicateProduct={(p) => setCloneSource(p)}
                     />
                   ))}
@@ -614,7 +619,8 @@ function TreeNodeView({
   onNewFolder: (parentId: string | null) => void;
   onNewProduct: (folderId: string | null) => void;
   onDeleteFolder: (f: Folder) => void;
-  onEditApprovers: (f: Folder) => void;
+  /** Omit to hide the per-species "👥 Approvers" badge entirely — super-admins only. */
+  onEditApprovers?: (f: Folder) => void;
   onDuplicateProduct: (p: Product) => void;
 }) {
   const indent = { paddingLeft: `${depth * 14 + 8}px` };
@@ -653,10 +659,11 @@ function TreeNodeView({
               {f.name}
             </span>
           )}
-          {/* Approver count badge — only on root folders (species).
-              Clicking opens the modal; always visible, not just on hover,
-              so admins can see at a glance which species have gating. */}
-          {depth === 0 && (
+          {/* Approver count badge — only on root folders (species) AND
+              only for super-admins (admin / administrative_manager / ceo).
+              Rank-and-file Marketing editors don't see it at all so they
+              can't accidentally reassign who approves what. */}
+          {depth === 0 && onEditApprovers && (
             <button type="button" onClick={(e) => { e.stopPropagation(); onEditApprovers(f); }}
               title="Set Marketing Approvers for this species"
               className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200">
