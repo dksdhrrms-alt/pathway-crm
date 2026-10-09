@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/lib/CRMContext';
+import { useUsers } from '@/lib/UserContext';
 import { getRecentCommentsOnActivities, type Comment } from '@/lib/comments';
 
 interface Notification {
@@ -64,7 +65,47 @@ export default function NotificationBell() {
 
   const userId = session?.user?.id ?? '';
   const role = (session?.user as { role?: string })?.role ?? '';
-  const isAdmin = ['admin', 'administrative_manager', 'ceo', 'coo', 'sales_director'].includes(role);
+  const { users } = useUsers();
+
+  // Scope tiers (replaces the old flat `isAdmin` that lumped Directors
+  // in with CEO/COO and spammed Monogastric Director Jason with
+  // Ruminant/Dairy "No Recent Contact" and "Stalled Deal" alerts).
+  //
+  //   canSeeAll   — Admin / CEO / COO / Administrative Manager:
+  //                 cross-team view, everything they could ever
+  //                 need to coach anybody.
+  //   isDirector  — Sales Director: see every opp/account whose
+  //                 owner belongs to their team (monogastrics
+  //                 includes swine both ways — one director typically
+  //                 oversees both monogastric groups).
+  //   otherwise   — own rows only, same as before.
+  const canSeeAll = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
+  const isDirector = role === 'sales_director';
+  const isAdmin = canSeeAll;  // kept for internal readability — only true cross-team viewers
+
+  // Team scope: Monogastrics and Swine Director see each other's
+  // teams because org-wise one Director covers both monogastric groups.
+  // Every other team is self-only.
+  const myTeam = users.find((u) => u.id === userId)?.team ?? null;
+  const teamScope: string[] = (() => {
+    if (!myTeam) return [];
+    if (myTeam === 'monogastrics' || myTeam === 'swine') return ['monogastrics', 'swine'];
+    return [myTeam];
+  })();
+  const teamUserIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const u of users) {
+      if (u.team && teamScope.includes(u.team)) set.add(u.id);
+    }
+    // Always include self so a Director without a team value still
+    // sees their own rows rather than nothing.
+    if (userId) set.add(userId);
+    return set;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, myTeam, userId]);
+
+  const inScope = (ownerId: string | undefined | null) =>
+    !!ownerId && teamUserIds.has(ownerId);
 
   const notifications = useMemo(() => {
     const result: Notification[] = [];
@@ -88,8 +129,12 @@ export default function NotificationBell() {
         });
       });
 
-    // 2. Deals closing within 7 days
-    const opps = isAdmin ? opportunities : opportunities.filter((o) => o.ownerId === userId);
+    // 2. Deals closing within 7 days (and Stalled Deals below reuses `opps`)
+    const opps = canSeeAll
+      ? opportunities
+      : isDirector
+        ? opportunities.filter((o) => inScope(o.ownerId))
+        : opportunities.filter((o) => o.ownerId === userId);
     opps
       .filter((o) => o.closeDate && o.stage !== 'Won' && o.stage !== 'Stalled or Lost')
       .filter((o) => {
@@ -139,7 +184,11 @@ export default function NotificationBell() {
     //     parent KPI roll-up would otherwise hide. Visible to all roles since each
     //     owner needs to see their own neglected complexes.
     const childAccounts = accounts.filter((a) => a.parentAccountId);
-    const scopedChildren = isAdmin ? childAccounts : childAccounts.filter((a) => a.ownerId === userId);
+    const scopedChildren = canSeeAll
+      ? childAccounts
+      : isDirector
+        ? childAccounts.filter((a) => inScope(a.ownerId))
+        : childAccounts.filter((a) => a.ownerId === userId);
     scopedChildren.slice(0, 50).forEach((child) => {
       const acts = activities.filter((a) => a.accountId === child.id);
       const sorted = [...acts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -160,10 +209,15 @@ export default function NotificationBell() {
       });
     });
 
-    // 3. Accounts not contacted in 30+ days (admin only)
-    //    Skip child accounts here — they're already covered by complex_neglect above.
-    if (isAdmin) {
-      accounts.slice(0, 200).filter((a) => !a.parentAccountId).forEach((account) => {
+    // 3. Accounts not contacted in 30+ days — admins (cross-team) and
+    //    Directors (team-scoped). Child accounts skipped (covered by
+    //    complex_neglect above).
+    if (canSeeAll || isDirector) {
+      const parentAccounts = accounts.slice(0, 200).filter((a) => !a.parentAccountId);
+      const scopedParents = canSeeAll
+        ? parentAccounts
+        : parentAccounts.filter((a) => inScope(a.ownerId));
+      scopedParents.forEach((account) => {
         const acctActivities = activities.filter((a) => a.accountId === account.id);
         const sorted = [...acctActivities].sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
@@ -285,7 +339,9 @@ export default function NotificationBell() {
       const order = { high: 0, medium: 1, low: 2 };
       return order[a.priority] - order[b.priority];
     });
-  }, [tasks, opportunities, activities, accounts, contacts, userId, isAdmin, dismissed, recentComments]);
+  }, [tasks, opportunities, activities, accounts, contacts, userId, canSeeAll, isDirector, teamUserIds, dismissed, recentComments]);
+  // `isAdmin` kept for text/legacy readability; included in canSeeAll/isDirector above.
+  void isAdmin;
 
   const count = notifications.length;
 
