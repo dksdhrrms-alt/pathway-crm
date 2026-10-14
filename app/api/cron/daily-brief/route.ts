@@ -378,31 +378,63 @@ export async function GET(request: NextRequest) {
 
     const html = buildHtml(u.name || 'there', focus, upcoming, myOpps, paceHtml, pipelineHtml, marketHtml, newsHtml, today);
     try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          from,
-          to: [u.email],
-          subject: `Your Pathway daily brief — ${today}`,
-          html,
-          tags: [
-            { name: 'app', value: 'crm' },
-            { name: 'kind', value: 'daily-brief' },
-          ],
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const msg = (data as { message?: string }).message || `Resend ${res.status}`;
-        errors.push(`${u.email}: ${msg}`);
-      } else {
-        sent++;
-      }
+      // Resend's default rate limit is ~2 requests/second. In October
+      // 2026 the user count crossed that threshold and the last 2 of
+      // ~12 emails started getting 429'd — the people at the end of
+      // the user list silently stopped receiving the daily brief.
+      //
+      // Fix: enforce ≥600ms between POSTs (safely under 2 req/s),
+      // and if a 429 still slips through, retry once with exponential
+      // backoff rather than giving up on that recipient.
+      await sendWithRetry(apiKey, from, u.email, today, html);
+      sent++;
     } catch (e) {
       errors.push(`${u.email}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // Pace throttle: 600ms between calls (≈1.6 req/s). The function has
+    // a generous timeout and already took 7.9s for the Supabase fetches,
+    // so adding ~10-15s of pacing for 20-25 users stays well under the
+    // 60s Fluid limit.
+    if (list.indexOf(u) < list.length - 1) {
+      await new Promise((r) => setTimeout(r, 600));
     }
   }
 
   return Response.json({ sent, recipients: list.length, errors: errors.slice(0, 10) });
+}
+
+/** POST one email, retrying once on 429 Too Many Requests with
+ *  exponential backoff. Throws if the second attempt still fails. */
+async function sendWithRetry(
+  apiKey: string, from: string, toEmail: string, today: string, html: string,
+): Promise<void> {
+  const body = JSON.stringify({
+    from,
+    to: [toEmail],
+    subject: `Your Pathway daily brief — ${today}`,
+    html,
+    tags: [
+      { name: 'app', value: 'crm' },
+      { name: 'kind', value: 'daily-brief' },
+    ],
+  });
+  const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch('https://api.resend.com/emails', { method: 'POST', headers, body });
+    if (res.ok) return;
+    // 429 → back off and retry. Resend sometimes includes a
+    // `retry-after` header in seconds; honor it when present.
+    if (res.status === 429 && attempt === 0) {
+      const retryAfter = Number(res.headers.get('retry-after')) || 0;
+      const waitMs = Math.max(1500, retryAfter * 1000);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    const data = await res.json().catch(() => ({}));
+    const msg = (data as { message?: string }).message || `Resend ${res.status}`;
+    throw new Error(msg);
+  }
+  throw new Error('Resend 429 after retry');
 }
