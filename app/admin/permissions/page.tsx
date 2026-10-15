@@ -85,7 +85,7 @@ export default function PermissionsPage() {
             <button
               onClick={handleSave}
               className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
-              style={{ backgroundColor: '#1a4731' }}
+              style={{ backgroundColor: 'var(--brand)' }}
             >
               Save Permissions
             </button>

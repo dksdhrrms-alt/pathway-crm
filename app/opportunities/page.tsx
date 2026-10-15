@@ -227,7 +227,7 @@ export default function OpportunitiesPage() {
               <button
                 onClick={() => setShowNewModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#1a4731' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 + New Opportunity
               </button>
@@ -237,7 +237,7 @@ export default function OpportunitiesPage() {
                   className={`px-4 py-1.5 text-sm font-medium rounded transition-all ${
                     view === 'kanban' ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
-                  style={view === 'kanban' ? { backgroundColor: '#1a4731' } : {}}
+                  style={view === 'kanban' ? { backgroundColor: 'var(--brand)' } : {}}
                 >
                   Kanban
                 </button>
@@ -246,7 +246,7 @@ export default function OpportunitiesPage() {
                   className={`px-4 py-1.5 text-sm font-medium rounded transition-all ${
                     view === 'list' ? 'text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'
                   }`}
-                  style={view === 'list' ? { backgroundColor: '#1a4731' } : {}}
+                  style={view === 'list' ? { backgroundColor: 'var(--brand)' } : {}}
                 >
                   List
                 </button>
@@ -389,7 +389,7 @@ export default function OpportunitiesPage() {
                                       </div>
                                       <Link
                                         href={`/opportunities/${opp.id}`}
-                                        className="text-xs font-medium hover:underline line-clamp-2 leading-tight text-[#1a4731] dark:text-white"
+                                        className="text-xs font-medium hover:underline line-clamp-2 leading-tight text-brand dark:text-white"
                                         onClick={(e) => dragSnapshot.isDragging && e.preventDefault()}
                                       >
                                         {opp.name}
@@ -478,7 +478,7 @@ export default function OpportunitiesPage() {
                         <td className="px-5 py-3.5">
                           <Link
                             href={`/opportunities/${opp.id}`}
-                            className="font-medium hover:underline text-[#1a4731] dark:text-white"
+                            className="font-medium hover:underline text-brand dark:text-white"
                           >
                             {opp.name}
                           </Link>

@@ -282,7 +282,7 @@ export default function ProspectingPaceCard({
                     <td className="text-right px-5 py-2">
                       <div className="inline-flex items-center gap-2">
                         <div className="w-20 h-1.5 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
-                          <div className="h-full bg-[#1a4731] dark:bg-emerald-500" style={{ width: `${Math.min(100, pct)}%` }} />
+                          <div className="h-full bg-brand dark:bg-emerald-500" style={{ width: `${Math.min(100, pct)}%` }} />
                         </div>
                         <span className={`text-[11px] tabular-nums ${dim ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-400'}`}>{pct.toFixed(0)}%</span>
                       </div>

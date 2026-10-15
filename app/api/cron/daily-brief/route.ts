@@ -66,7 +66,7 @@ function buildHtml(
 ): string {
   // Pathway's brand green from the login screen (#1a4731) so the
   // email looks like it came from the CRM the reps already use.
-  const accent = '#1a4731';
+  const accent = 'var(--brand)';
   const taskItem = (t: EmailTask) =>
     `<tr><td style="padding:6px 0;border-bottom:1px solid #eee;">
         <div style="font-size:14px;color:#111;font-weight:600;">${esc(t.subject) || '(no subject)'}</div>

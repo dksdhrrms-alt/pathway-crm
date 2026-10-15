@@ -6,19 +6,154 @@
  * `dark:` utility to descendants of that class. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* =========================================================
+ *  DESIGN TOKENS — single source of truth for every color.
+ *
+ *  Previously the codebase hard-coded `#1a4731` 168 times,
+ *  `emerald-700/800/900` another 80 times, plus `#0F6E56`
+ *  and `#2d6a4f` scattered around. Theme changes were a
+ *  find-and-replace exercise.
+ *
+ *  Pattern follows shadcn/ui (which Linear, Vercel, Attio
+ *  all echo): semantic names (primary / surface / border)
+ *  rather than Tailwind palette names (emerald-700). Every
+ *  utility class below (`bg-brand`, `text-brand-fg`, etc.)
+ *  is wired into @theme at the bottom of this file.
+ * ========================================================= */
+
 :root {
+  /* ── Core surfaces ───────────────────────────────── */
   --background: #f9fafb;
   --foreground: #111827;
+  --surface: #ffffff;              /* cards, modals */
+  --surface-muted: #f3f4f6;        /* hover rows, subtle fills */
+  --surface-elevated: #ffffff;     /* popovers over modals */
+
+  /* ── Pathway brand (green) — ONE canonical shade.
+   *     Hover/active/tint derived from this. ──────── */
+  --brand: #1a4731;                /* Pathway green */
+  --brand-hover: #153a28;
+  --brand-active: #0f281e;
+  --brand-foreground: #ffffff;     /* text on brand bg */
+  --brand-tint: #e8f5ef;           /* 10% opacity look as solid */
+  --brand-ring: rgba(26, 71, 49, 0.35);
+
+  /* ── Sidebar (navy — second brand accent) ────────── */
+  --sidebar-bg: #1a3a5c;
+  --sidebar-fg: rgba(255, 255, 255, 0.90);
+  --sidebar-fg-muted: rgba(255, 255, 255, 0.55);
+  --sidebar-active: rgba(255, 255, 255, 0.15);
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+
+  /* ── Semantic colors ─────────────────────────────── */
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --input: #d1d5db;
+  --ring: var(--brand-ring);
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --info: #0369a1;
+  --info-foreground: #ffffff;
+
+  /* ── Shadow tokens (consistent elevation ramp) ─── */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+
+  /* ── Radius ramp (standardized) ────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
 }
 
 .dark {
   --background: #0b1220;
   --foreground: #e5e7eb;
+  --surface: #0f172a;              /* slate-900 */
+  --surface-muted: #1e293b;        /* slate-800 */
+  --surface-elevated: #1e293b;
+
+  /* Brand on dark: slightly brighter so it reads against the
+   * navy background. Keeps hex identity though. */
+  --brand: #2d8d5f;
+  --brand-hover: #37a870;
+  --brand-active: #257249;
+  --brand-foreground: #ffffff;
+  --brand-tint: rgba(45, 141, 95, 0.12);
+  --brand-ring: rgba(45, 141, 95, 0.45);
+
+  --sidebar-bg: #0f1e30;            /* darker navy */
+  --sidebar-fg: rgba(255, 255, 255, 0.88);
+  --sidebar-fg-muted: rgba(255, 255, 255, 0.50);
+  --sidebar-active: rgba(255, 255, 255, 0.12);
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #334155;
+  --input: #334155;
+
+  --destructive: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+  --info: #38bdf8;
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.40), 0 1px 2px -1px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.40), 0 2px 4px -2px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.50), 0 4px 6px -4px rgba(0, 0, 0, 0.30);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.55), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
 }
 
+/* ─────────────────────────────────────────────────────
+ *  @theme inline — maps the CSS variables above to
+ *  Tailwind utility namespaces. After this, you write:
+ *    bg-brand          text-brand-fg       border-border
+ *    bg-surface        text-muted-fg       ring-brand
+ *  and never touch a hex code in component code again.
+ * ───────────────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-elevated: var(--surface-elevated);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-active: var(--brand-active);
+  --color-brand-fg: var(--brand-foreground);
+  --color-brand-tint: var(--brand-tint);
+
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-fg: var(--sidebar-fg);
+
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-fg: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-fg: var(--warning-foreground);
+  --color-success: var(--success);
+  --color-success-fg: var(--success-foreground);
+  --color-info: var(--info);
+  --color-info-fg: var(--info-foreground);
+
   --font-sans: var(--font-geist-sans);
 }
 
@@ -33,34 +168,18 @@ body {
   height: 6px;
   width: 6px;
 }
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-.dark ::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
+::-webkit-scrollbar-track { background: var(--muted); }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
 /* ── Mobile Responsive ─────────────────────────────────────── */
 
 @media (max-width: 768px) {
-  /* Hamburger button */
   .hamburger-btn { display: flex !important; }
   .mobile-backdrop { display: block !important; }
 
-  /* Sidebar: slide from left */
   .sidebar-nav {
     position: fixed !important;
     left: -260px !important;
@@ -73,25 +192,20 @@ body {
   }
   .sidebar-nav.mobile-open { left: 0 !important; }
 
-  /* Main content: no left margin */
   .md\:ml-60 { margin-left: 0 !important; }
   main { padding-left: 12px !important; padding-right: 12px !important; }
 
-  /* Top bar: space for hamburger */
   .topbar-wrap { left: 0 !important; padding-left: 52px !important; }
   .topbar-search { display: none !important; }
 
-  /* Grids: stack */
   .grid.xl\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
   .grid.xl\:grid-cols-2 { grid-template-columns: 1fr !important; }
   .grid.sm\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
   .grid.sm\:grid-cols-3 { grid-template-columns: 1fr !important; }
 
-  /* Tables: horizontal scroll */
   table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   thead, tbody, tfoot { display: table; width: 100%; min-width: 600px; }
 
-  /* Modals: bottom sheet style */
   .fixed.inset-0.z-50.flex { align-items: flex-end !important; }
   .fixed.inset-0.z-50.flex > div:not(.fixed) {
     width: 100% !important; max-width: 100% !important;
@@ -100,32 +214,102 @@ body {
     margin: 0 !important;
   }
 
-  /* Prevent iOS zoom on input focus */
   input[type="text"], input[type="email"], input[type="password"],
   input[type="number"], input[type="date"], input[type="tel"],
   select, textarea {
     font-size: 16px !important;
   }
 
-  /* Kanban: horizontal scroll */
   .kanban-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 16px !important; }
   .kanban-col { min-width: 260px !important; flex-shrink: 0 !important; }
 
-  /* Charts: reduced height + scrollable */
   .recharts-responsive-container { min-height: 200px; }
   .chart-scroll-wrapper { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; padding-bottom: 8px !important; }
   .recharts-cartesian-axis-tick-value { font-size: 10px !important; }
 
-  /* Account 360: stack columns */
   .account-360-grid { grid-template-columns: 1fr !important; }
   .account-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
-/* ── Quick Log slide-up animation ──────────────────────────── */
+/* ── Sidebar collapsed mode ──────────────────────────────────
+ *  Sidebar.tsx writes data-sidebar-collapsed="1" on <html> when
+ *  the user clicks the collapse chevron. These rules then:
+ *   · shrink the main-content left margin from 240 → 64px, and
+ *   · hide the text label of every nav item inside the sidebar,
+ *     leaving the leading icon visible. Hover shows a tooltip
+ *     (title attribute). TopBar's `md:left-60` also follows. */
+@media (min-width: 768px) {
+  html[data-sidebar-collapsed="1"] .md\:ml-60 { margin-left: 64px !important; }
+  html[data-sidebar-collapsed="1"] .md\:left-60 { left: 64px !important; }
+
+  /* Hide text content next to nav icons. We purposely leave Icon
+   *  SVGs visible and keep gap/padding so hit targets stay large. */
+  html[data-sidebar-collapsed="1"] .sidebar-nav-label,
+  html[data-sidebar-collapsed="1"] .sidebar-brand-text,
+  html[data-sidebar-collapsed="1"] .sidebar-section-header,
+  html[data-sidebar-collapsed="1"] .sidebar-chevron,
+  html[data-sidebar-collapsed="1"] .sidebar-sub-section {
+    display: none !important;
+  }
+  /* Center the icon when the label is hidden. */
+  html[data-sidebar-collapsed="1"] .sidebar-nav-item {
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* ── Micro-interactions ──────────────────────────────────── */
+
+/* Interactive card hover lift — opt-in via `card-hover` class. */
+.card-hover {
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Button press "nudge" — opt-in via `press-nudge` class. */
+.press-nudge {
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+.press-nudge:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ── Animations ──────────────────────────────────────────── */
 @keyframes slideUp {
   from { transform: translateY(40px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-.animate-slideUp {
-  animation: slideUp 0.2s ease-out;
+.animate-slideUp { animation: slideUp 0.2s ease-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fadeIn { animation: fadeIn 0.15s ease-out; }
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.animate-modalIn { animation: modalIn 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* Skeleton shimmer — used by <Skeleton /> primitive. */
+@keyframes skeletonShimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--surface-muted) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s linear infinite;
+  border-radius: var(--radius-md);
 }

@@ -132,7 +132,7 @@ export function getRoleLabel(role: UserRole): string {
 }
 
 export const ROLE_COLORS: Record<UserRole, string> = {
-  administrative_manager: '#1a4731',
+  administrative_manager: 'var(--brand)',
   admin: '#1e40af',
   ceo: '#1a3a5c',
   sales_director: '#6d28d9',

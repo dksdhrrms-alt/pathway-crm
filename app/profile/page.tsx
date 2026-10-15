@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const { data: session } = useSession();
   const { currentUser, updateCurrentUser } = useUsers();
 
-  const primaryColor = '#1a4731';
+  const primaryColor = 'var(--brand)';
 
   const [name, setName] = useState(currentUser?.name ?? session?.user?.name ?? '');
   const [phone, setPhone] = useState(currentUser?.phone ?? '');

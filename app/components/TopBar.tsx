@@ -20,7 +20,7 @@ interface TopBarProps {
 const PRIMARY_COLOR = '#1a3a5c';
 
 const roleColors: Record<string, string> = {
-  administrative_manager: '#1a4731',
+  administrative_manager: 'var(--brand)',
   admin: '#1e40af',
   ceo: '#1a3a5c',
   sales_director: '#6d28d9',

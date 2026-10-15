@@ -150,7 +150,7 @@ export default function ScanCardPage() {
               {!result && !scanning && (
                 <button onClick={handleScan} style={{
                   marginTop: '12px', width: '100%', padding: '12px', borderRadius: '10px',
-                  border: 'none', background: '#1a4731', color: 'white', fontSize: '14px',
+                  border: 'none', background: 'var(--brand)', color: 'white', fontSize: '14px',
                   fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '8px',
                 }}>
@@ -175,7 +175,7 @@ export default function ScanCardPage() {
           {/* Results */}
           {result && (
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: '#1a4731' }}>Extracted Information</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: 'var(--brand)' }}>Extracted Information</h3>
               <div style={{ display: 'grid', gap: '12px' }}>
                 {[
                   { label: 'First Name', key: 'firstName' },
@@ -211,7 +211,7 @@ export default function ScanCardPage() {
                   <>
                     <button onClick={handleSaveContact} style={{
                       flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
-                      background: '#1a4731', color: 'white', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
+                      background: 'var(--brand)', color: 'white', fontSize: '14px', fontWeight: 500, cursor: 'pointer',
                     }}>
                       Save as Contact
                     </button>

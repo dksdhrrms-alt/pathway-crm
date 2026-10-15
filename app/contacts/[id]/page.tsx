@@ -72,7 +72,7 @@ export default function ContactDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 dark:text-gray-400 text-lg">Contact not found.</p>
-          <Link href="/contacts" className="mt-4 inline-block text-sm underline text-[#1a4731] dark:text-white">
+          <Link href="/contacts" className="mt-4 inline-block text-sm underline text-brand dark:text-white">
             Back to Contacts
           </Link>
         </div>
@@ -102,7 +102,7 @@ export default function ContactDetailPage() {
               <div className="flex items-start gap-4">
                 <div
                   className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-semibold flex-shrink-0"
-                  style={{ backgroundColor: '#1a4731' }}
+                  style={{ backgroundColor: 'var(--brand)' }}
                 >
                   {contact.firstName[0]}{contact.lastName[0]}
                 </div>
@@ -295,7 +295,7 @@ export default function ContactDetailPage() {
                         <Link
                           href={`/opportunities/${opp.id}`}
                           className="text-sm font-medium hover:underline"
-                          style={{ color: '#1a4731' }}
+                          style={{ color: 'var(--brand)' }}
                         >
                           {opp.name}
                         </Link>
@@ -321,7 +321,7 @@ export default function ContactDetailPage() {
               <button
                 onClick={() => { setLogModalType('Call'); setShowLogModal(true); }}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#1a4731' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 + Log Activity
               </button>

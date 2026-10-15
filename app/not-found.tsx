@@ -17,7 +17,7 @@ export default function NotFound() {
         >
           <svg
             className="w-8 h-8"
-            style={{ color: '#1a4731' }}
+            style={{ color: 'var(--brand)' }}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -53,7 +53,7 @@ export default function NotFound() {
           <Link
             href="/dashboard"
             className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center justify-center"
-            style={{ backgroundColor: '#1a4731' }}
+            style={{ backgroundColor: 'var(--brand)' }}
           >
             Go to Dashboard
           </Link>

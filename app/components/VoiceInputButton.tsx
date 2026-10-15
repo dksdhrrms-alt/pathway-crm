@@ -154,7 +154,7 @@ export default function VoiceInputButton({ onTranscript, size = 'md', title = 'V
     : state === 'processing' ? '#f59e0b'
     : state === 'error' ? (isDark ? '#7f1d1d' : '#fee2e2')
     : (isDark ? '#1e293b' : 'white');
-  const color = state === 'recording' || state === 'processing' ? 'white' : state === 'error' ? (isDark ? '#fca5a5' : '#991b1b') : '#1a4731';
+  const color = state === 'recording' || state === 'processing' ? 'white' : state === 'error' ? (isDark ? '#fca5a5' : '#991b1b') : 'var(--brand)';
   const border = state === 'idle' ? (isDark ? '1px solid #475569' : '1px solid #e5e7eb') : state === 'error' ? (isDark ? '1px solid #7f1d1d' : '1px solid #fecaca') : 'none';
 
   return (

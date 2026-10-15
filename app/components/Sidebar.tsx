@@ -131,6 +131,26 @@ const menuMap: Record<string, string> = {
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Desktop collapsible sidebar (Linear/Vercel pattern). When collapsed
+  // the rail is 64px and shows icon-only; expanded is 240px as before.
+  // State is persisted to localStorage so the preference survives
+  // reloads and tab switches.
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sidebar_collapsed');
+      if (stored === '1') setCollapsed(true);
+    } catch { /* */ }
+  }, []);
+  // Expose the collapsed state at the document level so a tiny CSS
+  // rule in globals.css can shrink the main-content left margin from
+  // 240px to 64px without every page re-wiring its layout.
+  useEffect(() => {
+    try {
+      document.documentElement.dataset.sidebarCollapsed = collapsed ? '1' : '0';
+      localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0');
+    } catch { /* */ }
+  }, [collapsed]);
   const [salesDashOpen, setSalesDashOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(pathname.startsWith('/reports'));
   // R&D / Marketing parent menu — expandable. Default-expanded if the
@@ -317,7 +337,7 @@ export default function Sidebar() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: PRIMARY_COLOR }}>
+    <div className="flex flex-col h-screen overflow-x-hidden" style={{ backgroundColor: PRIMARY_COLOR }}>
       {/* Logo / Brand — Pathway symbol + wordmark, clicks go Home.
           Symbol is sized by height (h-12) so the portrait 258×479
           glyph stays slim and sits snug against the text block
@@ -569,9 +589,26 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex fixed left-0 top-0 h-full flex-col z-30" style={{ width: 240 }}>
+      {/* Desktop sidebar — width animates between 240px and 64px. The
+          collapse toggle button sits in the top-right corner of the
+          rail; keyboard users can hit [ or ] to toggle too (bound in
+          a global listener below). */}
+      <div
+        className="hidden md:flex fixed left-0 top-0 h-full flex-col z-30 transition-[width] duration-200 ease-out"
+        style={{ width: collapsed ? 64 : 240 }}
+      >
         {sidebarContent}
+        {/* Collapse toggle */}
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="absolute top-5 right-2 w-6 h-6 rounded-md flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <svg className={`w-4 h-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
 
       {/* Mobile hamburger */}

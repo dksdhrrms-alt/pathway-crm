@@ -97,7 +97,7 @@ export default function SalesPage() {
                 <Link
                   href="/sales/upload"
                   className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#1a4731' }}
+                  style={{ backgroundColor: 'var(--brand)' }}
                 >
                   Upload Sales Data
                 </Link>
@@ -116,7 +116,7 @@ export default function SalesPage() {
                 <Link
                   href="/sales/upload"
                   className="inline-flex px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
-                  style={{ backgroundColor: '#1a4731' }}
+                  style={{ backgroundColor: 'var(--brand)' }}
                 >
                   Upload Sales Data
                 </Link>
@@ -128,7 +128,7 @@ export default function SalesPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Revenue</p>
-                  <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{formatCurrency(totalAmount)}</p>
+                  <p className="text-2xl font-bold mt-1" style={{ color: 'var(--brand)' }}>{formatCurrency(totalAmount)}</p>
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Volume</p>
@@ -150,7 +150,7 @@ export default function SalesPage() {
                       className={`px-3 py-1.5 text-sm font-medium rounded transition-all ${
                         activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
-                      style={activeTab === tab ? { backgroundColor: '#1a4731' } : {}}
+                      style={activeTab === tab ? { backgroundColor: 'var(--brand)' } : {}}
                     >
                       {tabLabels[tab]}
                     </button>
@@ -215,7 +215,7 @@ export default function SalesPage() {
                       type="button"
                       onClick={() => setVisibleCount((n) => n + PAGE_STEP)}
                       className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90"
-                      style={{ backgroundColor: '#1a4731' }}
+                      style={{ backgroundColor: 'var(--brand)' }}
                     >
                       Show {Math.min(PAGE_STEP, filtered.length - visibleCount)} more
                     </button>

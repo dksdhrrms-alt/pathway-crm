@@ -291,7 +291,7 @@ export default function SalesUploadPage() {
 
           {step === 'reading' && (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-12 text-center">
-              <div className="inline-block w-8 h-8 border-3 border-gray-200 dark:border-slate-700 border-t-[#1a4731] rounded-full animate-spin mb-4" />
+              <div className="inline-block w-8 h-8 border-3 border-gray-200 dark:border-slate-700 border-t-brand rounded-full animate-spin mb-4" />
               <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Reading file...</p>
             </div>
           )}
@@ -324,7 +324,7 @@ export default function SalesUploadPage() {
                   Skip duplicate records
                 </label>
                 <button onClick={reset} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
-                <button onClick={handleConfirmImport} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+                <button onClick={handleConfirmImport} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>
                   Confirm Import ({parsed.records.length} records)
                 </button>
               </div>
@@ -333,7 +333,7 @@ export default function SalesUploadPage() {
 
           {step === 'importing' && (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-12 text-center">
-              <div className="inline-block w-8 h-8 border-3 border-gray-200 dark:border-slate-700 border-t-[#1a4731] rounded-full animate-spin mb-4" />
+              <div className="inline-block w-8 h-8 border-3 border-gray-200 dark:border-slate-700 border-t-brand rounded-full animate-spin mb-4" />
               <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Processing records...</p>
             </div>
           )}
@@ -436,7 +436,7 @@ export default function SalesUploadPage() {
               )}
               <div className="flex justify-center gap-3">
                 <button onClick={reset} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Upload Another</button>
-                <button onClick={() => router.push('/sales')} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>View Sales Data</button>
+                <button onClick={() => router.push('/sales')} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>View Sales Data</button>
               </div>
             </div>
           )}

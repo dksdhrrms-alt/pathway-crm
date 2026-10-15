@@ -355,7 +355,7 @@ function ContactsPageInner() {
             <div className="flex items-center gap-2 flex-wrap">
               <ExportButton filename={`contacts-${new Date().toISOString().split('T')[0]}`} title="Contacts" columns={exportColumns} rows={filtered} />
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800">+ Import</button>
-              <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: '#1a4731' }}>+ New Contact</button>
+              <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--brand)' }}>+ New Contact</button>
             </div>
           </div>
 
@@ -461,7 +461,7 @@ function ContactsPageInner() {
                           switch (col.id) {
                             case 'name': return (
                               <td key={col.id} className="px-4 py-3">
-                                <Link href={`/contacts/${contact.id}`} className="font-semibold hover:underline text-[#1a4731] dark:text-white">
+                                <Link href={`/contacts/${contact.id}`} className="font-semibold hover:underline text-brand dark:text-white">
                                   {contact.firstName} {contact.lastName}
                                 </Link>
                               </td>
@@ -573,7 +573,7 @@ function ContactsPageInner() {
                           type="button"
                           onClick={() => setDisplayLimit((n) => n + PAGE_SIZE)}
                           className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90"
-                          style={{ backgroundColor: '#1a4731' }}
+                          style={{ backgroundColor: 'var(--brand)' }}
                         >
                           Show {Math.min(PAGE_SIZE, remaining)} more
                         </button>

@@ -380,7 +380,7 @@ export default function AccountsPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <ExportButton filename={`accounts-${new Date().toISOString().split('T')[0]}`} title="Accounts" columns={exportColumns} rows={filtered} />
               <button onClick={() => setShowImportModal(true)} className="px-4 py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800">+ Import</button>
-              <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>+ New Account</button>
+              <button onClick={() => setShowNewModal(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>+ New Account</button>
             </div>
           </div>
 
@@ -522,7 +522,7 @@ export default function AccountsPage() {
                                   ) : (
                                     <span className="text-blue-300 text-xs" title="Complex">↳</span>
                                   )}
-                                  <Link href={`/accounts/${acct.id}`} className={`font-medium hover:underline ${depth > 0 ? 'text-[#2d6a4f] dark:text-emerald-300' : 'text-[#1a4731] dark:text-white'}`}>{acct.name}</Link>
+                                  <Link href={`/accounts/${acct.id}`} className={`font-medium hover:underline ${depth > 0 ? 'text-[#2d6a4f] dark:text-emerald-300' : 'text-brand dark:text-white'}`}>{acct.name}</Link>
                                   {/* Disambiguation pill — only appears
                                       when this name collides with another
                                       account, so unique names stay clean. */}
@@ -576,7 +576,7 @@ export default function AccountsPage() {
                           case 'owner': return (
                             <td key={col.id} className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                {acct.ownerName && <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>{ownerInitials(acct.ownerName)}</div>}
+                                {acct.ownerName && <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: 'var(--brand)' }}>{ownerInitials(acct.ownerName)}</div>}
                                 <select value={acct.ownerId || ''}
                                   onChange={(e) => {
                                     const u = activeUsers.find((x) => x.id === e.target.value);
@@ -604,7 +604,7 @@ export default function AccountsPage() {
                           );
                           case 'phone': return <td key={col.id} className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{acct.phone || '—'}</td>;
                           case 'employee': return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-600 dark:text-gray-300">{acct.employee ?? '—'}</td>;
-                          case 'openDeals': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-200">{d?.count ? <span className="font-medium text-[#1a4731] dark:text-white">{d.count}</span> : <span className="text-gray-400 dark:text-gray-500">—</span>}</td>; }
+                          case 'openDeals': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-200">{d?.count ? <span className="font-medium text-brand dark:text-white">{d.count}</span> : <span className="text-gray-400 dark:text-gray-500">—</span>}</td>; }
                           case 'pipelineValue': { const d = dealsByAccount[acct.id]; return <td key={col.id} className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-200">{d?.value ? `$${(d.value / 1000).toFixed(0)}K` : <span className="text-gray-400 dark:text-gray-500 font-normal">—</span>}</td>; }
                           case 'website': return <td key={col.id} className="px-4 py-3 text-sm">{acct.website ? <a href={acct.website.startsWith('http') ? acct.website : `https://${acct.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block max-w-[130px]">{stripUrl(acct.website)}</a> : <span className="text-gray-400 dark:text-gray-500">—</span>}</td>;
                           case 'address': return <td key={col.id} className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400" title={acct.location || ''}>{acct.location ? (acct.location.length > 35 ? acct.location.slice(0, 35) + '...' : acct.location) : '—'}</td>;
@@ -635,7 +635,7 @@ export default function AccountsPage() {
                           type="button"
                           onClick={() => setDisplayLimit((n) => n + PAGE_SIZE)}
                           className="px-3 py-1.5 text-xs font-medium text-white rounded-md hover:opacity-90"
-                          style={{ backgroundColor: '#1a4731' }}
+                          style={{ backgroundColor: 'var(--brand)' }}
                         >
                           Show {Math.min(PAGE_SIZE, remaining)} more
                         </button>

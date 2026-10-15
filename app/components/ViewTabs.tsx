@@ -33,7 +33,7 @@ export default function ViewTabs({ activeView, onChange, teamLabel = 'Team', sho
             border: 'none',
             fontSize: '13px',
             fontWeight: activeView === tab.id ? 500 : 400,
-            background: activeView === tab.id ? '#1a4731' : 'transparent',
+            background: activeView === tab.id ? 'var(--brand)' : 'transparent',
             color: activeView === tab.id ? 'white' : '#666',
             cursor: 'pointer',
             transition: 'all 0.15s',

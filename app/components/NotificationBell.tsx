@@ -369,7 +369,7 @@ export default function NotificationBell() {
           position: 'relative', background: 'none', border: 'none',
           cursor: 'pointer', padding: '6px', borderRadius: '8px',
           fontSize: '20px', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', color: count > 0 ? '#1a4731' : '#888',
+          justifyContent: 'center', color: count > 0 ? 'var(--brand)' : '#888',
         }}
         title={`${count} notifications`}
       >

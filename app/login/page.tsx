@@ -64,7 +64,7 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ backgroundColor: '#1a4731' }}>
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ backgroundColor: 'var(--brand)' }}>
             <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
             </svg>
@@ -106,7 +106,7 @@ function LoginForm() {
 
             <button type="submit" disabled={loading}
               className="w-full py-2.5 px-4 text-sm font-semibold text-white rounded-lg transition-opacity disabled:opacity-60 mt-2"
-              style={{ backgroundColor: '#1a4731' }}>
+              style={{ backgroundColor: 'var(--brand)' }}>
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>

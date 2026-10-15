@@ -12,7 +12,7 @@ export const tenants: Tenant[] = [
   {
     id: 'tenant_001',
     name: 'Pathway Intermediates USA',
-    primaryColor: '#1a4731',
+    primaryColor: 'var(--brand)',
     industry: 'Livestock Feed Additives',
     logoInitials: 'PI',
     isActive: true,

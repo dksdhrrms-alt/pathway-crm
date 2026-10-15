@@ -208,7 +208,7 @@ export default function AccountDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">Account not found.</p>
-          <Link href="/accounts" className="mt-4 inline-block text-sm underline text-[#1a4731] dark:text-white">
+          <Link href="/accounts" className="mt-4 inline-block text-sm underline text-brand dark:text-white">
             Back to Accounts
           </Link>
         </div>
@@ -239,7 +239,7 @@ export default function AccountDetailPage() {
           {/* ========== HEADER ========== */}
           <div
             style={{
-              background: '#1a4731',
+              background: 'var(--brand)',
               color: 'white',
               padding: '24px 28px',
               borderRadius: '12px',
@@ -575,7 +575,7 @@ export default function AccountDetailPage() {
               {!editingNotes ? (
                 <button
                   onClick={() => { setNotesDraft(account.notes || ''); setEditingNotes(true); }}
-                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid #1a4731', color: '#1a4731', cursor: 'pointer' }}
+                  style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--brand)', color: 'var(--brand)', cursor: 'pointer' }}
                   className="bg-white dark:bg-slate-900"
                 >
                   {account.notes ? 'Edit' : '+ Add Summary'}
@@ -591,7 +591,7 @@ export default function AccountDetailPage() {
                   </button>
                   <button
                     onClick={() => { updateAccount(accountId, { notes: notesDraft.trim() }); setEditingNotes(false); setToast('Summary updated'); }}
-                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: 'none', color: 'white', background: '#1a4731', cursor: 'pointer' }}
+                    style={{ fontSize: '12px', padding: '5px 12px', borderRadius: '6px', border: 'none', color: 'white', background: 'var(--brand)', cursor: 'pointer' }}
                   >
                     Save
                   </button>
@@ -669,19 +669,19 @@ export default function AccountDetailPage() {
 
                 {/* Roll-up summary strip */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-                  <div style={{ background: '#f0f7ee', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 12px' }}>
+                  <div style={{ background: 'var(--brand-tint)', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 12px' }}>
                     <div style={{ fontSize: '10px', color: '#047857', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coverage</div>
                     <div style={{ fontSize: '17px', fontWeight: 600, color: '#0F6E56', marginTop: '2px' }}>{coveragePct}%</div>
                     <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>{activeComplexes}/{totalChildren} active in 30d</div>
                   </div>
                   <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
                     <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Pipeline</div>
-                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: 'var(--brand)', marginTop: '2px' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</div>
                     <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>{totalOpenDeals} open deal{totalOpenDeals !== 1 ? 's' : ''}</div>
                   </div>
                   <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
                     <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Sales</div>
-                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#1a4731', marginTop: '2px' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: 'var(--brand)', marginTop: '2px' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</div>
                     <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>lifetime · all complexes</div>
                   </div>
                   {topContributor && (
@@ -721,12 +721,12 @@ export default function AccountDetailPage() {
                         const sharePct = totalPipeline > 0 ? Math.round((pipeline / totalPipeline) * 100) : 0;
                         const salesPct = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
                         // Color buckets for share — emphasize bigger contributors
-                        const shareColor = sharePct >= 50 ? '#1a4731' : sharePct >= 25 ? '#2d6a4f' : sharePct >= 10 ? '#52a672' : '#9ca3af';
-                        const salesColor = salesPct >= 50 ? '#1a4731' : salesPct >= 25 ? '#2d6a4f' : salesPct >= 10 ? '#52a672' : '#9ca3af';
+                        const shareColor = sharePct >= 50 ? 'var(--brand)' : sharePct >= 25 ? '#2d6a4f' : sharePct >= 10 ? '#52a672' : '#9ca3af';
+                        const salesColor = salesPct >= 50 ? 'var(--brand)' : salesPct >= 25 ? '#2d6a4f' : salesPct >= 10 ? '#52a672' : '#9ca3af';
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px', maxWidth: 320, lineHeight: 1.35 }}>
-                              <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-[#1a4731] dark:text-white" title={c.name} style={{ wordBreak: 'break-word' }}>{c.name}</Link>
+                              <Link href={`/accounts/${c.id}`} className="font-medium no-underline text-brand dark:text-white" title={c.name} style={{ wordBreak: 'break-word' }}>{c.name}</Link>
                               <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px', whiteSpace: 'nowrap' }}>
                                 {c.industry || '—'}
                                 {c.country ? ` · ${c.country}` : ''}
@@ -738,8 +738,8 @@ export default function AccountDetailPage() {
                               <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color, whiteSpace: 'nowrap', display: 'inline-block' }}>{sb.label}</span>
                             </td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? '#0F6E56' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? '#1a4731' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? '#1a4731' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? 'var(--brand)' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? 'var(--brand)' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
                             <td style={{ padding: '10px', minWidth: 130 }}>
                               {sharePct > 0 ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -773,8 +773,8 @@ export default function AccountDetailPage() {
                       <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
                         <td style={{ padding: '10px', fontSize: '12px', fontWeight: 600, color: '#374151' }} colSpan={4}>TOTAL</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#0F6E56' }}>{rows.reduce((s, r) => s + r.recentActivityCount, 0) || '—'}</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalOpenDeals || '—'}</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#1a4731' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>{totalOpenDeals || '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>100%</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#374151' }}>{totalSales > 0 ? formatCurrency(totalSales) : '—'}</td>
                       </tr>
@@ -806,7 +806,7 @@ export default function AccountDetailPage() {
                     onClick={() => setShowLogModal(true)}
                     style={{
                       fontSize: '12px', padding: '5px 12px', borderRadius: '6px',
-                      border: '1px solid #1a4731', color: '#1a4731',
+                      border: '1px solid var(--brand)', color: 'var(--brand)',
                       cursor: 'pointer',
                     }}
                     className="bg-white dark:bg-slate-900"
@@ -989,7 +989,7 @@ export default function AccountDetailPage() {
                   <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px' }}>
                     {([['list', 'List'], ['quarterly', 'Q Compare']] as const).map(([v, l]) => (
                       <button key={v} onClick={() => setPurchaseView(v)}
-                        style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchaseView === v ? 600 : 400, background: purchaseView === v ? '#1a4731' : 'transparent', color: purchaseView === v ? 'white' : '#666', cursor: 'pointer' }}>
+                        style={{ padding: '3px 10px', borderRadius: '4px', border: 'none', fontSize: '11px', fontWeight: purchaseView === v ? 600 : 400, background: purchaseView === v ? 'var(--brand)' : 'transparent', color: purchaseView === v ? 'white' : '#666', cursor: 'pointer' }}>
                         {l}
                       </button>
                     ))}
@@ -1022,7 +1022,7 @@ export default function AccountDetailPage() {
                           <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                             <th style={{ textAlign: 'left', padding: '6px 8px', color: '#94a3b8', fontWeight: 500 }}>Period</th>
                             {years.map((y) => (
-                              <th key={y} colSpan={2} style={{ textAlign: 'center', padding: '6px 8px', color: '#1a4731', fontWeight: 600, borderLeft: '1px solid #e5e7eb' }}>{y}</th>
+                              <th key={y} colSpan={2} style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--brand)', fontWeight: 600, borderLeft: '1px solid #e5e7eb' }}>{y}</th>
                             ))}
                             <th style={{ textAlign: 'center', padding: '6px 8px', color: '#94a3b8', fontWeight: 500, borderLeft: '1px solid #e5e7eb' }}>YoY</th>
                           </tr>
@@ -1045,7 +1045,7 @@ export default function AccountDetailPage() {
                             return (
                               <tr key={q.label} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                                 <td style={{ padding: '8px 8px', fontWeight: 500 }}>{q.label}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 500, color: '#1a4731' }}>{curAmt > 0 ? formatCurrency(Math.round(curAmt)) : '--'}</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 500, color: 'var(--brand)' }}>{curAmt > 0 ? formatCurrency(Math.round(curAmt)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, q.months)) > 0 ? Math.round(sumKg(getData(curYear, q.months))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevAmt > 0 ? formatCurrency(Math.round(prevAmt)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, q.months)) > 0 ? Math.round(sumKg(getData(curYear - 1, q.months))).toLocaleString() : '--'}</td>
@@ -1061,9 +1061,9 @@ export default function AccountDetailPage() {
                             const prevYTD = sum(getData(curYear - 1, ytdMonths));
                             const yoy = prevYTD > 0 ? Math.round(((curYTD - prevYTD) / prevYTD) * 100) : null;
                             return (
-                              <tr style={{ borderTop: '2px solid #1a4731', background: '#f0f7ee', fontWeight: 600 }}>
-                                <td style={{ padding: '8px 8px', color: '#1a4731' }}>YTD</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'right', color: '#1a4731' }}>{curYTD > 0 ? formatCurrency(Math.round(curYTD)) : '--'}</td>
+                              <tr style={{ borderTop: '2px solid var(--brand)', background: 'var(--brand-tint)', fontWeight: 600 }}>
+                                <td style={{ padding: '8px 8px', color: 'var(--brand)' }}>YTD</td>
+                                <td style={{ padding: '8px 8px', textAlign: 'right', color: 'var(--brand)' }}>{curYTD > 0 ? formatCurrency(Math.round(curYTD)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear, ytdMonths))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevYTD > 0 ? formatCurrency(Math.round(prevYTD)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear - 1, ytdMonths))).toLocaleString() : '--'}</td>
@@ -1125,7 +1125,7 @@ export default function AccountDetailPage() {
                           <div style={{ display: 'flex', gap: '2px', background: '#f3f4f6', borderRadius: '6px', padding: '2px', flexWrap: 'wrap' }}>
                             {([['all', 'All'], ['q1', 'Q1'], ['q2', 'Q2'], ['q3', 'Q3'], ['q4', 'Q4'], ['ytd', 'YTD'], ['custom', 'Custom']] as const).map(([v, l]) => (
                               <button key={v} onClick={() => setPurchasePeriod(v)}
-                                style={{ padding: '3px 8px', borderRadius: '4px', border: 'none', fontSize: '10px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? '#1a4731' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
+                                style={{ padding: '3px 8px', borderRadius: '4px', border: 'none', fontSize: '10px', fontWeight: purchasePeriod === v ? 600 : 400, background: purchasePeriod === v ? 'var(--brand)' : 'transparent', color: purchasePeriod === v ? 'white' : '#666', cursor: 'pointer' }}>
                                 {l}
                               </button>
                             ))}
@@ -1149,7 +1149,7 @@ export default function AccountDetailPage() {
                           )}
                           <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             <span>{Math.round(totalKg).toLocaleString()} kg</span>
-                            <span style={{ fontWeight: 600, color: '#1a4731' }}>{formatCurrency(Math.round(totalAmt))}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--brand)' }}>{formatCurrency(Math.round(totalAmt))}</span>
                             {prevTotal > 0 && (() => {
                               const yoy = Math.round(((totalAmt - prevTotal) / prevTotal) * 100);
                               return <span style={{ fontWeight: 600, color: yoy >= 0 ? '#0F6E56' : '#E24B4A' }}>vs LY: {yoy >= 0 ? '+' : ''}{yoy}%</span>;
@@ -1177,7 +1177,7 @@ export default function AccountDetailPage() {
                                 </span>
                               </div>
                               <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', background: '#1a4731', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--brand)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
                               </div>
                             </div>
                           );
@@ -1199,12 +1199,12 @@ export default function AccountDetailPage() {
                                     <span style={{ color: '#94a3b8', marginLeft: '8px' }}>{formatDate(sale.date)}</span>
                                     {(sale.volumeKg || 0) > 0 && <span style={{ color: '#aaa', marginLeft: '6px' }}>{Math.round(sale.volumeKg).toLocaleString()} kg</span>}
                                   </div>
-                                  <span style={{ fontWeight: 500, color: '#1a4731' }}>{formatCurrency(Math.round(Number(sale.amount)))}</span>
+                                  <span style={{ fontWeight: 500, color: 'var(--brand)' }}>{formatCurrency(Math.round(Number(sale.amount)))}</span>
                                 </div>
                               ))}
                               {filtered.length > 5 && (
                                 <button onClick={() => setShowAllTx(!showAllTx)}
-                                  style={{ marginTop: '10px', width: '100%', padding: '8px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500 }}>
+                                  style={{ marginTop: '10px', width: '100%', padding: '8px', background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', color: 'var(--brand)', fontWeight: 500 }}>
                                   {showAllTx ? 'Show less' : `+ ${filtered.length - 5} more transactions`}
                                 </button>
                               )}
@@ -1248,7 +1248,7 @@ export default function AccountDetailPage() {
                         <div
                           style={{
                             width: '32px', height: '32px', borderRadius: '50%',
-                            background: '#1a4731', color: 'white',
+                            background: 'var(--brand)', color: 'white',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontSize: '11px', fontWeight: 500, flexShrink: 0,
                           }}
@@ -1276,7 +1276,7 @@ export default function AccountDetailPage() {
                             style={{
                               fontSize: '11px', padding: '3px 8px',
                               border: '1px solid #e5e7eb', borderRadius: '4px',
-                              color: '#1a4731', textDecoration: 'none',
+                              color: 'var(--brand)', textDecoration: 'none',
                             }}
                           >
                             📞
@@ -1291,7 +1291,7 @@ export default function AccountDetailPage() {
                     style={{
                       marginTop: '10px', width: '100%', padding: '8px',
                       background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px',
-                      cursor: 'pointer', fontSize: '12px', color: '#1a4731', fontWeight: 500,
+                      cursor: 'pointer', fontSize: '12px', color: 'var(--brand)', fontWeight: 500,
                     }}
                   >
                     {showAllContacts ? 'Show less' : `+ ${accountContacts.length - 5} more contacts`}
@@ -1350,7 +1350,7 @@ export default function AccountDetailPage() {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                           <div style={{ fontSize: '13px', fontWeight: 500, flex: 1, marginRight: '8px' }}>{opp.name}</div>
-                          <div style={{ fontSize: '13px', fontWeight: 500, color: '#1a4731', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
                             {formatCurrency(opp.amount)}
                           </div>
                         </div>

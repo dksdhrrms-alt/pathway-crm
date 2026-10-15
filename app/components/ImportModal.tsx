@@ -379,7 +379,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               )}
               <input ref={fileRef} type="file" accept={type === 'contacts' ? '.xlsx,.xls,.csv,.vcf' : '.xlsx,.xls,.csv'} className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
             </div>
-            <button onClick={downloadTemplate} className="mt-3 text-sm font-medium hover:underline" style={{ color: '#1a4731' }}>
+            <button onClick={downloadTemplate} className="mt-3 text-sm font-medium hover:underline" style={{ color: 'var(--brand)' }}>
               Download Template
             </button>
           </div>
@@ -407,7 +407,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setStep('upload')} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Back</button>
-              <button onClick={() => setStep('preview')} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+              <button onClick={() => setStep('preview')} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>
                 Next: Preview
               </button>
             </div>
@@ -518,7 +518,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
               <div><p className="text-2xl font-bold text-amber-500 dark:text-amber-400">{result.skipped}</p><p className="text-xs text-gray-500 dark:text-gray-400">Skipped</p></div>
               {result.errors > 0 && <div><p className="text-2xl font-bold text-red-500 dark:text-red-400">{result.errors}</p><p className="text-xs text-gray-500 dark:text-gray-400">Errors</p></div>}
             </div>
-            <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>Close</button>
+            <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>Close</button>
           </div>
         )}
       </div>

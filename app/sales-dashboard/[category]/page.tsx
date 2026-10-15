@@ -345,7 +345,7 @@ export default function SalesDashboardPage() {
                 {[2024, 2025, 2026].map((y) => (
                   <button key={y} onClick={() => setYear(y)}
                     className={`px-3 py-1 text-sm font-medium rounded transition-all ${year === y ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-                    style={year === y ? { backgroundColor: '#1a4731' } : {}}
+                    style={year === y ? { backgroundColor: 'var(--brand)' } : {}}
                   >{y}</button>
                 ))}
               </div>
@@ -354,7 +354,7 @@ export default function SalesDashboardPage() {
                 {([['all', 'All'], ['q1', 'Q1'], ['q2', 'Q2'], ['q3', 'Q3'], ['q4', 'Q4'], ['ytd', 'YTD']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => setQuarterFilter(v)}
                     className={`px-2.5 py-1 text-xs font-medium rounded transition-all ${quarterFilter === v ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-                    style={quarterFilter === v ? { backgroundColor: '#1a4731' } : {}}
+                    style={quarterFilter === v ? { backgroundColor: 'var(--brand)' } : {}}
                   >{l}</button>
                 ))}
               </div>
@@ -366,7 +366,7 @@ export default function SalesDashboardPage() {
                   </button>
                   <button onClick={() => setShowAcctBudgetModal(true)}
                     className="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90"
-                    style={{ backgroundColor: '#1a4731', color: 'white' }}>
+                    style={{ backgroundColor: 'var(--brand)', color: 'white' }}>
                     Account Budgets
                   </button>
                 </>
@@ -391,7 +391,7 @@ export default function SalesDashboardPage() {
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Annual Actual {year}</p>
-              <p className="text-2xl font-bold mt-1" style={{ color: '#1a4731' }}>{fmt(totalActual)}</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--brand)' }}>{fmt(totalActual)}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{salesData.length} records loaded</p>
             </div>
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5">
@@ -425,7 +425,7 @@ export default function SalesDashboardPage() {
                     <Tooltip formatter={(value, name) => name === 'Achievement %' ? `${value}%` : fmt(Number(value))} />
                     <Legend />
                     <Bar yAxisId="left" dataKey="Budget" fill="#94a3b8" radius={[2, 2, 0, 0]} barSize={20} />
-                    <Bar yAxisId="left" dataKey="Actual" fill="#1a4731" radius={[2, 2, 0, 0]} barSize={20} />
+                    <Bar yAxisId="left" dataKey="Actual" fill="var(--brand)" radius={[2, 2, 0, 0]} barSize={20} />
                     <Line yAxisId="right" type="monotone" dataKey="Achievement %" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4, fill: '#f59e0b' }} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -497,7 +497,7 @@ export default function SalesDashboardPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium dark:text-gray-300" style={{ color: isFuture ? '#999' : '#1a4731' }}>{hasData && !isFuture ? fmt(act) : '—'}</td>
+                      <td className="px-4 py-3 text-right font-medium dark:text-gray-300" style={{ color: isFuture ? '#999' : 'var(--brand)' }}>{hasData && !isFuture ? fmt(act) : '—'}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="font-semibold" style={{ color: hasData && !isFuture ? pctColor(pct) : '#9ca3af' }}>{hasData && !isFuture ? `${pct}%` : '—'}</span>
                       </td>
@@ -511,7 +511,7 @@ export default function SalesDashboardPage() {
                       <td className={`px-4 py-3 text-right text-gray-700 dark:text-gray-300 ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`} style={{ borderLeft: '2px solid #e5e7eb' }}>
                         {ytdBgt > 0 && !isFuture ? fmt(ytdBgt) : '—'}
                       </td>
-                      <td className={`px-4 py-3 text-right font-medium ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`} style={{ color: isFuture ? '#ccc' : '#1a4731' }}>
+                      <td className={`px-4 py-3 text-right font-medium ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`} style={{ color: isFuture ? '#ccc' : 'var(--brand)' }}>
                         <span className="dark:!text-emerald-400">{ytdAct > 0 && !isFuture ? fmt(ytdAct) : '—'}</span>
                       </td>
                       <td className={`px-4 py-3 text-right ${isCurrent ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-slate-800/40'}`}>
@@ -534,7 +534,7 @@ export default function SalesDashboardPage() {
                   const ytdAct = monthlyActuals.slice(0, ytdIdx + 1).reduce((s, a) => s + a, 0);
                   const ytdPct = ytdBgt > 0 ? Math.round((ytdAct / ytdBgt) * 100) : 0;
                   return (
-                    <tr style={{ background: '#1a4731', color: 'white', fontWeight: 600 }}>
+                    <tr style={{ background: 'var(--brand)', color: 'white', fontWeight: 600 }}>
                       <td className="px-4 py-3">TOTAL</td>
                       <td className="px-4 py-3 text-right">{fmt(totalBudget)}</td>
                       <td className="px-4 py-3 text-right">{fmt(totalActual)}</td>
@@ -559,14 +559,14 @@ export default function SalesDashboardPage() {
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 capitalize mb-3">{cb.category}</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Budget</span><span className="font-medium dark:text-gray-200">{fmt(cb.budget)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Actual</span><span className="font-medium" style={{ color: '#1a4731' }}>{fmt(cb.actual)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Actual</span><span className="font-medium" style={{ color: 'var(--brand)' }}>{fmt(cb.actual)}</span></div>
                     <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-2">
                       <div className="h-2 rounded-full" style={{ width: `${Math.min(cb.pct, 100)}%`, backgroundColor: pctColor(cb.pct) }} />
                     </div>
                     <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Achievement</span><span className="font-semibold" style={{ color: pctColor(cb.pct) }}>{cb.pct}%</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Top Product</span><span className="text-xs text-gray-700 dark:text-gray-300 truncate max-w-[120px]">{cb.topProduct}</span></div>
                   </div>
-                  <Link href={`/sales-dashboard/${cb.category}`} className="block mt-3 text-xs font-medium hover:underline" style={{ color: '#1a4731' }}>
+                  <Link href={`/sales-dashboard/${cb.category}`} className="block mt-3 text-xs font-medium hover:underline" style={{ color: 'var(--brand)' }}>
                     View Details →
                   </Link>
                 </div>
@@ -611,7 +611,7 @@ export default function SalesDashboardPage() {
                           <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2 flex-wrap">
                               {(() => { const match = crmAccounts.find((ac) => ac.name === a.name); return match ? (
-                                <a href={`/accounts/${match.id}`} onClick={(e) => e.stopPropagation()} style={{ color: '#1a4731', textDecoration: 'none' }} className="hover:underline dark:!text-emerald-400">{a.name}</a>
+                                <a href={`/accounts/${match.id}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--brand)', textDecoration: 'none' }} className="hover:underline dark:!text-emerald-400">{a.name}</a>
                               ) : <span className="text-gray-800 dark:text-gray-100">{a.name}</span>; })()}
                               {a.isIntegration && (
                                 <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold border border-blue-100 dark:border-blue-800" title={`Includes sales rolled up from ${a.childCount} child account${a.childCount > 1 ? 's' : ''}`}>
@@ -621,7 +621,7 @@ export default function SalesDashboardPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3"><span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 capitalize">{a.category}</span></td>
-                          <td className="px-4 py-3 text-right font-medium" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{fmt(a.amount)}</span></td>
+                          <td className="px-4 py-3 text-right font-medium" style={{ color: 'var(--brand)' }}><span className="dark:!text-emerald-400">{fmt(a.amount)}</span></td>
                           <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">{a.pctOfTotal}%</td>
                           <td className="px-4 py-3 text-right">
                             {trend !== null ? (
@@ -662,7 +662,7 @@ export default function SalesDashboardPage() {
                                                 {amt > 0 ? fmt(amt) : '—'}
                                               </td>
                                             ))}
-                                            <td className="text-right px-3 py-1.5 font-semibold bg-gray-50 dark:bg-slate-800/50" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{fmt(p.total)}</span></td>
+                                            <td className="text-right px-3 py-1.5 font-semibold bg-gray-50 dark:bg-slate-800/50" style={{ color: 'var(--brand)' }}><span className="dark:!text-emerald-400">{fmt(p.total)}</span></td>
                                           </tr>
                                         ))}
                                         {/* Monthly totals row */}
@@ -676,7 +676,7 @@ export default function SalesDashboardPage() {
                                               </td>
                                             );
                                           })}
-                                          <td className="text-right px-3 py-2 font-bold" style={{ color: '#1a4731', backgroundColor: '#e8f5e9' }}><span className="dark:!text-emerald-300">{fmt(a.amount)}</span></td>
+                                          <td className="text-right px-3 py-2 font-bold" style={{ color: 'var(--brand)', backgroundColor: '#e8f5e9' }}><span className="dark:!text-emerald-300">{fmt(a.amount)}</span></td>
                                         </tr>
                                       </tbody>
                                     </table>
@@ -818,7 +818,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
                         </td>
                       );
                     })}
-                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontSize: '11px', color: annual > 0 ? '#1a4731' : '#ccc' }}>
+                    <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, fontSize: '11px', color: annual > 0 ? 'var(--brand)' : '#ccc' }}>
                       {annual > 0 ? '$' + Math.round(annual).toLocaleString() : '--'}
                     </td>
                   </tr>
@@ -831,20 +831,20 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
         {/* Totals bar — fixed above footer */}
         <div style={{ padding: '10px 16px', background: '#f0f7ee', borderTop: '2px solid #1a4731', borderBottom: '0.5px solid #e5e7eb', flexShrink: 0, overflowX: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', minWidth: '800px' }}>
-            <div style={{ width: '150px', flexShrink: 0, fontSize: '12px', fontWeight: 700, color: '#1a4731', padding: '0 10px' }}>Total Budget</div>
+            <div style={{ width: '150px', flexShrink: 0, fontSize: '12px', fontWeight: 700, color: 'var(--brand)', padding: '0 10px' }}>Total Budget</div>
             {MONTHS.map((_, i) => {
               const mo = i + 1;
               const moTotal = accounts.reduce((s, acct) => s + (parseFloat(inputs[acct]?.[mo] || '') || 0), 0);
-              return <div key={i} style={{ minWidth: '58px', padding: '0 2px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: moTotal > 0 ? '#1a4731' : '#aaa' }}>{moTotal > 0 ? '$' + Math.round(moTotal / 1000) + 'K' : '--'}</div>;
+              return <div key={i} style={{ minWidth: '58px', padding: '0 2px', textAlign: 'center', fontSize: '11px', fontWeight: 600, color: moTotal > 0 ? 'var(--brand)' : '#aaa' }}>{moTotal > 0 ? '$' + Math.round(moTotal / 1000) + 'K' : '--'}</div>;
             })}
-            <div style={{ marginLeft: 'auto', padding: '0 10px', fontSize: '13px', fontWeight: 700, color: '#1a4731', whiteSpace: 'nowrap' }}>
+            <div style={{ marginLeft: 'auto', padding: '0 10px', fontSize: '13px', fontWeight: 700, color: 'var(--brand)', whiteSpace: 'nowrap' }}>
               {(() => { const gt = accounts.reduce((s, acct) => s + Object.values(inputs[acct] || {}).reduce((ss, v) => ss + (parseFloat(v) || 0), 0), 0); return gt > 0 ? '$' + Math.round(gt).toLocaleString() : '--'; })()}
             </div>
           </div>
         </div>
         <div style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '8px', flexShrink: 0 }}>
           <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer', fontSize: '13px' }} className="bg-white dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100">Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: saving ? '#e5e7eb' : '#1a4731', color: saving ? '#888' : 'white', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: saving ? '#e5e7eb' : 'var(--brand)', color: saving ? '#888' : 'white', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>
             {saving ? 'Saving...' : 'Save All'}
           </button>
         </div>
@@ -929,7 +929,7 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
           <button onClick={handleSave} disabled={saving}
             className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: '#1a4731' }}>
+            style={{ backgroundColor: 'var(--brand)' }}>
             {saving ? 'Saving...' : 'Save Budget'}
           </button>
         </div>
@@ -968,7 +968,7 @@ function AccountBreakdown({ month, year, category, salesData }: { month: number;
 
   return (
     <div style={{ padding: '12px 16px 4px 40px' }}>
-      <p style={{ fontSize: '12px', fontWeight: 600, color: '#1a4731', marginBottom: '8px' }}>Account Breakdown ({sorted.length} accounts)</p>
+      <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', marginBottom: '8px' }}>Account Breakdown ({sorted.length} accounts)</p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -988,8 +988,8 @@ function AccountBreakdown({ month, year, category, salesData }: { month: number;
                 {pIdx === 0 && (
                   <td rowSpan={prods.length} style={{ padding: '8px 10px', fontWeight: 500, verticalAlign: 'top', borderRight: '0.5px solid #e5e7eb' }}>
                     {(() => { const match = crmAccts.find((a) => a.name === acct.name); return match ? (
-                      <a href={`/accounts/${match.id}`} style={{ color: '#1a4731', textDecoration: 'none' }} onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }} onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}>{acct.name}</a>
-                    ) : <span style={{ color: '#1a4731' }}>{acct.name}</span>; })()}
+                      <a href={`/accounts/${match.id}`} style={{ color: 'var(--brand)', textDecoration: 'none' }} onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }} onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}>{acct.name}</a>
+                    ) : <span style={{ color: 'var(--brand)' }}>{acct.name}</span>; })()}
                     <div style={{ fontSize: '10px', color: '#888', fontWeight: 400, marginTop: '2px' }}>${Math.round(acct.totalAmount).toLocaleString()}</div>
                   </td>
                 )}
@@ -1007,9 +1007,9 @@ function AccountBreakdown({ month, year, category, salesData }: { month: number;
         </tbody>
         <tfoot>
           <tr style={{ borderTop: '1px solid #e5e7eb', background: '#f0f7ee' }}>
-            <td colSpan={3} style={{ padding: '6px 10px', fontWeight: 600, color: '#1a4731', fontSize: '11px' }}>Total ({sorted.length} accounts)</td>
-            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: '#1a4731' }}>${Math.round(grandTotal).toLocaleString()}</td>
-            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: '#1a4731' }}>100%</td>
+            <td colSpan={3} style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--brand)', fontSize: '11px' }}>Total ({sorted.length} accounts)</td>
+            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--brand)' }}>${Math.round(grandTotal).toLocaleString()}</td>
+            <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--brand)' }}>100%</td>
           </tr>
         </tfoot>
       </table>
@@ -1063,7 +1063,7 @@ function ManagerBreakdown({ month, year, category, salesData }: { month: number;
                 <td style={{ padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{
-                      width: '28px', height: '28px', borderRadius: '50%', background: '#1a4731',
+                      width: '28px', height: '28px', borderRadius: '50%', background: 'var(--brand)',
                       color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: '10px', fontWeight: 600, flexShrink: 0,
                     }}>
@@ -1081,7 +1081,7 @@ function ManagerBreakdown({ month, year, category, salesData }: { month: number;
                 <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                     <div style={{ width: '60px', height: '4px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.min(Number(pct), 100)}%`, height: '100%', background: '#1a4731', borderRadius: '2px' }} />
+                      <div style={{ width: `${Math.min(Number(pct), 100)}%`, height: '100%', background: 'var(--brand)', borderRadius: '2px' }} />
                     </div>
                     <span style={{ color: '#666', minWidth: '36px', textAlign: 'right', fontSize: '12px' }}>{pct}%</span>
                   </div>
@@ -1092,10 +1092,10 @@ function ManagerBreakdown({ month, year, category, salesData }: { month: number;
         </tbody>
         <tfoot>
           <tr style={{ borderTop: '1px solid #e5e7eb', background: '#E1F5EE' }}>
-            <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1a4731', fontSize: '12px' }}>Total ({sorted.length} managers)</td>
+            <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--brand)', fontSize: '12px' }}>Total ({sorted.length} managers)</td>
             <td style={{ padding: '8px 12px', textAlign: 'right', color: '#666', fontSize: '12px', fontWeight: 500 }}>{Math.round(totalVol).toLocaleString()} kg</td>
-            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#1a4731' }}>${Math.round(totalAmount).toLocaleString()}</td>
-            <td style={{ padding: '8px 12px', textAlign: 'right', color: '#1a4731', fontWeight: 600 }}>100%</td>
+            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: 'var(--brand)' }}>${Math.round(totalAmount).toLocaleString()}</td>
+            <td style={{ padding: '8px 12px', textAlign: 'right', color: 'var(--brand)', fontWeight: 600 }}>100%</td>
           </tr>
         </tfoot>
       </table>

@@ -89,7 +89,7 @@ export default function CommentThread({ parentType, parentId }: Props) {
           disabled={!text.trim() || submitting}
           style={{
             padding: '6px 12px', borderRadius: '6px', border: 'none',
-            background: text.trim() ? '#1a4731' : '#e5e7eb',
+            background: text.trim() ? 'var(--brand)' : '#e5e7eb',
             color: text.trim() ? 'white' : '#aaa',
             fontSize: '11px', fontWeight: 500, cursor: text.trim() ? 'pointer' : 'not-allowed',
             whiteSpace: 'nowrap',

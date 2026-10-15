@@ -4,14 +4,35 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCRM } from '@/lib/CRMContext';
 
-type Result = { type: 'Account' | 'Contact' | 'Opportunity' | 'Activity'; id: string; name: string; sub: string; href: string };
+type Result = { type: 'Account' | 'Contact' | 'Opportunity' | 'Activity' | 'Action'; id: string; name: string; sub: string; href: string };
 
 const TYPE_COLOR: Record<string, string> = {
   Account: 'bg-blue-100 text-blue-700',
   Contact: 'bg-green-100 text-green-700',
   Opportunity: 'bg-purple-100 text-purple-700',
   Activity: 'bg-orange-100 text-orange-700',
+  Action: 'bg-emerald-100 text-emerald-700',
 };
+
+// Static actions — "do this thing" results. Match on the first synonym
+// that appears in the query. Linear/Raycast pattern: a Cmd+K palette
+// isn't just search, it's "do anything in the app".
+const ACTIONS: { name: string; sub: string; href: string; keywords: string[] }[] = [
+  { name: 'Create new account',       sub: 'Add a company',           href: '/accounts?new=1',       keywords: ['new', 'add', 'create', 'account', 'company'] },
+  { name: 'Create new contact',       sub: 'Add a person',            href: '/contacts?new=1',       keywords: ['new', 'add', 'create', 'contact', 'person'] },
+  { name: 'Create new opportunity',   sub: 'Add a deal',              href: '/opportunities?new=1', keywords: ['new', 'add', 'create', 'opportunity', 'deal', 'opp'] },
+  { name: 'Create new task',          sub: 'Add a follow-up',         href: '/tasks?new=1',          keywords: ['new', 'add', 'create', 'task', 'todo', 'follow'] },
+  { name: 'Log activity',             sub: 'Call / meeting / email',  href: '/dashboard?log=1',      keywords: ['log', 'activity', 'call', 'meeting', 'email', 'note'] },
+  { name: 'Go to Dashboard',          sub: 'Home',                    href: '/dashboard',            keywords: ['dashboard', 'home'] },
+  { name: 'Go to Accounts',           sub: 'All accounts',            href: '/accounts',             keywords: ['accounts', 'list'] },
+  { name: 'Go to Contacts',           sub: 'All contacts',            href: '/contacts',             keywords: ['contacts', 'list'] },
+  { name: 'Go to Opportunities',      sub: 'Deal pipeline',           href: '/opportunities',        keywords: ['opportunities', 'opps', 'deals', 'pipeline'] },
+  { name: 'Go to Trials',             sub: 'Trial Tracker',           href: '/trials',               keywords: ['trials', 'tracker'] },
+  { name: 'Go to Reports',            sub: 'Weekly reports',          href: '/reports',              keywords: ['reports', 'weekly'] },
+  { name: 'Go to Inventory',          sub: 'Stock + forecast',        href: '/inventory',            keywords: ['inventory', 'stock', 'forecast'] },
+  { name: 'Go to Admin',              sub: 'Settings & users',        href: '/admin',                keywords: ['admin', 'settings', 'users'] },
+  { name: 'Go to Admin-Marketing',    sub: 'Product catalog',         href: '/admin-marketing',      keywords: ['marketing', 'catalog', 'product'] },
+];
 
 // Wait this long after the last keystroke before re-running the cross-entity
 // scan. Long enough to skip "type a word" intermediate states (avoids 4-5
@@ -81,6 +102,8 @@ export default function GlobalSearch() {
     if (trimmed.length < MIN_QUERY_LENGTH) return [];
     const q = trimmed.toLowerCase();
     const items: Result[] = [];
+
+    // Entity matches first — most queries are "I want to find X".
     accounts.filter(a => a.name.toLowerCase().includes(q)).slice(0, 4)
       .forEach(a => items.push({ type: 'Account', id: a.id, name: a.name, sub: String(a.industry || a.category || ''), href: `/accounts/${a.id}` }));
     contacts.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(q)).slice(0, 4)
@@ -89,7 +112,16 @@ export default function GlobalSearch() {
       .forEach(o => items.push({ type: 'Opportunity', id: o.id, name: o.name, sub: `${o.stage} · $${Number(o.amount).toLocaleString()}`, href: `/opportunities/${o.id}` }));
     activities.filter(a => (a.subject || '').toLowerCase().includes(q)).slice(0, 3)
       .forEach(a => items.push({ type: 'Activity', id: a.id, name: a.subject, sub: `${a.type} · ${a.date}`, href: `/accounts/${a.accountId}` }));
-    return items.slice(0, 10);
+
+    // Actions — append matching "do this thing" commands. Linear/Raycast
+    // pattern: a Cmd+K palette is a search AND an action launcher.
+    for (const a of ACTIONS) {
+      if (a.keywords.some(k => k.includes(q)) || a.name.toLowerCase().includes(q)) {
+        items.push({ type: 'Action', id: a.href, name: a.name, sub: a.sub, href: a.href });
+      }
+    }
+
+    return items.slice(0, 12);
   }, [debouncedQuery, accounts, contacts, opportunities, activities]);
 
   useEffect(() => { setSelectedIdx(0); }, [results]);

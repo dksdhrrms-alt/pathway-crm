@@ -115,7 +115,7 @@ export default function TasksPage() {
               <button
                 onClick={() => setShowNewTaskModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#1a4731' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 + New Task
               </button>
@@ -151,7 +151,7 @@ export default function TasksPage() {
                 className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center gap-1.5 ${
                   activeTab === tab ? 'text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
-                style={activeTab === tab ? { backgroundColor: '#1a4731' } : {}}
+                style={activeTab === tab ? { backgroundColor: 'var(--brand)' } : {}}
               >
                 {tab}
                 <span

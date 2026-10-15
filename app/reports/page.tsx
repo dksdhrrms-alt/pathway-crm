@@ -409,7 +409,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                 onClick={handleAISummary}
                 disabled={isGenerating}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all"
-                style={{ backgroundColor: isGenerating ? '#e5e7eb' : '#1a4731', color: isGenerating ? '#888' : 'white', cursor: isGenerating ? 'not-allowed' : 'pointer' }}
+                style={{ backgroundColor: isGenerating ? '#e5e7eb' : 'var(--brand)', color: isGenerating ? '#888' : 'white', cursor: isGenerating ? 'not-allowed' : 'pointer' }}
               >
                 {isGenerating ? '⏳ Generating...' : '✨ AI Weekly Report'}
               </button>
@@ -537,7 +537,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                         <div className="flex items-center gap-3">
                           <div
                             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 overflow-hidden"
-                            style={{ backgroundColor: user.profilePhoto ? 'transparent' : '#1a4731' }}
+                            style={{ backgroundColor: user.profilePhoto ? 'transparent' : 'var(--brand)' }}
                           >
                             {user.profilePhoto ? (
                               <img src={user.profilePhoto} alt={user.name} width={32} height={32} loading="lazy" decoding="async" className="w-8 h-8 object-cover" />
@@ -629,7 +629,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     <button onClick={() => setSelectedUserId('all')}
                       className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
-                      style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
+                      style={selectedUserId === 'all' ? { backgroundColor: 'var(--brand)' } : {}}>
                       All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>({totalCount})</span>
                     </button>
                     {usersWithCounts.map(({ u, count }) => {
@@ -638,9 +638,9 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                       return (
                         <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
                           className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
-                          style={active ? { backgroundColor: '#1a4731' } : {}}>
+                          style={active ? { backgroundColor: 'var(--brand)' } : {}}>
                           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
-                            style={!active ? { backgroundColor: '#1a4731' } : {}}>
+                            style={!active ? { backgroundColor: 'var(--brand)' } : {}}>
                             {initials}
                           </span>
                           {u.name}
@@ -782,7 +782,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         <button onClick={() => setSelectedUserId('all')}
                           className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${selectedUserId === 'all' ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
-                          style={selectedUserId === 'all' ? { backgroundColor: '#1a4731' } : {}}>
+                          style={selectedUserId === 'all' ? { backgroundColor: 'var(--brand)' } : {}}>
                           All <span className={`ml-1 ${selectedUserId === 'all' ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>({baseTasks.length})</span>
                         </button>
                         {usersWithCounts.map(({ u, count, overdue }) => {
@@ -791,9 +791,9 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                           return (
                             <button key={u.id} onClick={() => setSelectedUserId(active ? 'all' : u.id)}
                               className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded-full border transition-colors ${active ? 'border-transparent text-white font-medium' : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800/60'}`}
-                              style={active ? { backgroundColor: '#1a4731' } : {}}>
+                              style={active ? { backgroundColor: 'var(--brand)' } : {}}>
                               <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-semibold flex-shrink-0 ${active ? 'bg-white/20 text-white' : 'text-white'}`}
-                                style={!active ? { backgroundColor: '#1a4731' } : {}}>
+                                style={!active ? { backgroundColor: 'var(--brand)' } : {}}>
                                 {initials}
                               </span>
                               {u.name}
@@ -890,7 +890,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                     <span className="text-xs ml-4 text-gray-600">Activities: {t.total}</span>
                     <span className="text-xs ml-3 text-gray-600">Tasks: {t.taskCount}</span>
                     <span className="text-xs ml-3 text-gray-600">Opps: {t.oppCount}</span>
-                    <span className="text-xs ml-3 font-medium text-[#1a4731] dark:text-emerald-300">Pipeline: ${(t.openPipeline / 1000).toFixed(0)}K</span>
+                    <span className="text-xs ml-3 font-medium text-brand dark:text-emerald-300">Pipeline: ${(t.openPipeline / 1000).toFixed(0)}K</span>
                   </div>
 
                   {/* Members */}
@@ -908,7 +908,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                         return (
                           <div key={u.id}>
                             <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 pl-10 border-b border-gray-50 hover:bg-gray-50/50">
-                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: '#1a4731' }}>
+                              <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0" style={{ backgroundColor: 'var(--brand)' }}>
                                 {u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                               </div>
                               <span className="text-sm font-medium text-gray-800 min-w-[110px]">{u.name}</span>
@@ -1013,7 +1013,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                                         <tbody>
                                           {uOpps.sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || '')).map((op) => (
                                             <tr key={op.id} className="border-b border-gray-50">
-                                              <td className="p-2 font-medium"><a href={`/opportunities/${op.id}`} className="hover:underline" style={{ color: '#1a4731' }}>{op.name}</a></td>
+                                              <td className="p-2 font-medium"><a href={`/opportunities/${op.id}`} className="hover:underline" style={{ color: 'var(--brand)' }}>{op.name}</a></td>
                                               <td className="p-2 text-gray-500">{accounts.find((a) => a.id === op.accountId)?.name || '—'}</td>
                                               <td className="p-2">
                                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -1028,7 +1028,7 @@ export default function ReportsPage({ teamFilter = 'all' }: { teamFilter?: Repor
                                         </tbody>
                                         <tfoot><tr className="border-t border-gray-200 bg-gray-50">
                                           <td colSpan={3} className="p-2 text-gray-600 font-medium">Open Pipeline</td>
-                                          <td className="p-2 text-right font-semibold" style={{ color: '#1a4731' }}>${uPipeline.toLocaleString()}</td>
+                                          <td className="p-2 text-right font-semibold" style={{ color: 'var(--brand)' }}>${uPipeline.toLocaleString()}</td>
                                           <td></td>
                                         </tr></tfoot>
                                       </table>

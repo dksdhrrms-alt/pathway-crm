@@ -31,7 +31,7 @@ export default function SignupDisabledPage() {
           Accounts are created by an administrator. If you need access to the CRM, please contact your admin or manager.
         </p>
         <Link href="/login" className="inline-block px-4 py-2 rounded-lg text-sm font-semibold text-white"
-          style={{ backgroundColor: '#1a4731' }}>
+          style={{ backgroundColor: 'var(--brand)' }}>
           Go to sign in
         </Link>
       </div>

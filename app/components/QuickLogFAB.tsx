@@ -241,7 +241,7 @@ export default function QuickLogFAB() {
         style={{
           position: 'fixed', bottom: '28px', right: '28px', zIndex: 40,
           width: '56px', height: '56px', borderRadius: '50%',
-          background: '#1a4731', color: 'white', border: 'none',
+          background: 'var(--brand)', color: 'white', border: 'none',
           cursor: 'pointer', fontSize: '30px', fontWeight: 300,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 16px rgba(26,71,49,0.45)',
@@ -306,7 +306,7 @@ export default function QuickLogFAB() {
                   onClick={() => setType(t.id)}
                   style={{
                     padding: '10px 4px', borderRadius: '10px',
-                    border: type === t.id ? '2px solid #1a4731' : '1px solid #e5e7eb',
+                    border: type === t.id ? '2px solid var(--brand)' : '1px solid #e5e7eb',
                     cursor: 'pointer', display: 'flex', flexDirection: 'column',
                     alignItems: 'center', gap: '4px',
                   }}
@@ -318,7 +318,7 @@ export default function QuickLogFAB() {
                     : 'bg-white dark:border-slate-600 dark:bg-slate-800'}
                 >
                   <span style={{ fontSize: '20px' }}>{t.emoji}</span>
-                  <span style={{ fontSize: '11px', color: type === t.id ? '#1a4731' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
+                  <span style={{ fontSize: '11px', color: type === t.id ? 'var(--brand)' : '#666', fontWeight: type === t.id ? 500 : 400 }} className="dark:text-gray-300">
                     {t.id}
                   </span>
                 </button>
@@ -434,7 +434,7 @@ export default function QuickLogFAB() {
                 style={{
                   width: '100%', padding: '10px 12px', paddingRight: accountName ? '32px' : '12px',
                   fontSize: '14px',
-                  border: accountId ? '1px solid #1a4731' : '1px solid #e5e7eb',
+                  border: accountId ? '1px solid var(--brand)' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
                 }}
                 // Selected-state background moved out of the inline
@@ -478,7 +478,7 @@ export default function QuickLogFAB() {
                       onMouseLeave={(e) => { e.currentTarget.style.background = ''; e.currentTarget.classList.toggle('dark:bg-slate-700'); }}
                     >
                       <div style={{
-                        width: '28px', height: '28px', borderRadius: '6px', background: '#1a4731',
+                        width: '28px', height: '28px', borderRadius: '6px', background: 'var(--brand)',
                         color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '10px', fontWeight: 500, flexShrink: 0,
                       }}>
@@ -505,7 +505,7 @@ export default function QuickLogFAB() {
                 style={{
                   width: '100%', padding: '10px 12px', paddingRight: contactSearch ? '32px' : '12px',
                   fontSize: '14px',
-                  border: contactId ? '1px solid #1a4731' : '1px solid #e5e7eb',
+                  border: contactId ? '1px solid var(--brand)' : '1px solid #e5e7eb',
                   borderRadius: '8px', boxSizing: 'border-box',
                 }}
                 // Same fix as the account input above — dark-mode

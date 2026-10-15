@@ -83,7 +83,7 @@ export default function OpportunityDetailPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 text-lg">Opportunity not found.</p>
-          <Link href="/opportunities" className="mt-4 inline-block text-sm underline" style={{ color: '#1a4731' }}>
+          <Link href="/opportunities" className="mt-4 inline-block text-sm underline" style={{ color: 'var(--brand)' }}>
             Back to Opportunities
           </Link>
         </div>
@@ -124,7 +124,7 @@ export default function OpportunityDetailPage() {
                         value={currentOwnerId}
                         onChange={(e) => handleOwnerChange(e.target.value)}
                         className="text-sm font-medium border border-gray-200 dark:border-slate-600 rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 bg-white dark:bg-slate-800 dark:text-gray-100"
-                        style={{ color: '#1a4731' }}
+                        style={{ color: 'var(--brand)' }}
                       >
                         {allUsers.map((u) => (
                           <option key={u.id} value={u.id}>{u.name}</option>
@@ -195,7 +195,7 @@ export default function OpportunityDetailPage() {
                         <Link
                           href={`/contacts/${c.id}`}
                           className="text-sm font-medium hover:underline dark:!text-emerald-400"
-                          style={{ color: '#1a4731' }}
+                          style={{ color: 'var(--brand)' }}
                         >
                           {c.firstName} {c.lastName}
                         </Link>
@@ -253,7 +253,7 @@ export default function OpportunityDetailPage() {
               <button
                 onClick={() => setShowLogModal(true)}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: '#1a4731' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 + Log Activity
               </button>

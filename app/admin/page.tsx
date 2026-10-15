@@ -197,7 +197,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => setSeedConfirm(true)}
                     className="shrink-0 px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-opacity"
-                    style={{ backgroundColor: '#1a4731' }}
+                    style={{ backgroundColor: 'var(--brand)' }}
                   >
                     Seed Database
                   </button>
@@ -370,7 +370,7 @@ export default function AdminPage() {
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Total Pipeline</p>
-                  <p className="text-3xl font-bold mt-1" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{formatCurrency(totalPipeline)}</span></p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: 'var(--brand)' }}><span className="dark:!text-emerald-400">{formatCurrency(totalPipeline)}</span></p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Sum of open deal values</p>
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
@@ -409,7 +409,7 @@ export default function AdminPage() {
                             <div className="flex items-center gap-3">
                               <div
                                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 overflow-hidden"
-                                style={{ backgroundColor: user.profilePhoto ? 'transparent' : '#1a4731' }}
+                                style={{ backgroundColor: user.profilePhoto ? 'transparent' : 'var(--brand)' }}
                               >
                                 {user.profilePhoto ? (
                                   <img src={user.profilePhoto} alt={user.name} width={32} height={32} loading="lazy" decoding="async" className="w-8 h-8 object-cover" />
@@ -435,7 +435,7 @@ export default function AdminPage() {
                             <span className={`font-semibold ${openDeals > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}`}>{openDeals}</span>
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <span className="font-medium" style={{ color: pipelineValue > 0 ? '#1a4731' : '#9ca3af' }}>
+                            <span className="font-medium" style={{ color: pipelineValue > 0 ? 'var(--brand)' : '#9ca3af' }}>
                               <span className={pipelineValue > 0 ? 'dark:!text-emerald-400' : 'dark:!text-gray-500'}>{pipelineValue > 0 ? formatCurrency(pipelineValue) : '—'}</span>
                             </span>
                           </td>
@@ -504,7 +504,7 @@ export default function AdminPage() {
                   <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">User Management</h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{allUsers.length} users</p>
                 </div>
-                <button onClick={() => setShowCreateUser(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+                <button onClick={() => setShowCreateUser(true)} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>
                   + Create User
                 </button>
               </div>
@@ -556,7 +556,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-3">
                             <div
                               className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 overflow-hidden"
-                              style={{ backgroundColor: user.profilePhoto ? 'transparent' : '#1a4731' }}
+                              style={{ backgroundColor: user.profilePhoto ? 'transparent' : 'var(--brand)' }}
                             >
                               {user.profilePhoto ? (
                                 <img src={user.profilePhoto} alt={user.name} width={36} height={36} loading="lazy" decoding="async" className="w-9 h-9 object-cover" />
@@ -693,7 +693,7 @@ export default function AdminPage() {
                 </div>
                 <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm p-5">
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Unattributed Revenue</p>
-                  <p className="text-3xl font-bold mt-1" style={{ color: orphanTotalAmount > 0 ? '#b45309' : '#1a4731' }}><span className={orphanTotalAmount > 0 ? 'dark:!text-amber-400' : 'dark:!text-emerald-400'}>{formatCurrency(orphanTotalAmount)}</span></p>
+                  <p className="text-3xl font-bold mt-1" style={{ color: orphanTotalAmount > 0 ? '#b45309' : 'var(--brand)' }}><span className={orphanTotalAmount > 0 ? 'dark:!text-amber-400' : 'dark:!text-emerald-400'}>{formatCurrency(orphanTotalAmount)}</span></p>
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Not linked to any account</p>
                 </div>
               </div>
@@ -726,7 +726,7 @@ export default function AdminPage() {
                               <p className="font-medium text-gray-900 dark:text-gray-100">{o.name}</p>
                             </td>
                             <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200 font-medium">{o.recordCount.toLocaleString()}</td>
-                            <td className="px-5 py-3 text-right font-semibold" style={{ color: '#1a4731' }}><span className="dark:!text-emerald-400">{formatCurrency(o.totalAmount)}</span></td>
+                            <td className="px-5 py-3 text-right font-semibold" style={{ color: 'var(--brand)' }}><span className="dark:!text-emerald-400">{formatCurrency(o.totalAmount)}</span></td>
                             <td className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">{formatDate(o.lastDate)}</td>
                             <td className="px-5 py-3">
                               {o.suggestion ? (
@@ -865,7 +865,7 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
               <button onClick={() => setExpandedUserId(isExpanded ? null : user.id)}
                 className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors text-left">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-                  style={{ backgroundColor: '#1a4731' }}>
+                  style={{ backgroundColor: 'var(--brand)' }}>
                   {user.initials || user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -923,7 +923,7 @@ function UserPermissionsPanel({ users, onSave }: { users: import('@/lib/users').
                   </div>
 
                   <button onClick={() => saveForUser(user.id, user.name)}
-                    className="px-4 py-1.5 text-xs font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: '#1a4731' }}>
+                    className="px-4 py-1.5 text-xs font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>
                     Save permissions for {user.name}
                   </button>
                 </div>
@@ -1015,7 +1015,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-slate-800 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-700">Cancel</button>
-            <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: '#1a4731' }}>
+            <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: 'var(--brand)' }}>
               {saving ? 'Creating...' : 'Create User'}
             </button>
           </div>
