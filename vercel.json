@@ -15,10 +15,6 @@
     {
       "path": "/api/cron/daily-brief",
       "schedule": "0 13 * * 1-5"
-    },
-    {
-      "path": "/api/cron/weekly-momentum",
-      "schedule": "30 4 * * *"
     }
   ]
 }
