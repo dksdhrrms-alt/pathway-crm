@@ -124,6 +124,9 @@ export interface Account {
   createdAt?: string;
 }
 
+export type ContactRoleInDeal =
+  | 'decision_maker' | 'champion' | 'influencer' | 'user' | 'blocker' | 'unknown';
+
 export interface Contact {
   id: string;
   firstName: string;
@@ -137,6 +140,12 @@ export interface Contact {
   ownerId: string;
   position?: string;
   isKeyMan?: boolean;
+  // Org Map (data-migration/41-contact-org-map.sql). Rep-tagged role
+  // in deal discussions, parent-manager, and 1-5 seniority score —
+  // drives node color/size on the Account's Org Map tab.
+  roleInDeal?: ContactRoleInDeal;
+  reportsToContactId?: string | null;
+  influenceScore?: number;
   phone: string;
   tel?: string;
   email: string;

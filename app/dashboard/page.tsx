@@ -8,6 +8,7 @@ import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import MetricCard from '@/app/components/MetricCard';
 import TodayMarketCard from '@/app/components/TodayMarketCard';
+import MomentumCard from '@/app/components/MomentumCard';
 import IndustryNewsCard from '@/app/components/IndustryNewsCard';
 import TopBar from '@/app/components/TopBar';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
@@ -314,6 +315,11 @@ export default function DashboardPage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* ============ MOMENTUM — rep's weekly score + team leaderboard ============ */}
+          <div className="mb-6">
+            <MomentumCard />
           </div>
 
           {/* ============ TODAY'S MARKET + INDUSTRY NEWS ============ */}

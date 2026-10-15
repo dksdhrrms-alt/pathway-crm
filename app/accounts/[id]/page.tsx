@@ -17,6 +17,8 @@ import NewTaskModal from '@/app/components/NewTaskModal';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import EditAccountModal from '@/app/components/EditAccountModal';
+import PrepSheetModal from '@/app/components/PrepSheetModal';
+import OrgMap from '@/app/components/OrgMap';
 import { downloadAccountWorkbook } from '@/lib/exportAccount';
 
 function formatCurrency(n: number): string {
@@ -65,6 +67,8 @@ export default function AccountDetailPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPrepSheet, setShowPrepSheet] = useState(false);
+  const [showOrgMap, setShowOrgMap] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showAllTx, setShowAllTx] = useState(false);
@@ -367,6 +371,18 @@ export default function AccountDetailPage() {
                 >
                   ✉️ Email
                 </a>
+                <button
+                  onClick={() => setShowPrepSheet(true)}
+                  style={{
+                    padding: '8px 14px', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'rgba(255,255,255,0.1)', color: 'white',
+                    cursor: 'pointer', fontSize: '13px',
+                  }}
+                  title="One-page briefing — recent activity, open deals, trials, news, AI questions"
+                >
+                  📋 Prep Sheet
+                </button>
                 <button
                   onClick={() => setShowEditModal(true)}
                   style={{
@@ -1283,6 +1299,32 @@ export default function AccountDetailPage() {
                 )}
               </div>
 
+              {/* ── Org Map ───────────────────────────────────────────
+                  Relationship map showing who's the Champion, Decision
+                  Maker, Blocker etc. and the reporting hierarchy.
+                  Collapsed by default to keep the page scroll length
+                  reasonable for accounts with no contacts tagged yet. */}
+              {accountContacts.length > 0 && (
+                <div
+                  style={{
+                    border: '0.5px solid #e5e7eb',
+                    borderRadius: '12px', padding: '20px', marginBottom: '16px',
+                  }}
+                  className="bg-white dark:bg-slate-900 dark:border-slate-700"
+                >
+                  <button
+                    onClick={() => setShowOrgMap((v) => !v)}
+                    className="w-full flex items-center justify-between mb-3"
+                  >
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }} className="text-gray-900 dark:text-gray-100">
+                      🗺 Org Map <span className="text-xs text-gray-400 font-normal ml-1">— Click a contact to tag role</span>
+                    </h3>
+                    <span className="text-gray-400 text-sm">{showOrgMap ? '▼' : '▶'}</span>
+                  </button>
+                  {showOrgMap && <OrgMap accountId={accountId} />}
+                </div>
+              )}
+
               {/* Open Deals */}
               <div
                 style={{
@@ -1434,6 +1476,10 @@ export default function AccountDetailPage() {
           onClose={() => setShowEditModal(false)}
           onSaved={() => setToast('Account updated successfully')}
         />
+      )}
+
+      {showPrepSheet && account && (
+        <PrepSheetModal kind="account" id={account.id} onClose={() => setShowPrepSheet(false)} />
       )}
 
       {showDeleteConfirm && (

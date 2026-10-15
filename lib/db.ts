@@ -58,6 +58,10 @@ const SNAKE_OVERRIDES: Record<string, string> = {
   // (data-migration/38-activity-action-item.sql).
   actionItem: 'action_item',
   sourceActivityId: 'source_activity_id',
+  // Contact Org Map (data-migration/41-contact-org-map.sql).
+  roleInDeal: 'role_in_deal',
+  reportsToContactId: 'reports_to_contact_id',
+  influenceScore: 'influence_score',
   // Users.daily_email — opt-in flag for the weekday morning brief
   // (data-migration/22-daily-email-flag.sql).
   dailyEmail: 'daily_email',
