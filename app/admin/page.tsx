@@ -974,8 +974,9 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 overflow-y-auto"
+        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Create New User</h2>
         <form onSubmit={handleSave} className="space-y-3">
           <div>

@@ -891,8 +891,9 @@ function BudgetModal({ year: initialYear, category, onClose, onSave }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-xl p-6 overflow-y-auto"
+        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Set {CATEGORY_LABELS[category]} Budget</h2>
 
         <div className="flex items-center gap-3 mb-5">

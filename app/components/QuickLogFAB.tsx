@@ -257,14 +257,39 @@ export default function QuickLogFAB() {
         <div
           data-quicklog-fab="1"
           className="fixed inset-0"
-         
+          // Clicking the dark backdrop closes the modal — important on
+          // small screens where the inner Save button could otherwise
+          // be scrolled off and leave the user stuck.
+          onClick={() => { if (!saving) setIsOpen(false); }}
           style={{
             background: 'rgba(0,0,0,0.4)',
             zIndex: 10000, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', padding: '16px',
+            justifyContent: 'center', padding: '12px',
           }}
         >
-          <div style={{ borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px' }} className="bg-white dark:bg-slate-900">
+          {/* Inner card:
+                · maxHeight tied to dynamic viewport height (dvh) so the
+                  modal never grows past the screen — the inner content
+                  scrolls instead, keeping the Cancel / Log Activity
+                  buttons at the bottom reachable at any time.
+                · paddingBottom honors iPhone PWA safe-area so the Log
+                  button clears the home indicator.
+                · stopPropagation prevents backdrop-close when the user
+                  clicks inside the form. */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '440px',
+              padding: '20px',
+              paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+              maxHeight: 'calc(100dvh - 24px)',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}
+            className="bg-white dark:bg-slate-900"
+          >
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 500 }} className="text-gray-900 dark:text-gray-100">Quick Log</h3>

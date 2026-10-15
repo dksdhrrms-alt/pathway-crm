@@ -955,8 +955,9 @@ function FolderPickerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md flex flex-col" onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800">
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -1013,8 +1014,9 @@ function ApproversModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md flex flex-col" onClick={(e) => e.stopPropagation()}
+        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800">
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
             Approvers for 📁 {folder.name}

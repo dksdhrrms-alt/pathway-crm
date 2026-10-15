@@ -206,21 +206,43 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
 
   return (
     <div
-     
+      // Click the dark backdrop to close — same safety net as other
+      // modals so a long form on a small phone can always be dismissed
+      // even if the Save button scrolled off.
+      onClick={() => { if (!saving) onClose(); }}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
         zIndex: 10000, display: 'flex', alignItems: 'center',
-        justifyContent: 'center', padding: '16px',
+        justifyContent: 'center', padding: '12px',
       }}
     >
       {/*
-        maxHeight 90vh + overflowY auto: the form has grown long enough
-        (type, subject, description, contacts list, internal participants,
-        date) that on smaller viewports the Save/Cancel buttons used to
-        sit below the fold with no way to scroll. Cap the modal at 90%
-        of viewport and scroll inside the modal itself.
+        Changes vs. the old inline modal:
+          · maxHeight uses `dvh` (dynamic viewport height) instead of
+            `vh` — on mobile Safari `100vh` is address-bar-inclusive and
+            90vh still left Save hidden on short screens. `100dvh` is
+            the actual visible area, so capping to it + 24px padding
+            keeps the whole form (including the Save row) in view.
+          · paddingBottom honors env(safe-area-inset-bottom) so the
+            iPhone home indicator (when installed as PWA) doesn't
+            obscure the primary action.
+          · stopPropagation prevents an inside-click from reaching the
+            backdrop-close handler above.
       */}
-      <div style={{ borderRadius: '16px', width: '100%', maxWidth: '440px', padding: '20px', maxHeight: '90vh', overflowY: 'auto' }} className="bg-white dark:bg-slate-900">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '440px',
+          padding: '20px',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom))',
+          maxHeight: 'calc(100dvh - 24px)',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+        className="bg-white dark:bg-slate-900"
+      >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>

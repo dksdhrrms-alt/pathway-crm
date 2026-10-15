@@ -191,21 +191,31 @@ export default function LogActivityModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
-     
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
+      onClick={() => { if (!submitting) onClose(); }}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
       tabIndex={-1}
     >
       {/*
-        max-h-[90vh] + overflow-y-auto: the form has grown long (account,
-        contacts list, subject, description, internal-participants
-        checkboxes, date, …) and used to overflow the viewport on
-        smaller screens — Save/Cancel buttons at the bottom would be
-        unreachable. Cap the modal at 90% of viewport height and scroll
-        inside the modal itself, so the backdrop stays fully covered
-        and the user can always reach the footer.
+        Mobile fixes (vs. prior max-h-[90vh]):
+          · Switched to `100dvh` (dynamic viewport height) because
+            mobile Safari counts `100vh` with the address bar visible,
+            so `90vh` still left the Save button under the fold on
+            short devices.
+          · pb honors env(safe-area-inset-bottom) for iPhone PWA home
+            indicator.
+          · Backdrop click + stopPropagation on the card closes the
+            modal from anywhere outside the form.
       */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
+        style={{
+          maxHeight: 'calc(100dvh - 24px)',
+          paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Log Activity</h2>
           <button
