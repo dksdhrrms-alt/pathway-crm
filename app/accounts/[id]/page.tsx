@@ -41,7 +41,7 @@ const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
   Qualification: { bg: '#E6F1FB', text: '#185FA5' },
   Proposal: { bg: '#FAEEDA', text: '#854F0B' },
   Negotiation: { bg: '#EEEDFE', text: '#534AB7' },
-  'Won': { bg: '#E1F5EE', text: '#0F6E56' },
+  'Won': { bg: '#E1F5EE', text: 'var(--brand)' },
   'Stalled or Lost': { bg: '#FEE2E2', text: '#991B1B' },
 };
 
@@ -671,7 +671,7 @@ export default function AccountDetailPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
                   <div style={{ background: 'var(--brand-tint)', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 12px' }}>
                     <div style={{ fontSize: '10px', color: '#047857', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Coverage</div>
-                    <div style={{ fontSize: '17px', fontWeight: 600, color: '#0F6E56', marginTop: '2px' }}>{coveragePct}%</div>
+                    <div style={{ fontSize: '17px', fontWeight: 600, color: 'var(--brand)', marginTop: '2px' }}>{coveragePct}%</div>
                     <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '1px' }}>{activeComplexes}/{totalChildren} active in 30d</div>
                   </div>
                   <div style={{ background: '#f9fafb', border: '0.5px solid #e5e7eb', borderRadius: '8px', padding: '10px 12px' }}>
@@ -721,8 +721,8 @@ export default function AccountDetailPage() {
                         const sharePct = totalPipeline > 0 ? Math.round((pipeline / totalPipeline) * 100) : 0;
                         const salesPct = totalSales > 0 ? Math.round((sales / totalSales) * 100) : 0;
                         // Color buckets for share — emphasize bigger contributors
-                        const shareColor = sharePct >= 50 ? 'var(--brand)' : sharePct >= 25 ? '#2d6a4f' : sharePct >= 10 ? '#52a672' : '#9ca3af';
-                        const salesColor = salesPct >= 50 ? 'var(--brand)' : salesPct >= 25 ? '#2d6a4f' : salesPct >= 10 ? '#52a672' : '#9ca3af';
+                        const shareColor = sharePct >= 50 ? 'var(--brand)' : sharePct >= 25 ? 'var(--brand)' : sharePct >= 10 ? '#52a672' : '#9ca3af';
+                        const salesColor = salesPct >= 50 ? 'var(--brand)' : salesPct >= 25 ? 'var(--brand)' : salesPct >= 10 ? '#52a672' : '#9ca3af';
                         return (
                           <tr key={c.id} style={{ borderBottom: '0.5px solid #f3f4f6' }}>
                             <td style={{ padding: '10px', maxWidth: 320, lineHeight: 1.35 }}>
@@ -737,7 +737,7 @@ export default function AccountDetailPage() {
                             <td style={{ padding: '10px' }}>
                               <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, background: sb.bg, color: sb.color, whiteSpace: 'nowrap', display: 'inline-block' }}>{sb.label}</span>
                             </td>
-                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? '#0F6E56' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
+                            <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: recentActivityCount > 0 ? 'var(--brand)' : '#888', fontWeight: recentActivityCount > 0 ? 600 : 400 }}>{recentActivityCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: openDealsCount > 0 ? 'var(--brand)' : '#888', fontWeight: openDealsCount > 0 ? 600 : 400 }}>{openDealsCount || '—'}</td>
                             <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', color: pipeline > 0 ? 'var(--brand)' : '#888', fontWeight: pipeline > 0 ? 600 : 400 }}>{pipeline > 0 ? formatCurrency(pipeline) : '—'}</td>
                             <td style={{ padding: '10px', minWidth: 130 }}>
@@ -772,7 +772,7 @@ export default function AccountDetailPage() {
                     <tfoot>
                       <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb' }}>
                         <td style={{ padding: '10px', fontSize: '12px', fontWeight: 600, color: '#374151' }} colSpan={4}>TOTAL</td>
-                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#0F6E56' }}>{rows.reduce((s, r) => s + r.recentActivityCount, 0) || '—'}</td>
+                        <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>{rows.reduce((s, r) => s + r.recentActivityCount, 0) || '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>{totalOpenDeals || '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--brand)' }}>{totalPipeline > 0 ? formatCurrency(totalPipeline) : '—'}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#94a3b8' }}>100%</td>
@@ -1049,7 +1049,7 @@ export default function AccountDetailPage() {
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, q.months)) > 0 ? Math.round(sumKg(getData(curYear, q.months))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevAmt > 0 ? formatCurrency(Math.round(prevAmt)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, q.months)) > 0 ? Math.round(sumKg(getData(curYear - 1, q.months))).toLocaleString() : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 600, color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '8px 8px', textAlign: 'center', fontWeight: 600, color: yoy === null ? '#ccc' : yoy >= 0 ? 'var(--brand)' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
                                   {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
                                 </td>
                               </tr>
@@ -1067,7 +1067,7 @@ export default function AccountDetailPage() {
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear, ytdMonths))).toLocaleString() : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderLeft: '1px solid #e5e7eb' }}>{prevYTD > 0 ? formatCurrency(Math.round(prevYTD)) : '--'}</td>
                                 <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', fontSize: '11px' }}>{sumKg(getData(curYear - 1, ytdMonths)) > 0 ? Math.round(sumKg(getData(curYear - 1, ytdMonths))).toLocaleString() : '--'}</td>
-                                <td style={{ padding: '8px 8px', textAlign: 'center', color: yoy === null ? '#ccc' : yoy >= 0 ? '#0F6E56' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '8px 8px', textAlign: 'center', color: yoy === null ? '#ccc' : yoy >= 0 ? 'var(--brand)' : '#E24B4A', borderLeft: '1px solid #e5e7eb' }}>
                                   {yoy === null ? '--' : `${yoy >= 0 ? '+' : ''}${yoy}%`}
                                 </td>
                               </tr>
@@ -1152,7 +1152,7 @@ export default function AccountDetailPage() {
                             <span style={{ fontWeight: 600, color: 'var(--brand)' }}>{formatCurrency(Math.round(totalAmt))}</span>
                             {prevTotal > 0 && (() => {
                               const yoy = Math.round(((totalAmt - prevTotal) / prevTotal) * 100);
-                              return <span style={{ fontWeight: 600, color: yoy >= 0 ? '#0F6E56' : '#E24B4A' }}>vs LY: {yoy >= 0 ? '+' : ''}{yoy}%</span>;
+                              return <span style={{ fontWeight: 600, color: yoy >= 0 ? 'var(--brand)' : '#E24B4A' }}>vs LY: {yoy >= 0 ? '+' : ''}{yoy}%</span>;
                             })()}
                           </div>
                         </div>

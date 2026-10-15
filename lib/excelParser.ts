@@ -39,7 +39,7 @@ export interface ParseResult {
 
 export const CATEGORY_BADGE: Record<SalesCategory, { bg: string; text: string }> = {
   monogastrics: { bg: '#E6F1FB', text: '#185FA5' },
-  ruminants: { bg: '#E1F5EE', text: '#0F6E56' },
+  ruminants: { bg: '#E1F5EE', text: 'var(--brand)' },
   latam: { bg: '#FAEEDA', text: '#854F0B' },
   familyb2b: { bg: '#EEEDFE', text: '#534AB7' },
 };

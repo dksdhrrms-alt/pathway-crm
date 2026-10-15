@@ -503,7 +503,7 @@ export default function SalesDashboardPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {lyDiff !== null && !isFuture ? (
-                          <span style={{ color: lyDiff >= 0 ? '#0F6E56' : '#E24B4A', fontWeight: 500 }}>
+                          <span style={{ color: lyDiff >= 0 ? 'var(--brand)' : '#E24B4A', fontWeight: 500 }}>
                             {lyDiff >= 0 ? '↑' : '↓'}{Math.abs(lyDiff)}%
                           </span>
                         ) : <span className="text-gray-400">—</span>}
@@ -813,7 +813,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
                         <td key={i} style={{ padding: '3px 2px' }}>
                           <input type="number" value={val} placeholder="0"
                             onChange={(e) => setInputs((p) => ({ ...p, [acct]: { ...(p[acct] || {}), [mo]: e.target.value } }))}
-                            style={{ width: '54px', padding: '3px 4px', fontSize: '11px', border: val ? '1px solid #1a4731' : '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'right', background: val ? '#f0f7ee' : 'white' }}
+                            style={{ width: '54px', padding: '3px 4px', fontSize: '11px', border: val ? '1px solid var(--brand)' : '1px solid #e5e7eb', borderRadius: '4px', textAlign: 'right', background: val ? 'var(--brand-tint)' : 'white' }}
                           />
                         </td>
                       );
@@ -829,7 +829,7 @@ function AcctBudgetModal({ year, category, salesData, accountBudgets, setAccount
           </div>
         </div>
         {/* Totals bar — fixed above footer */}
-        <div style={{ padding: '10px 16px', background: '#f0f7ee', borderTop: '2px solid #1a4731', borderBottom: '0.5px solid #e5e7eb', flexShrink: 0, overflowX: 'auto' }}>
+        <div style={{ padding: '10px 16px', background: 'var(--brand-tint)', borderTop: '2px solid var(--brand)', borderBottom: '0.5px solid #e5e7eb', flexShrink: 0, overflowX: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', minWidth: '800px' }}>
             <div style={{ width: '150px', flexShrink: 0, fontSize: '12px', fontWeight: 700, color: 'var(--brand)', padding: '0 10px' }}>Total Budget</div>
             {MONTHS.map((_, i) => {
@@ -1006,7 +1006,7 @@ function AccountBreakdown({ month, year, category, salesData }: { month: number;
           })}
         </tbody>
         <tfoot>
-          <tr style={{ borderTop: '1px solid #e5e7eb', background: '#f0f7ee' }}>
+          <tr style={{ borderTop: '1px solid #e5e7eb', background: 'var(--brand-tint)' }}>
             <td colSpan={3} style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--brand)', fontSize: '11px' }}>Total ({sorted.length} accounts)</td>
             <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, color: 'var(--brand)' }}>${Math.round(grandTotal).toLocaleString()}</td>
             <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: 'var(--brand)' }}>100%</td>

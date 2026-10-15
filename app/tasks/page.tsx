@@ -138,7 +138,7 @@ export default function TasksPage() {
             </div>
             <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
               <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>COMPLETED</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: '#0F6E56' }}>{completedCount}</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--brand)' }}>{completedCount}</div>
             </div>
           </div>
 
@@ -260,7 +260,7 @@ export default function TasksPage() {
                               <Link
                                 href={`/accounts/${task.relatedAccountId}`}
                                 className="text-xs font-medium hover:underline block"
-                                style={{ color: '#2d6a4f' }}
+                                style={{ color: 'var(--brand)' }}
                               >
                                 {accountName}
                               </Link>

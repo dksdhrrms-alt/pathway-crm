@@ -238,17 +238,22 @@ export default function QuickLogFAB() {
       {!hiddenByOther && (
       <button
         onClick={() => setIsOpen(true)}
+        className="press-nudge"
         style={{
           position: 'fixed', bottom: '28px', right: '28px', zIndex: 40,
           width: '56px', height: '56px', borderRadius: '50%',
           background: 'var(--brand)', color: 'white', border: 'none',
-          cursor: 'pointer', fontSize: '30px', fontWeight: 300,
+          cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(26,71,49,0.45)',
+          boxShadow: 'var(--shadow-lg)',
         }}
         title="Quick Log Activity"
+        aria-label="Quick Log Activity"
       >
-        +
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
       </button>
       )}
 

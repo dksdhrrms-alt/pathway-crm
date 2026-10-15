@@ -17,12 +17,12 @@ interface TopBarProps {
   placeholder?: string;
 }
 
-const PRIMARY_COLOR = '#1a3a5c';
+const PRIMARY_COLOR = 'var(--sidebar-bg)';
 
 const roleColors: Record<string, string> = {
   administrative_manager: 'var(--brand)',
   admin: '#1e40af',
-  ceo: '#1a3a5c',
+  ceo: 'var(--sidebar-bg)',
   sales_director: '#6d28d9',
   coo: '#4a1d96',
   sales: '#0369a1',

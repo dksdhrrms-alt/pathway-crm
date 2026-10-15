@@ -410,9 +410,9 @@ export default function QuickLogModal({ onClose, initialType }: Props) {
           {selectedContactObjs.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
               {selectedContactObjs.map((c) => (
-                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '12px', background: '#E1F5EE', color: '#0F6E56', fontSize: '12px', border: '1px solid #B5E3D2' }}>
+                <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '12px', background: '#E1F5EE', color: 'var(--brand)', fontSize: '12px', border: '1px solid #B5E3D2' }}>
                   {c.firstName} {c.lastName}
-                  <button type="button" onClick={() => toggleContactSelect(c.id)} style={{ background: 'none', border: 'none', color: '#0F6E56', cursor: 'pointer', fontWeight: 700, padding: 0, marginLeft: '2px' }} className="dark:text-green-300">×</button>
+                  <button type="button" onClick={() => toggleContactSelect(c.id)} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', fontWeight: 700, padding: 0, marginLeft: '2px' }} className="dark:text-green-300">×</button>
                 </span>
               ))}
             </div>

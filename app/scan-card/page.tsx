@@ -204,7 +204,7 @@ export default function ScanCardPage() {
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
                 {saved ? (
-                  <div style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#E1F5EE', color: '#0F6E56', textAlign: 'center', fontWeight: 500, fontSize: '14px' }}>
+                  <div style={{ flex: 1, padding: '12px', borderRadius: '8px', background: '#E1F5EE', color: 'var(--brand)', textAlign: 'center', fontWeight: 500, fontSize: '14px' }}>
                     Contact saved!
                   </div>
                 ) : (

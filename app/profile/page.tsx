@@ -260,7 +260,7 @@ export default function ProfilePage() {
                   {currentUser?.team ? (
                     <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium" style={{
                       backgroundColor: { monogastrics: '#E6F1FB', swine: '#E6F1FB', ruminants: '#E1F5EE', latam: '#FAEEDA', familyb2b: '#EEEDFE', marketing: '#FBEAF0', management: '#F1EFE8' }[currentUser.team] || '#F1EFE8',
-                      color: { monogastrics: '#185FA5', swine: '#185FA5', ruminants: '#0F6E56', latam: '#854F0B', familyb2b: '#534AB7', marketing: '#993556', management: '#5F5E5A' }[currentUser.team] || '#5F5E5A',
+                      color: { monogastrics: '#185FA5', swine: '#185FA5', ruminants: 'var(--brand)', latam: '#854F0B', familyb2b: '#534AB7', marketing: '#993556', management: '#5F5E5A' }[currentUser.team] || '#5F5E5A',
                     }}>
                       {{ monogastrics: 'Monogastrics', swine: 'Swine', ruminants: 'Ruminants', latam: 'LATAM', familyb2b: 'Family / B2B', marketing: 'Marketing', management: 'Management' }[currentUser.team] || currentUser.team}
                     </span>

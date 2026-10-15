@@ -270,15 +270,15 @@ export default function OpportunitiesPage() {
             </div>
             <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × remaining months in current year, based on Expected Start Date">
               <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear} ANNUAL</div>
-              <div style={{ fontSize: '20px', fontWeight: 500, color: '#0F6E56' }}>{formatCurrency(annualThisYear)}</div>
+              <div style={{ fontSize: '20px', fontWeight: 500, color: 'var(--brand)' }}>{formatCurrency(annualThisYear)}</div>
             </div>
             <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × 12 for opportunities starting on or before next year">
               <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear + 1} ANNUAL</div>
-              <div style={{ fontSize: '20px', fontWeight: 500, color: '#0F6E56' }}>{formatCurrency(annualNextYear)}</div>
+              <div style={{ fontSize: '20px', fontWeight: 500, color: 'var(--brand)' }}>{formatCurrency(annualNextYear)}</div>
             </div>
             <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
               <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WON</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: '#0F6E56' }}>{closedWonCount}</div>
+              <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--brand)' }}>{closedWonCount}</div>
             </div>
             {ownerOptions.length > 1 && (
               <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 140px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

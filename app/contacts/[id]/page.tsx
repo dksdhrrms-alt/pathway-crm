@@ -112,7 +112,7 @@ export default function ContactDetailPage() {
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     {contact.position && (
-                      <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E1F5EE', color: '#0F6E56' }}>
+                      <span className="text-xs px-2 py-0.5 rounded font-medium" style={{ backgroundColor: '#E1F5EE', color: 'var(--brand)' }}>
                         {contact.position}
                       </span>
                     )}

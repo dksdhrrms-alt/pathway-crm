@@ -1,7 +1,7 @@
 'use client';
 
 import ContactForm from './ContactForm';
-import { useEscClose } from '@/lib/useEscClose';
+import { Modal } from './ui';
 
 interface Props {
   defaultAccountId?: string;
@@ -9,26 +9,23 @@ interface Props {
   onSave: () => void;
 }
 
+/**
+ * NewContactModal — uses the common Modal shell. The wrapper auto-closes
+ * on save so the rep gets visual confirmation (modal disappearing = it
+ * worked); the ContactForm itself just signals via onSave.
+ */
 export default function NewContactModal({ defaultAccountId, onClose, onSave }: Props) {
-  // Esc closes the modal — backdrop-click dismiss was removed.
-  useEscClose(onClose);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Contact</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        {/* Auto-close the modal after a successful save so the rep gets
-            visual confirmation (modal disappearing = it worked) instead
-            of having to hunt for the X. The form itself doesn't close;
-            this wrapper owns the dismiss. */}
-        <ContactForm mode="new" initialData={defaultAccountId ? { accountId: defaultAccountId } : undefined} onSave={() => { onSave(); onClose(); }} onCancel={onClose} />
-      </div>
-    </div>
+    <Modal onClose={onClose} size="lg">
+      <Modal.Header title="New Contact" onClose={onClose} />
+      <Modal.Body>
+        <ContactForm
+          mode="new"
+          initialData={defaultAccountId ? { accountId: defaultAccountId } : undefined}
+          onSave={() => { onSave(); onClose(); }}
+          onCancel={onClose}
+        />
+      </Modal.Body>
+    </Modal>
   );
 }

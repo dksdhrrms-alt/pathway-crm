@@ -7,7 +7,7 @@ import { useUsers } from '@/lib/UserContext';
 import { getRoleLabel } from '@/lib/users';
 import AccountSearchSelect from './AccountSearchSelect';
 import SubmitButton from './SubmitButton';
-import { useEscClose } from '@/lib/useEscClose';
+import { Modal } from './ui';
 
 // Shared with NewOpportunityModal + dashboard via lib/data.ts.
 const STAGES = STAGES_ORDER;
@@ -16,9 +16,6 @@ const STAGE_PROB: Record<string, number> = STAGE_PROBABILITY;
 interface Props { opportunity: Opportunity; onClose: () => void; onSaved: () => void; }
 
 export default function EditOpportunityModal({ opportunity, onClose, onSaved }: Props) {
-  // Esc closes the modal — backdrop-click dismiss was removed.
-  useEscClose(onClose);
-
   const { updateOpportunityStage, accounts } = useCRM();
   const { users } = useUsers();
   const activeUsers = users.filter((u) => u.status === 'active');
@@ -94,16 +91,10 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Opportunity</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <form onSubmit={handleSave} className="space-y-4">
+    <Modal onClose={onClose} size="lg">
+      <Modal.Header title="Edit Opportunity" onClose={onClose} />
+      <Modal.Body>
+        <form onSubmit={handleSave} className="space-y-4" id="edit-opp-form">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Opportunity Name *</label>
             <input type="text" value={name} onChange={(e) => { setName(e.target.value); setError(''); }}
@@ -189,12 +180,12 @@ export default function EditOpportunityModal({ opportunity, onClose, onSaved }: 
               ))}
             </select>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</SubmitButton>
-            <SubmitButton type="submit" pending={submitting} pendingText="Saving...">Save Changes</SubmitButton>
-          </div>
         </form>
-      </div>
-    </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <SubmitButton type="button" variant="secondary" onClick={onClose} disabled={submitting}>Cancel</SubmitButton>
+        <SubmitButton type="submit" form="edit-opp-form" pending={submitting} pendingText="Saving...">Save Changes</SubmitButton>
+      </Modal.Footer>
+    </Modal>
   );
 }

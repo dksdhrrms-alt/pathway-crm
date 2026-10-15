@@ -21,7 +21,7 @@ export const tenants: Tenant[] = [
   {
     id: 'tenant_002',
     name: 'AgroVet Solutions',
-    primaryColor: '#1a3a5c',
+    primaryColor: 'var(--sidebar-bg)',
     industry: 'Veterinary Pharmaceuticals',
     logoInitials: 'AV',
     isActive: true,

@@ -43,7 +43,7 @@ const COMPANY_TYPES = [
 ];
 
 const SPECIES_BADGE: Record<string, { bg: string; text: string }> = {
-  'Dairy/Beef': { bg: '#E1F5EE', text: '#0F6E56' },
+  'Dairy/Beef': { bg: '#E1F5EE', text: 'var(--brand)' },
   Poultry: { bg: '#E6F1FB', text: '#185FA5' },
   Swine: { bg: '#FAEEDA', text: '#854F0B' },
   'Feed Mill': { bg: '#EEEDFE', text: '#534AB7' },

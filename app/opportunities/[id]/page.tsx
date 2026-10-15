@@ -97,7 +97,7 @@ export default function OpportunityDetailPage() {
       <main className="pt-16 px-6 pb-10">
         <div className="max-w-7xl mx-auto">
           <div className="mt-6 mb-1">
-            <Link href="/opportunities" className="text-sm hover:underline" style={{ color: '#2d6a4f' }}>
+            <Link href="/opportunities" className="text-sm hover:underline" style={{ color: 'var(--brand)' }}>
               ← Opportunities
             </Link>
           </div>
@@ -109,7 +109,7 @@ export default function OpportunityDetailPage() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{opp.name}</h1>
                 <div className="flex flex-wrap items-center gap-3 mt-2">
                   {account && (
-                    <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline" style={{ color: '#2d6a4f' }}>
+                    <Link href={`/accounts/${account.id}`} className="text-sm font-medium hover:underline" style={{ color: 'var(--brand)' }}>
                       {account.name}
                     </Link>
                   )}
@@ -187,7 +187,7 @@ export default function OpportunityDetailPage() {
                     <li key={c.id} className="flex items-center gap-3 pb-3 border-b border-gray-50 dark:border-slate-800 last:border-0">
                       <div
                         className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
-                        style={{ backgroundColor: '#2d6a4f' }}
+                        style={{ backgroundColor: 'var(--brand)' }}
                       >
                         {c.firstName[0]}{c.lastName[0]}
                       </div>
