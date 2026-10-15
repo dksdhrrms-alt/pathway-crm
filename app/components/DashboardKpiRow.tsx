@@ -21,23 +21,54 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCRM } from '@/lib/CRMContext';
+import { useUsers } from '@/lib/UserContext';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { TrendingUp, DollarSign, Target as TargetIcon, CheckSquare } from 'lucide-react';
 
-export default function DashboardKpiRow() {
+/**
+ * `scope` matches the Dashboard header toggle (Company-wide / Team /
+ * Personal). Without this prop the KPI tiles used to ignore the toggle
+ * and always render the "allowed max" scope for the role — which meant
+ * admins saw company-wide numbers even after flipping to "Personal".
+ *
+ *   'company'              → every opp/task in the DB (admin-tier only)
+ *   { team: 'ruminants' }  → everybody on that team's rows
+ *   'personal'             → ownerId === current user
+ */
+export type KpiScope = 'company' | 'personal' | { team: string };
+
+export default function DashboardKpiRow({ scope = 'personal' }: { scope?: KpiScope }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const { users } = useUsers();
   const { opportunities, tasks } = useCRM();
   const userId = session?.user?.id ?? '';
-  const role = ((session?.user as { role?: string })?.role ?? '').toLowerCase();
-  const canSeeAll = ['admin', 'administrative_manager', 'ceo', 'coo'].includes(role);
 
   const data = useMemo(() => {
     const today = new Date();
     const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const scopedOpps = canSeeAll ? opportunities : opportunities.filter((o) => o.ownerId === userId);
-    const scopedTasks = canSeeAll ? tasks : tasks.filter((t) => t.ownerId === userId);
+
+    // Build the owner-id set that defines the scope.
+    const scopedOwnerIds: Set<string> | null = (() => {
+      if (scope === 'company') return null; // null = no filter (see all)
+      if (scope === 'personal') return new Set(userId ? [userId] : []);
+      // team scope
+      const team = scope.team;
+      const ids = new Set<string>();
+      for (const u of users) {
+        if (u.team === team) ids.add(u.id);
+      }
+      // Fallback: at minimum include self so an empty-team view isn't blank
+      if (userId) ids.add(userId);
+      return ids;
+    })();
+
+    const inScope = <T extends { ownerId: string }>(r: T) =>
+      scopedOwnerIds === null || scopedOwnerIds.has(r.ownerId);
+
+    const scopedOpps = opportunities.filter(inScope);
+    const scopedTasks = tasks.filter(inScope);
 
     const open = scopedOpps.filter((o) => o.stage !== 'Won' && o.stage !== 'Stalled or Lost');
     const openPipeline = open.reduce((s, o) => s + (Number(o.amount) || 0), 0);
@@ -59,7 +90,11 @@ export default function DashboardKpiRow() {
       wonThisMonth, wonCountMonth,
       openTasksCount: openTasks.length, overdueTasks,
     };
-  }, [opportunities, tasks, userId, canSeeAll]);
+  }, [opportunities, tasks, users, userId, scope]);
+
+  // Label hints — "My Open Opps" vs "Open Opportunities" depending on
+  // whether the user is zoomed into their own rows or not.
+  const isPersonal = scope === 'personal';
 
   const fmtMoney = (n: number) => {
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -87,14 +122,14 @@ export default function DashboardKpiRow() {
       />
       <KpiTile
         icon={<TargetIcon className="w-4 h-4" />}
-        label={canSeeAll ? 'Open Opportunities' : 'My Open Opps'}
+        label={isPersonal ? 'My Open Opps' : 'Open Opportunities'}
         value={String(data.openOppsCount)}
         tone="info"
         onClick={() => router.push('/opportunities')}
       />
       <KpiTile
         icon={<CheckSquare className="w-4 h-4" />}
-        label={canSeeAll ? 'Open Tasks' : 'My Open Tasks'}
+        label={isPersonal ? 'My Open Tasks' : 'Open Tasks'}
         value={String(data.openTasksCount)}
         hint={data.overdueTasks > 0 ? `${data.overdueTasks} overdue` : undefined}
         hintTone={data.overdueTasks > 0 ? 'destructive' : undefined}

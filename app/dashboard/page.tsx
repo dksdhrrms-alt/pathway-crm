@@ -317,8 +317,18 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ============ KPI ROW — Linear-style 4 metrics at top ============ */}
-          <DashboardKpiRow />
+          {/* ============ KPI ROW — Linear-style 4 metrics at top ============
+              Takes its scope from the Company-wide / Team / Personal
+              toggle above. Without this prop (default), the row renders
+              as "Personal" so flipping the toggle actually changes what
+              you see. */}
+          <DashboardKpiRow
+            scope={
+              activeTab === 'company'  ? 'company'
+              : activeTab === 'team' && dashboardTeam ? { team: dashboardTeam }
+              : 'personal'
+            }
+          />
 
           {/* ============ TODAY'S MARKET + INDUSTRY NEWS ============ */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-stretch">
