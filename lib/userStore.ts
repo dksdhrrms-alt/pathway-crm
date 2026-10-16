@@ -62,6 +62,9 @@ export async function getStoreUsersAsync(): Promise<AppUser[]> {
         initials: r.initials ?? r.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
         status: r.status,
         profilePhoto: r.profile_photo ?? undefined,
+        team: r.team ?? undefined,
+        dailyEmail: r.daily_email ?? false,
+        trialAccessTeams: Array.isArray(r.trial_access_teams) ? r.trial_access_teams : [],
       }));
     }
   }
@@ -125,6 +128,7 @@ export function updateStoreUser(id: string, updates: Partial<AppUser>): boolean 
     if (updates.role !== undefined) dbUpdates.role = updates.role;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
     if (updates.profilePhoto !== undefined) dbUpdates.profile_photo = updates.profilePhoto;
+    if (updates.trialAccessTeams !== undefined) dbUpdates.trial_access_teams = updates.trialAccessTeams;
     supabase.from('users').update(dbUpdates).eq('id', id).then();
   }
 

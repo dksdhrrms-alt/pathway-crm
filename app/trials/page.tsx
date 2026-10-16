@@ -24,6 +24,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
+import TrialMaterialsSection from '@/app/components/TrialMaterialsSection';
+import TrialReportDownload from '@/app/components/TrialReportDownload';
 import {
   Trial, TrialUpdate, AnimalGroup, TrialStage, TrialHealth,
   TRIAL_STAGES, TRIAL_HEALTHS, PHASES_BY_GROUP,
@@ -267,6 +269,7 @@ export default function TrialsPage() {
                   className="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm">
                   {weekOptions.map((w) => <option key={w} value={w}>{formatWeekEnding(w)}</option>)}
                 </select>
+                <TrialReportDownload weekEnding={weekEnding} />
                 <button onClick={() => window.print()}
                   className="text-sm px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium">
                   Print / Save PDF
@@ -715,6 +718,11 @@ function TrialModal({ initial, onClose, onSave }: {
         <p className="text-[11px] text-gray-500">Choose Poultry/Swine for a trial that covers both animal groups. New trials begin as ongoing.</p>
         <ModalFooter onCancel={onClose} submitLabel={initial ? 'Save trial' : 'Save trial'} />
       </form>
+      {/* Materials section — only renders when editing an existing trial
+          AND the current user has the bucket grant (see
+          lib/trialFiles.ts canAccessTrialFiles). Rendered outside the
+          form so a Save click inside the dropzone can never submit. */}
+      {initial?.id && <TrialMaterialsSection trial={initial} />}
     </ModalShell>
   );
 }

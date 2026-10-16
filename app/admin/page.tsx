@@ -8,6 +8,7 @@ import { AppUser, UserRole, UserStatus, getRoleLabel } from '@/lib/users';
 import { MENU_ITEMS, MenuItem, menuItemToKey, getUserPerms, saveUserPerms, getUserDataVisibility, saveUserDataVisibility, PermState } from '@/lib/permissions';
 import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
+import TrialsAdminPanel from '@/app/components/TrialsAdminPanel';
 import { formatPhone } from '@/lib/phone';
 import Link from 'next/link';
 
@@ -53,7 +54,7 @@ export default function AdminPage() {
   const { opportunities, tasks, activities, accounts, saleRecords } = useCRM();
   const { users: allUsers, updateUserById } = useUsers();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'permissions' | 'health' | 'trials'>('overview');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -330,6 +331,14 @@ export default function AdminPage() {
             {/* Product Library tab was removed — moved to /admin-marketing.
                 Marketing editors upload/edit there under an approval flow
                 before changes appear in the public Products menu. */}
+            <button
+              onClick={() => setActiveTab('trials')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'trials' ? 'bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              Trials
+            </button>
             <button
               onClick={() => setActiveTab('health')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
@@ -677,6 +686,8 @@ export default function AdminPage() {
           )}
 
           {/* Product Library panel moved to /admin-marketing route */}
+
+          {activeTab === 'trials' && <TrialsAdminPanel />}
 
           {activeTab === 'health' && (
             <div>

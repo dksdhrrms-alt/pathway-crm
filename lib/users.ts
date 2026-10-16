@@ -31,6 +31,24 @@ export interface AppUser {
    *  Central). Admins toggle from the Users tab; users can toggle
    *  their own on Profile → Notifications. */
   dailyEmail?: boolean;
+  /** Which Trial Materials buckets this user may view files for.
+   *  Values: 'monogastrics' | 'ruminants' | 'latam'. Set by Admin
+   *  on the Users tab. Admin/CEO/COO/administrative_manager and
+   *  Directors of the matching team bypass this check in the app
+   *  layer — see lib/trialFiles.ts canAccessTrialFiles(). */
+  trialAccessTeams?: TrialAccessTeam[];
+}
+
+/** The three top-level buckets Trial Materials access is granted
+ *  against. Maps from trials.animal_group as follows:
+ *    monogastrics ← Poultry, Swine, Poultry/Swine
+ *    ruminants    ← Ruminants
+ *    latam        ← LATAM
+ */
+export type TrialAccessTeam = 'monogastrics' | 'ruminants' | 'latam';
+export const TRIAL_ACCESS_TEAMS: TrialAccessTeam[] = ['monogastrics', 'ruminants', 'latam'];
+export function trialAccessTeamLabel(t: TrialAccessTeam): string {
+  return t === 'monogastrics' ? 'Monogastrics' : t === 'ruminants' ? 'Ruminants' : 'LATAM';
 }
 
 /**
