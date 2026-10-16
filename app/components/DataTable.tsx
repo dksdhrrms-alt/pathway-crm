@@ -212,10 +212,17 @@ export default function DataTable<T extends DataTableRow>({
         </div>
       </div>
 
-      {/* Table — scroll container */}
+      {/* Table — scroll container.
+          IMPORTANT: do NOT use `contain: strict` here. `strict`
+          includes `size` containment, which detaches the box's
+          layout from its children — so with only `maxHeight`
+          set (no min / explicit height) the box collapsed to
+          0px and the rows rendered but were visually invisible.
+          `layout paint` keeps the virtual-scroll perf benefit
+          (isolated repaints) without the size side-effect. */}
       <div
         className="overflow-auto"
-        style={{ maxHeight, contain: 'strict' }}
+        style={{ maxHeight, contain: 'layout paint' }}
       >
         <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
           <thead
