@@ -64,9 +64,13 @@ function buildHtml(
   newsHtml: string,
   today: string,
 ): string {
-  // Pathway's brand green from the login screen (#1a4731) so the
-  // email looks like it came from the CRM the reps already use.
-  const accent = 'var(--brand)';
+  // Pathway's brand green. HARD-CODED hex on purpose — this string
+  // ends up as an inline style attribute in email HTML, and Gmail /
+  // Outlook / Apple Mail do NOT support CSS custom properties
+  // (var(--brand) renders as literal invalid CSS and gets dropped).
+  // The sed-based token sweep must skip this file; do not change
+  // this back to a token.
+  const accent = '#1a4731';
   const taskItem = (t: EmailTask) =>
     `<tr><td style="padding:6px 0;border-bottom:1px solid #eee;">
         <div style="font-size:14px;color:#111;font-weight:600;">${esc(t.subject) || '(no subject)'}</div>
