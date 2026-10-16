@@ -296,6 +296,44 @@ export async function POST(request: Request) {
   let body: { weekEnding?: string; teams?: string[] } = {};
   try { body = await request.json(); } catch { /* allow empty */ }
 
+  // Server-side team guard: Admin tier (admin / ceo / coo /
+  // administrative_manager) may request any buckets; everyone else
+  // is limited to the buckets they actually have access to (role
+  // Director + explicit per-user grants in users.trial_access_teams).
+  // Otherwise a user could craft the POST and pull data for a
+  // bucket they weren't granted. See lib/trialFiles.ts for the
+  // canonical access model.
+  const role = session.user.role as string;
+  const ADMIN_TIER = new Set(['admin', 'ceo', 'coo', 'administrative_manager']);
+  if (!ADMIN_TIER.has(role)) {
+    const allowed = new Set<string>();
+    // Director role → their species bucket
+    const team = (session.user as { team?: string }).team;
+    if (role === 'sales_director') {
+      if (team === 'monogastrics' || team === 'swine') allowed.add('monogastrics');
+      else if (team === 'ruminants') allowed.add('ruminants');
+      else if (team === 'latam')     allowed.add('latam');
+    }
+    // Pull the user's explicit grants from Supabase (session doesn't
+    // carry them — avoids a stale-token issue when Admin updates them).
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    if (url && key) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const sb = createClient(url, key, { auth: { persistSession: false } });
+      const { data: u } = await sb.from('users')
+        .select('trial_access_teams').eq('id', session.user.id).maybeSingle();
+      for (const t of (u?.trial_access_teams ?? []) as string[]) allowed.add(t);
+    }
+    if (allowed.size === 0) {
+      return NextResponse.json({ error: 'No trial team access configured for this account.' }, { status: 403 });
+    }
+    body.teams = (body.teams ?? Array.from(allowed)).filter((t) => allowed.has(t));
+    if (body.teams.length === 0) {
+      return NextResponse.json({ error: 'You do not have access to any of the requested teams.' }, { status: 403 });
+    }
+  }
+
   const { bytes, filename } = await buildTrialReportDocx({
     weekEnding: body.weekEnding,
     teams: body.teams,

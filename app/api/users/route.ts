@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStoreUsers, addStoreUser } from '@/lib/userStore';
+import { getStoreUsers, getStoreUsersAsync, addStoreUser } from '@/lib/userStore';
 import { requireAuth, requireAdmin } from '@/lib/api-auth';
 import { parseBody, CreateUserBodySchema } from '@/lib/validation';
 
@@ -10,9 +10,18 @@ export async function GET() {
   // pickers, owners, etc.) — but we still gate it behind authentication.
   const { error } = await requireAuth();
   if (error) return error;
+  // Prefer Supabase so columns the file-store doesn't know about
+  // (trial_access_teams, team, daily_email, last_login_at, …) make
+  // it to the client. Fall back to the in-process file store for
+  // local dev when Supabase isn't configured.
+  let users;
+  try {
+    users = await getStoreUsersAsync();
+  } catch {
+    users = getStoreUsers();
+  }
   // Never expose password hashes (or, worse, legacy plaintext passwords) to
   // the client. Strip them before serialising.
-  const users = getStoreUsers();
   const sanitized = users.map(({ password: _password, ...rest }) => rest);
   return NextResponse.json(sanitized);
 }

@@ -26,6 +26,8 @@ import TopBar from '@/app/components/TopBar';
 import Toast from '@/app/components/Toast';
 import TrialMaterialsSection from '@/app/components/TrialMaterialsSection';
 import TrialReportDownload from '@/app/components/TrialReportDownload';
+import { useUsers } from '@/lib/UserContext';
+import { canAccessTrialFiles } from '@/lib/trialFiles';
 import {
   Trial, TrialUpdate, AnimalGroup, TrialStage, TrialHealth,
   TRIAL_STAGES, TRIAL_HEALTHS, PHASES_BY_GROUP,
@@ -41,9 +43,11 @@ type Tab = 'tracker' | 'history' | 'report';
 export default function TrialsPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? '';
+  const { users } = useUsers();
+  const me = users.find((u) => u.id === userId);
 
   const [tab, setTab] = useState<Tab>('tracker');
-  const [trials, setTrials] = useState<Trial[]>([]);
+  const [allTrials, setAllTrials] = useState<Trial[]>([]);
   const [updates, setUpdates] = useState<TrialUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,13 +66,27 @@ export default function TrialsPage() {
     setLoading(true); setError(null);
     try {
       const [t, u] = await Promise.all([listTrials(), listUpdates()]);
-      setTrials(t); setUpdates(u);
+      setAllTrials(t); setUpdates(u);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Team-based visibility: Admin tier sees everything, Directors see
+  // their species, everyone else sees only the buckets ticked for
+  // them under Admin → Trials. Done at the top of the pipeline so
+  // the tracker, weekly history, weekly report, and docx export are
+  // all filtered consistently — no need to repeat the check in each
+  // view. (Previously the whole trial list was readable by every
+  // signed-in user; that broke the Admin UI's promise that an
+  // untiered rep without the bucket grant wouldn't see other
+  // teams' trials.)
+  const trials = useMemo(
+    () => me ? allTrials.filter((t) => canAccessTrialFiles(me, t)) : [],
+    [allTrials, me],
+  );
 
   // Index: latest update per trial id. Used by the tracker view and
   // for card colouring on the sidebar.
