@@ -34,7 +34,7 @@ import {
   wednesdayOf, recentWeekEndings, formatWeekEnding,
 } from '@/lib/trials';
 
-const ANIMAL_GROUPS: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM'];
+const ANIMAL_GROUPS: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM', 'Common'];
 
 type Tab = 'tracker' | 'history' | 'report';
 
@@ -368,7 +368,7 @@ function groupByGroupAndPhase(ts: Trial[]): TrackerGroup[] {
     g.set(t.phase, arr);
     byGroup.set(t.animalGroup, g);
   }
-  const order: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM'];
+  const order: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM', 'Common'];
   return order
     .filter((g) => byGroup.has(g))
     .map((g) => ({
@@ -394,7 +394,7 @@ function groupByGroupAndPhasePairs(
     g.set(p.trial.phase, arr);
     byGroup.set(p.trial.animalGroup, g);
   }
-  const order: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM'];
+  const order: AnimalGroup[] = ['Poultry', 'Swine', 'Poultry/Swine', 'Ruminants', 'LATAM', 'Common'];
   const groups = order
     .filter((g) => byGroup.has(g))
     .map((g) => ({

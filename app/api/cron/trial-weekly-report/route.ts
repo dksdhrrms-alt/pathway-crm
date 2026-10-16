@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const BUCKET_LABEL: Record<string, string> = {
-  monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM',
+  monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM', common: 'Common',
 };
 
 function fmtDate(iso: string): string {
@@ -84,15 +84,10 @@ export async function GET(request: NextRequest) {
   const results: { email: string; ok: boolean; error?: string }[] = [];
 
   for (const r of recipients as Array<{ email: string; label: string | null; teams: string[] }>) {
-    // Expand 'common' to the three concrete buckets so recipients
-    // granted the cross-species scope get the full report. Keep
-    // only known values.
-    const expanded = new Set<string>();
-    for (const t of Array.isArray(r.teams) ? r.teams : []) {
-      if (t === 'common') { expanded.add('monogastrics'); expanded.add('ruminants'); expanded.add('latam'); }
-      else if (BUCKET_LABEL[t]) expanded.add(t);
-    }
-    const teams = Array.from(expanded);
+    // Keep only known bucket keys and de-dupe.
+    const teams = Array.from(new Set(
+      (Array.isArray(r.teams) ? r.teams : []).filter((t) => BUCKET_LABEL[t]),
+    ));
     if (teams.length === 0) {
       results.push({ email: r.email, ok: false, error: 'no teams configured' });
       continue;

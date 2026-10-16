@@ -24,7 +24,7 @@ function sb() {
 
 /** Top-level animal grouping — chosen to match both the external
  *  tracker and the Weekly Report sections (Monogastric/Ruminants/LATAM). */
-export type AnimalGroup = 'Poultry' | 'Swine' | 'Poultry/Swine' | 'Ruminants' | 'LATAM';
+export type AnimalGroup = 'Poultry' | 'Swine' | 'Poultry/Swine' | 'Ruminants' | 'LATAM' | 'Common';
 
 /** Weekly update stage. Order matters — rendering code sorts by
  *  this enum to show in-progress trials ahead of on-hold ones. */
@@ -53,6 +53,9 @@ export const PHASES_BY_GROUP: Record<AnimalGroup, string[]> = {
   'Poultry/Swine': ['Mixed Poultry/Swine'],
   Ruminants:       ['Dairy', 'Beef', 'Calf', 'Other Ruminants'],
   LATAM:           ['Monogastric (LATAM)', 'Ruminants (LATAM)', 'Other LATAM'],
+  // Common R&D projects (Saponix, GroMega, BP-Lysine, Healthy Dog,
+  // etc.) are tracked by project stage rather than animal species.
+  Common:          ['Stage 1', 'Stage 2', 'Stage 3', 'Stage 4', 'Stage 5', 'Completed', 'Other R&D'],
 };
 
 export interface Trial {

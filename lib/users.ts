@@ -44,14 +44,10 @@ export interface AppUser {
  *    monogastrics ← Poultry, Swine, Poultry/Swine
  *    ruminants    ← Ruminants
  *    latam        ← LATAM
- *    common       ← cross-species shortcut: a user granted
- *                   'common' can see files on EVERY trial
- *                   regardless of its animal group. Intended for
- *                   roles that work across species (lab tech,
- *                   protocol author, external consultant on a
- *                   shared SOP). On the Weekly Report scope
- *                   selector it is equivalent to picking all
- *                   three animal-specific buckets at once.
+ *    common       ← Common (cross-species R&D projects — Saponix,
+ *                   GroMega, BP-Lysine, etc. — tracked as their
+ *                   own animal_group so they can be scoped
+ *                   independently of a single species team).
  */
 export type TrialAccessTeam = 'monogastrics' | 'ruminants' | 'latam' | 'common';
 export const TRIAL_ACCESS_TEAMS: TrialAccessTeam[] = ['monogastrics', 'ruminants', 'latam', 'common'];
@@ -59,7 +55,7 @@ export function trialAccessTeamLabel(t: TrialAccessTeam): string {
   if (t === 'monogastrics') return 'Monogastrics';
   if (t === 'ruminants')    return 'Ruminants';
   if (t === 'latam')        return 'LATAM';
-  return 'Common (all species)';
+  return 'Common';
 }
 
 /**

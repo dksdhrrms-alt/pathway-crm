@@ -29,11 +29,12 @@ function sb() {
 
 // ── animal_group → access bucket ──────────────────────────────
 
-/** The DB stores five animal_group values but access is granted
- *  against three buckets. This map is the single source of truth. */
+/** The DB stores six animal_group values and access is granted
+ *  against four buckets. This map is the single source of truth. */
 export function animalGroupToAccessTeam(g: AnimalGroup): TrialAccessTeam {
   if (g === 'Ruminants') return 'ruminants';
   if (g === 'LATAM')     return 'latam';
+  if (g === 'Common')    return 'common';
   // Poultry, Swine, Poultry/Swine
   return 'monogastrics';
 }
@@ -43,6 +44,7 @@ export function animalGroupToAccessTeam(g: AnimalGroup): TrialAccessTeam {
 export function accessTeamToAnimalGroups(t: TrialAccessTeam): AnimalGroup[] {
   if (t === 'ruminants')   return ['Ruminants'];
   if (t === 'latam')       return ['LATAM'];
+  if (t === 'common')      return ['Common'];
   return ['Poultry', 'Swine', 'Poultry/Swine'];
 }
 
@@ -61,27 +63,25 @@ function directorBucketsFor(user: AppUser): TrialAccessTeam[] {
   return [];
 }
 
-/** `true` if this user may read/write files on the given trial. */
+/** `true` if this user may read/write files on the given trial.
+ *  Buckets are one-to-one with animal_group buckets — a user
+ *  with the 'common' grant sees Common R&D trials, not every
+ *  trial. Admin/CEO/COO/Admin Manager bypass the whole check. */
 export function canAccessTrialFiles(user: AppUser | null | undefined, trial: Pick<Trial, 'animalGroup'>): boolean {
   if (!user) return false;
   if (ADMIN_TIER.has(user.role)) return true;
   const grants = user.trialAccessTeams ?? [];
-  // 'common' is the cross-species shortcut — anyone with it sees
-  // every trial regardless of animal group.
-  if (grants.includes('common')) return true;
   const bucket = animalGroupToAccessTeam(trial.animalGroup);
   if (directorBucketsFor(user).includes(bucket)) return true;
   return grants.includes(bucket);
 }
 
-/** All access buckets a user can see, for pre-filtering lists.
- *  'common' is expanded to the three concrete buckets. */
+/** All access buckets a user can see, for pre-filtering lists. */
 export function accessibleBucketsFor(user: AppUser | null | undefined): TrialAccessTeam[] {
   if (!user) return [];
-  if (ADMIN_TIER.has(user.role)) return ['monogastrics', 'ruminants', 'latam'];
+  if (ADMIN_TIER.has(user.role)) return ['monogastrics', 'ruminants', 'latam', 'common'];
   const dir = directorBucketsFor(user);
   const explicit = user.trialAccessTeams ?? [];
-  if (explicit.includes('common')) return ['monogastrics', 'ruminants', 'latam'];
   return Array.from(new Set([...dir, ...explicit])) as TrialAccessTeam[];
 }
 

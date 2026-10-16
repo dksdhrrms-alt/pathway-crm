@@ -36,24 +36,16 @@ const BUCKET_GROUPS: Record<string, string[]> = {
   monogastrics: ['Poultry', 'Swine', 'Poultry/Swine'],
   ruminants:    ['Ruminants'],
   latam:        ['LATAM'],
+  common:       ['Common'],
 };
 const BUCKET_LABEL: Record<string, string> = {
-  monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM',
+  monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM', common: 'Common',
 };
 
-/** Normalize incoming scope — expand the 'common' shortcut to all
- *  three concrete buckets and de-dupe. See lib/users.ts TrialAccessTeam. */
+/** Normalize incoming scope — drop unknown teams and de-dupe. */
 function normalizeTeams(teams: string[] | undefined): string[] {
-  const defaulted = teams && teams.length ? teams : ['monogastrics', 'ruminants', 'latam'];
-  const out = new Set<string>();
-  for (const t of defaulted) {
-    if (t === 'common') {
-      out.add('monogastrics'); out.add('ruminants'); out.add('latam');
-    } else if (BUCKET_GROUPS[t]) {
-      out.add(t);
-    }
-  }
-  return Array.from(out);
+  const defaulted = teams && teams.length ? teams : ['monogastrics', 'ruminants', 'latam', 'common'];
+  return Array.from(new Set(defaulted.filter((t) => BUCKET_GROUPS[t])));
 }
 
 // ── Date + sanitize helpers ──────────────────────────────────
