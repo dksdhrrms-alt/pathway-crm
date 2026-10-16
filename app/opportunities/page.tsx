@@ -278,37 +278,41 @@ export default function OpportunitiesPage() {
             </div>
           </div>
 
-          {/* Stats + Owner Filter */}
-          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'stretch' }}>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN DEALS</div>
-              <div style={{ fontSize: '22px', fontWeight: 500 }}>{openOpps.length}</div>
+          {/* Stats + Owner Filter — 2 across on phone, 4 on tablet,
+              7 on desktop. Dropped the inline flex-wrap scheme that
+              fit 1-2 tiles per row on mobile with no clear rhythm. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-5">
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">OPEN DEALS</div>
+              <div className="text-xl sm:text-2xl font-medium text-foreground tabular-nums">{openOpps.length}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>PIPELINE</div>
-              <div style={{ fontSize: '22px', fontWeight: 500 }}>{formatCurrency(totalPipeline)}</div>
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">PIPELINE</div>
+              <div className="text-lg sm:text-xl font-medium text-foreground tabular-nums">{formatCurrency(totalPipeline)}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WEIGHTED</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: '#185FA5' }}>{formatCurrency(weightedPipeline)}</div>
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">WEIGHTED</div>
+              <div className="text-lg sm:text-xl font-medium tabular-nums text-sky-700 dark:text-sky-300">{formatCurrency(weightedPipeline)}</div>
             </div>
-            <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × remaining months in current year, based on Expected Start Date">
-              <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear} ANNUAL</div>
-              <div style={{ fontSize: '20px', fontWeight: 500, color: 'var(--brand)' }}>{formatCurrency(annualThisYear)}</div>
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 px-4 py-3.5"
+              title="Sum of monthly amount × remaining months in current year, based on Expected Start Date">
+              <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{currentYear} ANNUAL</div>
+              <div className="text-lg font-medium tabular-nums text-brand">{formatCurrency(annualThisYear)}</div>
             </div>
-            <div style={{ background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '10px', padding: '14px 16px', flex: '1 1 130px' }} title="Sum of monthly amount × 12 for opportunities starting on or before next year">
-              <div style={{ fontSize: '11px', color: '#047857', marginBottom: '4px', fontWeight: 600 }}>{currentYear + 1} ANNUAL</div>
-              <div style={{ fontSize: '20px', fontWeight: 500, color: 'var(--brand)' }}>{formatCurrency(annualNextYear)}</div>
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 px-4 py-3.5"
+              title="Sum of monthly amount × 12 for opportunities starting on or before next year">
+              <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">{currentYear + 1} ANNUAL</div>
+              <div className="text-lg font-medium tabular-nums text-brand">{formatCurrency(annualNextYear)}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 120px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>WON</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--brand)' }}>{closedWonCount}</div>
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">WON</div>
+              <div className="text-xl sm:text-2xl font-medium tabular-nums text-brand">{closedWonCount}</div>
             </div>
             {ownerOptions.length > 1 && (
-              <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px', flex: '1 1 140px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>FILTER BY OWNER</div>
+              <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5 flex flex-col justify-center col-span-2 sm:col-span-1">
+                <div className="text-[11px] text-muted-fg mb-1">FILTER BY OWNER</div>
                 <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}
-                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                  className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-900 dark:text-gray-100 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand">
                   <option value="all">All Owners</option>
                   {ownerOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>

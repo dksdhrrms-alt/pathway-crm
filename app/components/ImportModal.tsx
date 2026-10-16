@@ -9,6 +9,7 @@ import { parseImportFile, autoMapColumns, RawRow, generateAccountTemplate, gener
 import { parseVCardFile } from '@/lib/vcardParser';
 import SubmitButton from './SubmitButton';
 import { useEscClose } from '@/lib/useEscClose';
+import { Modal } from './ui/Modal';
 
 type ImportType = 'accounts' | 'contacts';
 type Step = 'upload' | 'mapping' | 'preview' | 'done';
@@ -298,18 +299,9 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-2xl p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Import {type === 'accounts' ? 'Accounts' : 'Contacts'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
+    <Modal onClose={onClose} size="2xl">
+      <Modal.Header title={`Import ${type === 'accounts' ? 'Accounts' : 'Contacts'}`} onClose={onClose} />
+      <Modal.Body>
         {/* Step 1: Upload */}
         {step === 'upload' && (
           <div>
@@ -521,7 +513,7 @@ export default function ImportModal({ type, onClose, onDone }: Props) {
             <button onClick={onClose} className="px-5 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90" style={{ backgroundColor: 'var(--brand)' }}>Close</button>
           </div>
         )}
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }

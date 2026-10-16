@@ -18,6 +18,7 @@ import type { BudgetTeam } from '@/lib/data';
 import { dbListBudgetTeams, dbCreateBudgetTeam, dbUpdateBudgetTeam, dbDeleteBudgetTeam } from '@/lib/db';
 import SubmitButton from './SubmitButton';
 import { useEscClose } from '@/lib/useEscClose';
+import { Modal } from './ui/Modal';
 
 interface Props {
   onClose: () => void;
@@ -162,25 +163,13 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
-    >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage Budget Teams</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Labels here apply only to the Budget Tracker (R&amp;D + Event). Other CRM areas use their own team lists.
-            </p>
-          </div>
-          <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50" aria-label="Close">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <Modal onClose={onClose} size="lg" blockBackdropClose={submitting}>
+      <Modal.Header
+        title="Manage Budget Teams"
+        subtitle="Labels here apply only to the Budget Tracker (R&D + Event). Other CRM areas use their own team lists."
+        onClose={onClose}
+      />
+      <Modal.Body>
         {/* List */}
         <div className="border border-gray-200 dark:border-slate-700 rounded-lg divide-y divide-gray-100 dark:divide-slate-800 mb-4">
           {loading && <p className="text-xs text-gray-500 dark:text-gray-400 px-3 py-3">Loading…</p>}
@@ -257,7 +246,7 @@ export default function BudgetTeamsModal({ onClose, onChanged }: Props) {
             {error}
           </div>
         )}
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }

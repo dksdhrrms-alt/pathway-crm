@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import SubmitButton from './SubmitButton';
 import { useEscClose } from '@/lib/useEscClose';
+import { Modal } from './ui/Modal';
 
 interface Props {
   onClose: () => void;
@@ -154,26 +155,14 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
   }, [activitiesByTeam]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
-    >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'env(safe-area-inset-bottom)', WebkitOverflowScrolling: 'touch' }}>
-        <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-6 py-4 flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Marketing Report</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Generates an R&amp;D Weekly Report (.docx) matching the template. Spending table auto-fills from Budget Tracker.
-            </p>
-          </div>
-          <button onClick={onClose} disabled={submitting} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50" aria-label="Close">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-5 space-y-6">
+    <Modal onClose={onClose} size="full" blockBackdropClose={submitting}>
+      <Modal.Header
+        title="AI Marketing Report"
+        subtitle="Generates an R&D Weekly Report (.docx) matching the template. Spending table auto-fills from Budget Tracker."
+        onClose={onClose}
+      />
+      <Modal.Body>
+        <div className="space-y-6">
           {/* Week ending date */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Week ending</label>
@@ -248,13 +237,13 @@ export default function MarketingWeeklyModal({ onClose }: Props) {
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 px-6 py-3 flex items-center justify-end gap-2">
-          <button onClick={onClose} disabled={submitting} className="px-4 py-2 text-sm border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50">Cancel</button>
-          <SubmitButton type="button" onClick={handleGenerate} pending={submitting} pendingText="Generating…">
-            Generate Word
-          </SubmitButton>
-        </div>
-      </div>
-    </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <button onClick={onClose} disabled={submitting} className="px-4 py-2 text-sm border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50">Cancel</button>
+        <SubmitButton type="button" onClick={handleGenerate} pending={submitting} pendingText="Generating…">
+          Generate Word
+        </SubmitButton>
+      </Modal.Footer>
+    </Modal>
   );
 }

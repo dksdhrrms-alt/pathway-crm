@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { Modal } from './ui/Modal';
 
 interface Props {
   /** Team report type, passed straight through to the API. */
@@ -93,34 +94,9 @@ export default function MonthlyPresentationModal({ reportType, reportLabel, onCl
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
-      tabIndex={-1}
-    >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-md p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              AI Monthly Presentation
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{reportLabel}</p>
-          </div>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <Modal onClose={onClose} size="md" blockBackdropClose={submitting}>
+      <Modal.Header title="AI Monthly Presentation" subtitle={reportLabel} onClose={onClose} />
+      <Modal.Body>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
           Pick the month to report on. The PPT will include the annual budget,
           year-to-date achievement, the selected month&apos;s budget vs. actual,
@@ -191,7 +167,7 @@ export default function MonthlyPresentationModal({ reportType, reportLabel, onCl
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }

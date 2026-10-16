@@ -143,28 +143,32 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OPEN TASKS</div>
-              <div style={{ fontSize: '22px', fontWeight: 500 }}>{openTaskCount}</div>
+          {/* Stats — stack 2 per row on mobile, 4 across on tablet+.
+              Dropped the inline-style `repeat(4, 1fr)` grid that
+              squished each tile to ~75 px on a phone and made the
+              numbers overlap their labels. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">OPEN TASKS</div>
+              <div className="text-xl sm:text-2xl font-medium text-foreground tabular-nums">{openTaskCount}</div>
             </div>
-            <div style={{ background: overdueCount > 0 ? '#FCEBEB' : '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>OVERDUE</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: overdueCount > 0 ? '#E24B4A' : 'inherit' }}>{overdueCount}</div>
+            <div className={`rounded-xl px-4 py-3.5 ${overdueCount > 0 ? 'bg-red-50 dark:bg-red-950/30' : 'bg-gray-50 dark:bg-slate-800'}`}>
+              <div className="text-[11px] text-muted-fg">OVERDUE</div>
+              <div className={`text-xl sm:text-2xl font-medium tabular-nums ${overdueCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>{overdueCount}</div>
             </div>
-            <div style={{ background: dueTodayCount > 0 ? '#FAEEDA' : '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>DUE TODAY</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: dueTodayCount > 0 ? '#854F0B' : 'inherit' }}>{dueTodayCount}</div>
+            <div className={`rounded-xl px-4 py-3.5 ${dueTodayCount > 0 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-gray-50 dark:bg-slate-800'}`}>
+              <div className="text-[11px] text-muted-fg">DUE TODAY</div>
+              <div className={`text-xl sm:text-2xl font-medium tabular-nums ${dueTodayCount > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-foreground'}`}>{dueTodayCount}</div>
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '10px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>COMPLETED</div>
-              <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--brand)' }}>{completedCount}</div>
+            <div className="rounded-xl bg-gray-50 dark:bg-slate-800 px-4 py-3.5">
+              <div className="text-[11px] text-muted-fg">COMPLETED</div>
+              <div className="text-xl sm:text-2xl font-medium text-brand tabular-nums">{completedCount}</div>
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex gap-1 mb-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg p-1 w-fit">
+          {/* Filter Tabs — allow horizontal scroll at phone width
+              so the full set stays reachable without wrapping. */}
+          <div className="flex gap-1 mb-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab}
