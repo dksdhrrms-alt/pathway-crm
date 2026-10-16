@@ -10,6 +10,8 @@ import CountrySelect from './CountrySelect';
 import AccountParentSelector from './AccountParentSelector';
 import SubmitButton from './SubmitButton';
 import { formatPhone } from '@/lib/phone';
+import { findAccountDuplicates, type DupMatch } from '@/lib/duplicates';
+import { AlertTriangle } from 'lucide-react';
 
 const INDUSTRIES = [
   'Dairy/Beef', 'Poultry', 'Swine', 'Feed Mill / Premix', 'Aquaculture',
@@ -276,6 +278,15 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
           <input type="text" value={name} onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
             placeholder="e.g. Tyson Foods" className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-slate-800 dark:text-gray-100 dark:placeholder-gray-500 ${errors.name ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'}`} />
           {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+          {/* Duplicate warning — only shows when the typed name
+              fuzzy-matches an existing Account. Scored ≥0.75 shown,
+              ≥0.9 marked HIGH (red). Click a suggestion to open that
+              account instead of saving a dupe. */}
+          <AccountDuplicateWarning
+            name={name}
+            currentId={initialData?.id}
+            pool={accounts}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Species / Industry</label>
@@ -431,5 +442,64 @@ export default function AccountForm({ initialData, onSave, onCancel, mode }: Pro
         </SubmitButton>
       </div>
     </form>
+  );
+}
+
+/**
+ * Inline fuzzy-duplicate warning that lives directly under the
+ * Account Name input. Debounced 300 ms so typing feels snappy.
+ * Shows up to 3 suggestions; clicking one navigates to that
+ * account rather than letting the user save a duplicate.
+ */
+function AccountDuplicateWarning({
+  name, currentId, pool,
+}: {
+  name: string;
+  currentId?: string;
+  pool: Account[];
+}) {
+  const [debounced, setDebounced] = useState(name);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(name), 300);
+    return () => clearTimeout(t);
+  }, [name]);
+
+  const matches = useMemo<DupMatch<Account>[]>(
+    () => debounced.trim().length < 2
+      ? []
+      : findAccountDuplicates(debounced, pool, { excludeId: currentId, limit: 3 }),
+    [debounced, pool, currentId],
+  );
+
+  if (matches.length === 0) return null;
+  const high = matches.find((m) => m.severity === 'high');
+  const banner = high ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-800 dark:text-red-200'
+                      : 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200';
+
+  return (
+    <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${banner}`}>
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <div className="font-semibold mb-1">
+            {high ? 'This looks like a duplicate.' : 'Possible duplicate — review before saving.'}
+          </div>
+          <ul className="space-y-0.5">
+            {matches.map((m) => (
+              <li key={m.item.id} className="flex items-center gap-1.5">
+                <Link
+                  href={`/accounts/${m.item.id}`}
+                  className="font-medium underline hover:no-underline"
+                  target="_blank" rel="noreferrer"
+                >
+                  {m.item.name}
+                </Link>
+                <span className="opacity-70">— {m.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
   );
 }

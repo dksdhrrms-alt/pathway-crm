@@ -9,6 +9,8 @@ import { generateId, ActivityType, ACTIVITY_PURPOSES, type Task } from '@/lib/da
 import VoiceInputButton from './VoiceInputButton';
 import ActivityAttachmentsField, { type ActivityAttachmentsFieldHandle } from './ActivityAttachmentsField';
 import SubmitButton from './SubmitButton';
+import SmartLogModal from './SmartLogModal';
+import { Sparkles } from 'lucide-react';
 
 const TYPES: { id: ActivityType; emoji: string }[] = [
   { id: 'Call', emoji: '📞' },
@@ -28,6 +30,7 @@ export default function QuickLogFAB() {
   const isAdmin = ['administrative_manager','admin','ceo','sales_director','coo'].includes(session?.user?.role ?? '');
 
   const [isOpen, setIsOpen] = useState(false);
+  const [smartOpen, setSmartOpen] = useState(false);
   // When ANY other modal opens (anything with `.fixed.inset-0` that isn't
   // our own FAB modal), hide the FAB entirely. Pure z-index demotion
   // wasn't enough in practice — on mobile some modals render their action
@@ -231,31 +234,44 @@ export default function QuickLogFAB() {
 
   return (
     <>
-      {/* FAB Button — hidden entirely when another modal is open.
-          We watch the DOM via MutationObserver (see useEffect above) and
-          flip a state flag rather than fighting z-index — the latter
-          turned out to be platform-dependent on mobile Safari. */}
+      {/* FAB cluster — hidden when another modal is open.
+          Two buttons: ✨ Smart Log (free-text, AI-parsed) on top,
+          + Quick Log (structured form) at the bottom. The Smart
+          Log is deliberately smaller — most logs will still use
+          the structured form; Smart Log is the "in a hurry" lane. */}
       {!hiddenByOther && (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="press-nudge"
-        style={{
-          position: 'fixed', bottom: '28px', right: '28px', zIndex: 40,
-          width: '56px', height: '56px', borderRadius: '50%',
-          background: 'var(--brand)', color: 'white', border: 'none',
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: 'var(--shadow-lg)',
-        }}
-        title="Quick Log Activity"
-        aria-label="Quick Log Activity"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-      </button>
+      <div className="fixed right-7 bottom-7 z-40 flex flex-col items-end gap-3">
+        <button
+          onClick={() => setSmartOpen(true)}
+          className="press-nudge inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-white dark:bg-slate-800 text-brand dark:text-emerald-300 border border-brand/30 dark:border-emerald-700 shadow-[var(--shadow-md)] text-sm font-medium hover:bg-brand-tint"
+          title="Smart Log — just type/dictate what happened"
+          aria-label="Smart Log"
+        >
+          <Sparkles className="w-4 h-4" />
+          Smart Log
+        </button>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="press-nudge"
+          style={{
+            width: '56px', height: '56px', borderRadius: '50%',
+            background: 'var(--brand)', color: 'white', border: 'none',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: 'var(--shadow-lg)',
+          }}
+          title="Quick Log Activity"
+          aria-label="Quick Log Activity"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
       )}
+
+      {smartOpen && <SmartLogModal onClose={() => setSmartOpen(false)} />}
 
       {/* Modal */}
       {isOpen && (
