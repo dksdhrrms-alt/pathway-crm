@@ -39,16 +39,27 @@ export interface AppUser {
   trialAccessTeams?: TrialAccessTeam[];
 }
 
-/** The three top-level buckets Trial Materials access is granted
- *  against. Maps from trials.animal_group as follows:
+/** The buckets Trial Materials access is granted against.
+ *  Maps from trials.animal_group as follows:
  *    monogastrics ← Poultry, Swine, Poultry/Swine
  *    ruminants    ← Ruminants
  *    latam        ← LATAM
+ *    common       ← cross-species shortcut: a user granted
+ *                   'common' can see files on EVERY trial
+ *                   regardless of its animal group. Intended for
+ *                   roles that work across species (lab tech,
+ *                   protocol author, external consultant on a
+ *                   shared SOP). On the Weekly Report scope
+ *                   selector it is equivalent to picking all
+ *                   three animal-specific buckets at once.
  */
-export type TrialAccessTeam = 'monogastrics' | 'ruminants' | 'latam';
-export const TRIAL_ACCESS_TEAMS: TrialAccessTeam[] = ['monogastrics', 'ruminants', 'latam'];
+export type TrialAccessTeam = 'monogastrics' | 'ruminants' | 'latam' | 'common';
+export const TRIAL_ACCESS_TEAMS: TrialAccessTeam[] = ['monogastrics', 'ruminants', 'latam', 'common'];
 export function trialAccessTeamLabel(t: TrialAccessTeam): string {
-  return t === 'monogastrics' ? 'Monogastrics' : t === 'ruminants' ? 'Ruminants' : 'LATAM';
+  if (t === 'monogastrics') return 'Monogastrics';
+  if (t === 'ruminants')    return 'Ruminants';
+  if (t === 'latam')        return 'LATAM';
+  return 'Common (all species)';
 }
 
 /**

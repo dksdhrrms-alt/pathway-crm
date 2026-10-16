@@ -65,17 +65,23 @@ function directorBucketsFor(user: AppUser): TrialAccessTeam[] {
 export function canAccessTrialFiles(user: AppUser | null | undefined, trial: Pick<Trial, 'animalGroup'>): boolean {
   if (!user) return false;
   if (ADMIN_TIER.has(user.role)) return true;
+  const grants = user.trialAccessTeams ?? [];
+  // 'common' is the cross-species shortcut — anyone with it sees
+  // every trial regardless of animal group.
+  if (grants.includes('common')) return true;
   const bucket = animalGroupToAccessTeam(trial.animalGroup);
   if (directorBucketsFor(user).includes(bucket)) return true;
-  return (user.trialAccessTeams ?? []).includes(bucket);
+  return grants.includes(bucket);
 }
 
-/** All access buckets a user can see, for pre-filtering lists. */
+/** All access buckets a user can see, for pre-filtering lists.
+ *  'common' is expanded to the three concrete buckets. */
 export function accessibleBucketsFor(user: AppUser | null | undefined): TrialAccessTeam[] {
   if (!user) return [];
   if (ADMIN_TIER.has(user.role)) return ['monogastrics', 'ruminants', 'latam'];
   const dir = directorBucketsFor(user);
   const explicit = user.trialAccessTeams ?? [];
+  if (explicit.includes('common')) return ['monogastrics', 'ruminants', 'latam'];
   return Array.from(new Set([...dir, ...explicit])) as TrialAccessTeam[];
 }
 

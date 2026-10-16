@@ -17,7 +17,8 @@ import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED = new Set(['monogastrics', 'ruminants', 'latam']);
+// 'common' is the cross-species shortcut (see lib/users.ts).
+const ALLOWED = new Set(['monogastrics', 'ruminants', 'latam', 'common']);
 
 export async function PATCH(
   request: Request,
@@ -27,8 +28,6 @@ export async function PATCH(
   if (authErr) return authErr;
 
   const { id } = await params;
-  const found = getStoreUserById(id);
-  if (!found) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
   let body: unknown;
   try { body = await request.json(); } catch { body = {}; }
@@ -38,21 +37,44 @@ export async function PATCH(
   }
   const teams = rawTeams
     .filter((t): t is string => typeof t === 'string')
-    .filter((t) => ALLOWED.has(t));
+    .filter((t) => ALLOWED.has(t)) as ('monogastrics' | 'ruminants' | 'latam' | 'common')[];
 
-  // File-store copy (dev fallback)
-  updateStoreUser(id, { trialAccessTeams: teams as ('monogastrics' | 'ruminants' | 'latam')[] });
-
-  // Supabase copy — authoritative in production. We write here
-  // explicitly (rather than relying only on updateStoreUser's
-  // Supabase side-effect) because the dev file-store path doesn't
-  // know this column exists.
+  // Supabase is authoritative in production. Verify the user
+  // exists there (rather than only in the dev file-store) and
+  // then write. Older note said we checked the file-store first —
+  // that broke the Admin → Trials save for every production user
+  // whose row only lives in Supabase.
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  let foundSomewhere = false;
+
   if (url && key) {
     const sb = createClient(url, key, { auth: { persistSession: false } });
-    const { error } = await sb.from('users').update({ trial_access_teams: teams }).eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Confirm the user exists in Supabase first — gives a clean 404
+    // when the id is bogus (typo, deleted user) instead of a
+    // silent no-op update.
+    const { data: existing, error: lookupErr } = await sb
+      .from('users').select('id').eq('id', id).maybeSingle();
+    if (lookupErr) return NextResponse.json({ error: lookupErr.message }, { status: 500 });
+    if (existing) {
+      foundSomewhere = true;
+      const { error } = await sb
+        .from('users').update({ trial_access_teams: teams }).eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  // Dev file-store fallback — only matters when Supabase isn't
+  // configured. Keeps local `npm run dev` working against the
+  // JSON fixture.
+  if (getStoreUserById(id)) {
+    foundSomewhere = true;
+    updateStoreUser(id, { trialAccessTeams: teams });
+  }
+
+  if (!foundSomewhere) {
+    return NextResponse.json({ error: 'User not found.' }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true, teams });

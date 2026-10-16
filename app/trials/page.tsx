@@ -155,10 +155,21 @@ export default function TrialsPage() {
   // ── Mutations ────────────────────────────────────────────────
   async function handleSaveTrial(patch: Partial<Trial> & { name: string; animalGroup: AnimalGroup; phase: string }) {
     try {
-      await upsertTrial({ ...patch, createdBy: patch.id ? undefined : userId });
+      const saved = await upsertTrial({ ...patch, createdBy: patch.id ? undefined : userId });
       await load();
-      setTrialModalOpen(false); setTrialModal(null);
-      setToast(patch.id ? 'Trial updated' : `Added "${patch.name}"`);
+      if (patch.id) {
+        // Editing an existing trial — close as before.
+        setTrialModalOpen(false); setTrialModal(null);
+        setToast('Trial updated');
+      } else {
+        // New trial — keep the modal open and re-render it in EDIT
+        // mode by swapping the `initial` to the just-saved row.
+        // This exposes the Materials section (which only renders when
+        // `initial?.id` is set) so the user can attach files
+        // immediately without closing + reopening the card.
+        setTrialModal(saved);
+        setToast(`Added "${patch.name}" — you can now attach materials below`);
+      }
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
   }
   async function handleSaveUpdate(patch: Partial<TrialUpdate> & {
@@ -434,7 +445,7 @@ function UpdateCard({ trial, update, onAddUpdate, onFinish, onReopen, onEditTria
           {finished
             ? <button onClick={onReopen} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800">Reopen</button>
             : <button onClick={onFinish} className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800">Finish</button>}
-          <button onClick={onEditTrial} title="Edit trial" className="text-xs px-1.5 py-1 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-100">✎</button>
+          <button onClick={onEditTrial} title="Edit trial · attach materials" className="text-xs px-1.5 py-1 rounded text-gray-500 hover:text-gray-800 dark:hover:text-gray-100">📎 ✎</button>
           <button onClick={onDeleteTrial} title="Delete trial" className="text-xs px-1.5 py-1 rounded text-red-500 hover:bg-red-50">🗑</button>
         </div>
       </header>
@@ -813,6 +824,13 @@ function UpdateModal({ trials, initialTrialId, initial, defaultWeekEnding, onClo
         </Field>
         <ModalFooter onCancel={onClose} submitLabel="Save update" />
       </form>
+      {/* Materials for the trial this update belongs to. Shows up
+          as soon as a trial is selected (both new-update and
+          edit-update flows), because the trial itself always exists
+          by the time this modal is open. Hidden entirely for users
+          without the per-team bucket grant — see
+          lib/trialFiles.ts canAccessTrialFiles(). */}
+      {trial && <TrialMaterialsSection trial={trial} />}
     </ModalShell>
   );
 }

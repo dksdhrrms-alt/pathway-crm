@@ -41,6 +41,21 @@ const BUCKET_LABEL: Record<string, string> = {
   monogastrics: 'Monogastrics', ruminants: 'Ruminants', latam: 'LATAM',
 };
 
+/** Normalize incoming scope — expand the 'common' shortcut to all
+ *  three concrete buckets and de-dupe. See lib/users.ts TrialAccessTeam. */
+function normalizeTeams(teams: string[] | undefined): string[] {
+  const defaulted = teams && teams.length ? teams : ['monogastrics', 'ruminants', 'latam'];
+  const out = new Set<string>();
+  for (const t of defaulted) {
+    if (t === 'common') {
+      out.add('monogastrics'); out.add('ruminants'); out.add('latam');
+    } else if (BUCKET_GROUPS[t]) {
+      out.add(t);
+    }
+  }
+  return Array.from(out);
+}
+
 // ── Date + sanitize helpers ──────────────────────────────────
 function wednesdayISO(d: Date): string {
   const day = d.getDay();
@@ -158,8 +173,7 @@ export async function buildTrialReportDocx(opts: {
 }): Promise<{ bytes: Buffer; filename: string; stats: { green: number; amber: number; red: number; total: number } }> {
   const now = new Date();
   const weekEnding = opts.weekEnding || wednesdayISO(now);
-  const teams = (opts.teams && opts.teams.length ? opts.teams : ['monogastrics', 'ruminants', 'latam'])
-    .filter((t) => BUCKET_GROUPS[t]);
+  const teams = normalizeTeams(opts.teams);
 
   const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

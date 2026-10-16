@@ -84,7 +84,15 @@ export async function GET(request: NextRequest) {
   const results: { email: string; ok: boolean; error?: string }[] = [];
 
   for (const r of recipients as Array<{ email: string; label: string | null; teams: string[] }>) {
-    const teams = (Array.isArray(r.teams) ? r.teams : []).filter((t) => BUCKET_LABEL[t]);
+    // Expand 'common' to the three concrete buckets so recipients
+    // granted the cross-species scope get the full report. Keep
+    // only known values.
+    const expanded = new Set<string>();
+    for (const t of Array.isArray(r.teams) ? r.teams : []) {
+      if (t === 'common') { expanded.add('monogastrics'); expanded.add('ruminants'); expanded.add('latam'); }
+      else if (BUCKET_LABEL[t]) expanded.add(t);
+    }
+    const teams = Array.from(expanded);
     if (teams.length === 0) {
       results.push({ email: r.email, ok: false, error: 'no teams configured' });
       continue;
