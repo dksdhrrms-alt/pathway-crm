@@ -60,6 +60,16 @@ const DEFAULT_PERMISSIONS: PermissionsMap = {
     'R&D': true, Trials: true, Inventory: false,
     Marketing: false, 'Marketing Approver': false, Admin: false,
   },
+  // Intern: deliberately narrow — Accounts + Contacts only. No
+  // Home, no Opportunities, no Tasks, no R&D. Admins who need to
+  // open an item further can grant it explicitly through the
+  // per-user override UI on /admin.
+  intern: {
+    Home: false, Accounts: true, Contacts: true, Opportunities: false,
+    Tasks: false, Reports: false, Insights: false, Sales: false, 'Sales Dashboard': false,
+    'R&D': false, Trials: false, Inventory: false,
+    Marketing: false, 'Marketing Approver': false, Admin: false,
+  },
 };
 
 // ── Role-based permissions ──────────────────────────────────────────────────

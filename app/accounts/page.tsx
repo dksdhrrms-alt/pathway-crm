@@ -7,6 +7,7 @@ import { Account } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import TopBar from '@/app/components/TopBar';
+import { SkeletonTable } from '@/app/components/ui/Skeleton';
 import NewAccountModal from '@/app/components/NewAccountModal';
 import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
@@ -360,7 +361,25 @@ export default function AccountsPage() {
   const accountToDelete = confirmDeleteId ? accounts.find((a) => a.id === confirmDeleteId) : null;
   const sortArrow = (key: SortKey) => sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
 
-  if (loading) return <LoadingSpinner />;
+  // Keep the TopBar visible during load so the search field doesn't
+  // disappear right as the user starts typing. Skeleton rows preview
+  // where the account list is about to materialise.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+        <TopBar searchValue={search} onSearchChange={setSearch} placeholder="Search accounts..." />
+        <main className="pt-16 px-6 pb-10">
+          <div className="max-w-full mx-auto">
+            <div className="mt-6 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Accounts</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Loading accounts…</p>
+            </div>
+            <SkeletonTable rows={10} cols={7} />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">

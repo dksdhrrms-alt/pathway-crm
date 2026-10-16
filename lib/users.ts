@@ -1,4 +1,4 @@
-export type UserRole = 'administrative_manager' | 'admin' | 'ceo' | 'sales_director' | 'coo' | 'sales' | 'marketing' | 'technical_manager';
+export type UserRole = 'administrative_manager' | 'admin' | 'ceo' | 'sales_director' | 'coo' | 'sales' | 'marketing' | 'technical_manager' | 'intern';
 export type UserStatus = 'active' | 'pending' | 'inactive';
 
 export type UserTeam = 'monogastrics' | 'swine' | 'ruminants' | 'latam' | 'familyb2b' | 'marketing' | 'management' | null;
@@ -153,6 +153,7 @@ export function getRoleLabel(role: UserRole): string {
     case 'sales': return 'Sales Rep';
     case 'marketing': return 'Marketing';
     case 'technical_manager': return 'Technical Manager';
+    case 'intern': return 'Intern';
   }
 }
 
@@ -165,6 +166,7 @@ export const ROLE_COLORS: Record<UserRole, string> = {
   sales: '#0369a1',
   marketing: '#92400e',
   technical_manager: '#0e7490', // teal
+  intern: '#78716c',             // warm gray — tells reps at a glance who's temporary
 };
 
 /** Roles that can see all data (not filtered by ownerId) */

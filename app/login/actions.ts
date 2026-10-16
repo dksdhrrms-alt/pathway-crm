@@ -59,6 +59,11 @@ export async function authenticate(
       email,
       password,
       userData: JSON.stringify({ id: userId, name: userName, role: userRole }),
+      // Dashboard for everyone except interns — they bounce to
+      // /accounts (middleware also enforces this, but setting it
+      // here avoids the extra redirect round-trip on first sign-in).
+      // We check role via the user list rather than the session (the
+      // session isn't established yet at this point).
       redirectTo: '/dashboard',
     });
   } catch (error) {

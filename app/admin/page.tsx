@@ -14,7 +14,7 @@ import Link from 'next/link';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
-const ASSIGNABLE_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo', 'sales', 'marketing', 'technical_manager'];
+const ASSIGNABLE_ROLES: UserRole[] = ['administrative_manager', 'admin', 'ceo', 'sales_director', 'coo', 'sales', 'marketing', 'technical_manager', 'intern'];
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
@@ -45,6 +45,8 @@ const roleColors: Record<string, string> = {
   coo: 'bg-violet-100 text-violet-800',
   sales: 'bg-sky-100 text-sky-700',
   marketing: 'bg-amber-100 text-amber-700',
+  technical_manager: 'bg-cyan-100 text-cyan-800',
+  intern: 'bg-stone-100 text-stone-700',
 };
 
 export default function AdminPage() {

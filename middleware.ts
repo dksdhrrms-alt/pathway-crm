@@ -20,7 +20,23 @@ export default auth((req) => {
   }
 
   if (isLoggedIn && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    // Interns don't get the Dashboard — they only have Accounts +
+    // Contacts in their menu. Landing them on /dashboard would show
+    // KPIs they shouldn't see, so bounce straight to /accounts.
+    const landing = role === 'intern' ? '/accounts' : '/dashboard';
+    return NextResponse.redirect(new URL(landing, req.url));
+  }
+
+  // Intern lockout: block the pages the Sidebar hides for them.
+  // The Sidebar already omits these links, but a direct URL (typed
+  // or shared) would still render the page. Guard at the edge so
+  // the component tree never mounts for a denied path.
+  if (isLoggedIn && role === 'intern') {
+    const INTERN_ALLOW = ['/accounts', '/contacts', '/archive', '/profile', '/settings'];
+    const allowed = INTERN_ALLOW.some((p) => pathname === p || pathname.startsWith(p + '/'));
+    if (!allowed) {
+      return NextResponse.redirect(new URL('/accounts', req.url));
+    }
   }
 
   // Check protected routes (first match wins).

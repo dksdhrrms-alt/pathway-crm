@@ -9,6 +9,7 @@ import { useCRM } from '@/lib/CRMContext';
 import SendEmailModal from '@/app/components/SendEmailModal';
 import { useUsers } from '@/lib/UserContext';
 import TopBar from '@/app/components/TopBar';
+import { SkeletonTable } from '@/app/components/ui/Skeleton';
 import NewContactModal from '@/app/components/NewContactModal';
 import Toast from '@/app/components/Toast';
 import LoadingSpinner from '@/app/components/LoadingSpinner';
@@ -339,7 +340,22 @@ function ContactsPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [allAccounts, users]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+        <TopBar searchValue={search} onSearchChange={setSearch} placeholder="Search contacts or accounts..." />
+        <main className="pt-16 px-6 pb-10">
+          <div className="max-w-full mx-auto">
+            <div className="mt-6 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Contacts</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Loading contacts…</p>
+            </div>
+            <SkeletonTable rows={10} cols={6} />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">

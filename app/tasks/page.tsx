@@ -14,6 +14,10 @@ import ViewTabs from '@/app/components/ViewTabs';
 import CommentThread from '@/app/components/CommentThread';
 import EmptyState from '@/app/components/EmptyState';
 import { useViewFilter } from '@/hooks/useViewFilter';
+import DataTable, { type DataTableColumn } from '@/app/components/DataTable';
+import { Modal } from '@/app/components/ui/Modal';
+import { SkeletonTable } from '@/app/components/ui/Skeleton';
+import { Check, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -34,7 +38,7 @@ const priorityStyles: Record<string, string> = {
 };
 
 export default function TasksPage() {
-  const { tasks: allTasks, accounts, contacts, toggleTask, deleteTask, loading } = useCRM();
+  const { tasks: allTasks, accounts, contacts, toggleTask, deleteTask, updateTask, loading } = useCRM();
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, canViewCompany, canViewTeam } = useViewFilter();
 
@@ -90,7 +94,24 @@ export default function TasksPage() {
 
   const filtered = getFilteredTasks();
 
-  if (loading) return <LoadingSpinner />;
+  // Loading state used to blow away the TopBar + stats row for a full-
+  // screen spinner. Keep the chrome, drop a skeleton table in place.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+        <TopBar />
+        <main className="pt-16 px-6 pb-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="mt-6 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Loading tasks…</p>
+            </div>
+            <SkeletonTable rows={8} cols={6} />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const tabCounts: Record<FilterTab, number> = {
     All: taskList.length,
@@ -169,7 +190,15 @@ export default function TasksPage() {
             ))}
           </div>
 
-          {/* Task Table */}
+          {/* Task Table — DataTable variant.
+              Preserves everything the old table did (checkbox
+              toggle, important star, "from log" badge, account/
+              contact chips, overdue colouring, actions) while
+              adding sort/pin/hide, Attio-style column settings,
+              and inline edits for subject + due date + priority.
+              The expand-in-place comment row was replaced by a
+              Comments modal — easier to read on narrow laptops
+              and consistent with how Opportunities handles edit. */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
             {filtered.length === 0 ? (
               <EmptyState
@@ -178,162 +207,18 @@ export default function TasksPage() {
                 description="Switch tabs above or create a new task to get started."
               />
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
-                    <th className="w-8 px-4 py-3"></th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Subject</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Related To</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Due Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Priority</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Owner</th>
-                    <th className="w-10 px-4 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((task) => {
-                    const isOverdue = task.dueDate < TODAY && task.status === 'Open';
-                    const isDueToday = task.dueDate === TODAY && task.status === 'Open';
-                    const accountName = getAccountName(task.relatedAccountId);
-                    const contactName = getContactName(task.relatedContactId);
-
-                    return (<>
-                      <tr
-                        key={task.id}
-                        className={`border-b border-gray-50 hover:bg-green-50/20 transition-colors group ${
-                          task.status === 'Completed' ? 'opacity-60' : ''
-                        }`}
-                      >
-                        <td className="px-4 py-3.5">
-                          <button
-                            onClick={() => toggleTask(task.id)}
-                            className={`w-4 h-4 rounded border-2 transition-all flex-shrink-0 ${
-                              task.status === 'Completed'
-                                ? 'border-green-500 bg-green-500'
-                                : 'border-gray-300 hover:border-green-500'
-                            }`}
-                            aria-label={task.status === 'Completed' ? 'Mark open' : 'Mark complete'}
-                          >
-                            {task.status === 'Completed' && (
-                              <svg className="w-full h-full text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {task.isImportant && (
-                            <span
-                              className="mr-1.5 text-amber-500 dark:text-amber-400"
-                              title="Marked as important — full description will appear in Weekly Report"
-                            >★</span>
-                          )}
-                          <span className={`font-medium text-gray-800 dark:text-gray-100 ${task.status === 'Completed' ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
-                            {task.subject}
-                          </span>
-                          {task.sourceActivityId && (
-                            // Auto-created follow-up from a Log Activity
-                            // modal (data-migration/38). Small 🔗 badge
-                            // so reps can tell at a glance which tasks
-                            // came from an activity vs. manual entry.
-                            <span
-                              className="ml-1.5 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800 align-middle"
-                              title="Auto-created from a logged activity"
-                            >
-                              🔗 from log
-                            </span>
-                          )}
-                          {task.description && (
-                            // Full description wraps naturally — the old
-                            // `line-clamp-1` cut multi-line notes to a
-                            // single ellipsised line and users couldn't
-                            // see what was actually in the task.
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 whitespace-pre-wrap leading-relaxed">
-                              {task.description}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div>
-                            {accountName && (
-                              <Link
-                                href={`/accounts/${task.relatedAccountId}`}
-                                className="text-xs font-medium hover:underline block"
-                                style={{ color: 'var(--brand)' }}
-                              >
-                                {accountName}
-                              </Link>
-                            )}
-                            {contactName && (
-                              <Link
-                                href={`/contacts/${task.relatedContactId}`}
-                                className="text-xs text-gray-400 dark:text-gray-500 hover:underline"
-                              >
-                                {contactName}
-                              </Link>
-                            )}
-                            {!accountName && !contactName && (
-                              <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`text-sm ${
-                              isOverdue
-                                ? 'text-red-600 dark:text-red-400 font-medium'
-                                : isDueToday
-                                ? 'text-amber-600 dark:text-amber-400 font-medium'
-                                : 'text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {isDueToday ? 'Today' : formatDate(task.dueDate)}
-                            {isOverdue && ' ⚠'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${priorityStyles[task.priority]}`}>
-                            {task.priority}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              task.status === 'Completed'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
-                            }`}
-                          >
-                            {task.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className="text-sm text-gray-700 dark:text-gray-200">{getOwnerName(task.ownerId)}</span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setCommentTaskId(commentTaskId === task.id ? null : task.id)} className="p-2 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Comment" title="Reply">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                            </button>
-                            <button onClick={() => setEditTaskId(task.id)} className="p-2 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            </button>
-                            <button onClick={() => deleteTask(task.id)} className="p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50" aria-label="Delete">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {commentTaskId === task.id && (
-                        <tr className="bg-gray-50/50"><td colSpan={8} className="px-8 py-3">
-                          <CommentThread parentType="task" parentId={task.id} />
-                        </td></tr>
-                      )}
-                    </>);
-                  })}
-                </tbody>
-              </table>
+              <TasksDataTable
+                rows={filtered}
+                getOwnerName={getOwnerName}
+                getAccountName={getAccountName}
+                getContactName={getContactName}
+                onToggle={(id) => toggleTask(id)}
+                onEdit={(id) => setEditTaskId(id)}
+                onDelete={(id) => deleteTask(id)}
+                onComment={(id) => setCommentTaskId(id)}
+                onUpdate={(id, patch) => updateTask(id, patch)}
+                allTasks={allTasks}
+              />
             )}
           </div>
         </div>
@@ -348,7 +233,202 @@ export default function TasksPage() {
 
       {editTaskId && (() => { const t = allTasks.find((x) => x.id === editTaskId); return t ? <EditTaskModal task={t} onClose={() => setEditTaskId(null)} onSaved={() => setToast('Task updated')} /> : null; })()}
 
+      {/* Comment modal — the old inline-expand row was replaced
+          because inline comments blew up row height and made the
+          surrounding table jump around every click. A dedicated
+          modal keeps focus on the thread while leaving the table
+          state intact underneath. */}
+      {commentTaskId && (() => {
+        const t = allTasks.find((x) => x.id === commentTaskId);
+        if (!t) return null;
+        return (
+          <Modal onClose={() => setCommentTaskId(null)} size="lg">
+            <Modal.Header title="Comments" subtitle={t.subject} />
+            <Modal.Body>
+              <CommentThread parentType="task" parentId={t.id} />
+            </Modal.Body>
+          </Modal>
+        );
+      })()}
+
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// DataTable adapter — kept in-file for proximity to the column
+// defs. Same pattern as app/opportunities/page.tsx.
+// ─────────────────────────────────────────────────────────────
+const PRIORITY_OPTIONS = [
+  { label: 'High',   value: 'High' },
+  { label: 'Medium', value: 'Medium' },
+  { label: 'Low',    value: 'Low' },
+];
+const STATUS_OPTIONS = [
+  { label: 'Open',      value: 'Open' },
+  { label: 'Completed', value: 'Completed' },
+];
+
+function TasksDataTable({
+  rows, getOwnerName, getAccountName, getContactName,
+  onToggle, onEdit, onDelete, onComment, onUpdate, allTasks: _allTasks,
+}: {
+  rows: Task[];
+  getOwnerName: (id: string) => string;
+  getAccountName: (id?: string) => string;
+  getContactName: (id?: string) => string;
+  onToggle: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onComment: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<Task>) => void;
+  allTasks: Task[];
+}) {
+  const columns: DataTableColumn<Task>[] = [
+    {
+      id: 'done', label: '', width: 44, pinned: true,
+      accessor: (r) => (r.status === 'Completed' ? 1 : 0),
+      render: (r) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggle(r.id); }}
+          className={`w-4 h-4 rounded border-2 transition-all flex-shrink-0 inline-flex items-center justify-center ${
+            r.status === 'Completed'
+              ? 'border-emerald-500 bg-emerald-500 text-white'
+              : 'border-gray-300 dark:border-slate-600 hover:border-emerald-500'
+          }`}
+          aria-label={r.status === 'Completed' ? 'Mark open' : 'Mark complete'}
+        >
+          {r.status === 'Completed' && <Check className="w-3 h-3" strokeWidth={3} />}
+        </button>
+      ),
+    },
+    {
+      id: 'subject', label: 'Subject', width: 320, pinned: true,
+      accessor: (r) => r.subject,
+      render: (r) => (
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            {r.isImportant && <span className="text-amber-500 dark:text-amber-400 shrink-0" title="Important — appears in full in Weekly Report">★</span>}
+            <span className={`font-medium text-gray-800 dark:text-gray-100 ${r.status === 'Completed' ? 'line-through text-gray-400 dark:text-gray-500' : ''}`}>
+              {r.subject}
+            </span>
+            {r.sourceActivityId && (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:border-sky-800"
+                title="Auto-created from a logged activity"
+              >
+                🔗 from log
+              </span>
+            )}
+          </div>
+          {r.description && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 whitespace-pre-wrap leading-relaxed">
+              {r.description}
+            </p>
+          )}
+        </div>
+      ),
+      edit: { kind: 'text', onSave: (r, v) => onUpdate(r.id, { subject: v }) },
+    },
+    {
+      id: 'related', label: 'Related To', width: 180,
+      accessor: (r) => getAccountName(r.relatedAccountId) || getContactName(r.relatedContactId),
+      render: (r) => {
+        const acct = getAccountName(r.relatedAccountId);
+        const cont = getContactName(r.relatedContactId);
+        if (!acct && !cont) return <span className="text-xs text-gray-300 dark:text-gray-600">—</span>;
+        return (
+          <div className="min-w-0">
+            {acct && (
+              <Link href={`/accounts/${r.relatedAccountId}`}
+                className="text-xs font-medium hover:underline block truncate"
+                style={{ color: 'var(--brand)' }}
+                onClick={(e) => e.stopPropagation()}>
+                {acct}
+              </Link>
+            )}
+            {cont && (
+              <Link href={`/contacts/${r.relatedContactId}`}
+                className="text-xs text-gray-500 dark:text-gray-400 hover:underline truncate block"
+                onClick={(e) => e.stopPropagation()}>
+                {cont}
+              </Link>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: 'dueDate', label: 'Due Date', width: 130,
+      accessor: (r) => r.dueDate,
+      render: (r) => {
+        const isOverdue = r.dueDate < TODAY && r.status === 'Open';
+        const isDueToday = r.dueDate === TODAY && r.status === 'Open';
+        return (
+          <span className={isOverdue ? 'text-red-600 font-medium' : isDueToday ? 'text-amber-600 font-medium' : 'text-gray-500 dark:text-gray-400'}>
+            {isDueToday ? 'Today' : formatDate(r.dueDate)}{isOverdue && ' ⚠'}
+          </span>
+        );
+      },
+      edit: { kind: 'date', onSave: (r, v) => onUpdate(r.id, { dueDate: v }) },
+    },
+    {
+      id: 'priority', label: 'Priority', width: 110,
+      accessor: (r) => r.priority,
+      render: (r) => (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${priorityStyles[r.priority] || priorityStyles.Low}`}>
+          {r.priority}
+        </span>
+      ),
+      edit: { kind: 'select', options: PRIORITY_OPTIONS, onSave: (r, v) => onUpdate(r.id, { priority: v as Task['priority'] }) },
+    },
+    {
+      id: 'status', label: 'Status', width: 110,
+      accessor: (r) => r.status,
+      render: (r) => (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+          r.status === 'Completed'
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+            : 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300'
+        }`}>{r.status}</span>
+      ),
+      edit: { kind: 'select', options: STATUS_OPTIONS, onSave: (r, v) => onUpdate(r.id, { status: v as Task['status'] }) },
+    },
+    {
+      id: 'owner', label: 'Owner', width: 140,
+      accessor: (r) => getOwnerName(r.ownerId),
+      render: (r) => <span className="text-sm text-gray-700 dark:text-gray-200">{getOwnerName(r.ownerId)}</span>,
+    },
+    {
+      id: 'actions', label: '', width: 110, align: 'right',
+      accessor: () => '',
+      render: (r) => (
+        <div className="flex items-center justify-end gap-0.5">
+          <button onClick={(e) => { e.stopPropagation(); onComment(r.id); }}
+            className="p-1 rounded text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/30" title="Comments">
+            <MessageSquare className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
+            className="p-1 rounded text-gray-400 hover:text-brand hover:bg-brand-tint" title="Edit">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}
+            className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50" title="Delete">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <DataTable<Task>
+      tableId="tasks-list-v1"
+      columns={columns}
+      rows={rows}
+      getRowId={(t) => t.id}
+      emptyMessage="No tasks match the current filter."
+    />
   );
 }

@@ -19,6 +19,7 @@ interface TopBarProps {
 
 const PRIMARY_COLOR = 'var(--sidebar-bg)';
 
+// Intern uses the same stone/warm-gray tone as the Admin role chip.
 const roleColors: Record<string, string> = {
   administrative_manager: 'var(--brand)',
   admin: '#1e40af',
@@ -27,6 +28,8 @@ const roleColors: Record<string, string> = {
   coo: '#4a1d96',
   sales: '#0369a1',
   marketing: '#92400e',
+  technical_manager: '#0e7490',
+  intern: '#78716c',
 };
 
 export default function TopBar({ searchValue, onSearchChange, placeholder = 'Search...' }: TopBarProps) {

@@ -8,6 +8,7 @@ import {
   Draggable,
   DropResult,
 } from '@hello-pangea/dnd';
+import { useRouter } from 'next/navigation';
 import { Opportunity, Stage, STAGE_PROBABILITY, annualizedRevenue } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
@@ -19,6 +20,9 @@ import LoadingSpinner from '@/app/components/LoadingSpinner';
 import EditOpportunityModal from '@/app/components/EditOpportunityModal';
 import ViewTabs from '@/app/components/ViewTabs';
 import ConfirmDialog from '@/app/components/ConfirmDialog';
+import DataTable, { type DataTableColumn } from '@/app/components/DataTable';
+import { SkeletonTable } from '@/app/components/ui/Skeleton';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useViewFilter } from '@/hooks/useViewFilter';
 import { downloadOpportunitiesWorkbook } from '@/lib/exportOpportunities';
 
@@ -76,7 +80,8 @@ const columnTitleStyle: Record<Stage, string> = {
 };
 
 export default function OpportunitiesPage() {
-  const { opportunities: allOpps, accounts, activities, updateOpportunityStage, deleteOpportunity, loading } = useCRM();
+  const router = useRouter();
+  const { opportunities: allOpps, accounts, activities, updateOpportunityStage, updateOpportunity, deleteOpportunity, loading } = useCRM();
   const { users } = useUsers();
   const { activeView, setActiveView, filterByView, teamLabel, viewLabel, canViewCompany, canViewTeam } = useViewFilter();
 
@@ -180,7 +185,26 @@ export default function OpportunitiesPage() {
   const oppToDelete = confirmDeleteId ? oppList.find((o) => o.id === confirmDeleteId) : null;
   const columnOpps = (stage: Stage) => oppList.filter((o) => o.stage === stage);
 
-  if (loading) return <LoadingSpinner />;
+  // Loading state used to swap the entire page for a <LoadingSpinner />,
+  // which hid the TopBar and made the app feel like it was reloading
+  // from scratch. We now keep the chrome and render a Skeleton inside
+  // the list area — matches /tasks and the Dashboard.
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+        <TopBar />
+        <main className="pt-16 px-6 pb-10">
+          <div className="max-w-full mx-auto">
+            <div className="mt-6 mb-6">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Opportunities</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Loading pipeline…</p>
+            </div>
+            <SkeletonTable rows={8} cols={7} />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
@@ -450,90 +474,26 @@ export default function OpportunitiesPage() {
             </DragDropContext>
           )}
 
-          {/* List View */}
+          {/* List View — Attio-style DataTable
+              Features over the previous plain <table>:
+                · click headers to sort (shift-click to multi-sort)
+                · double-click a cell to inline-edit (name / amount /
+                  stage / close date / probability)
+                · column pin / hide / reorder via the ⚙ at the right
+                  of the header, persisted to localStorage
+                · click a row → opportunity detail
+              Kanban stays untouched above. */}
           {view === 'list' && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800">
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Opportunity</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Account</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Stage</th>
-                    <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Amount</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Close Date</th>
-                    <th className="text-right px-5 py-3 font-medium text-gray-500 uppercase text-xs tracking-wide">Prob %</th>
-                    <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wide">Owner</th>
-                    <th className="w-10 px-5 py-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {oppList.map((opp) => {
-                    const accountName = getAccountName(opp.accountId);
-                    const days = daysUntil(opp.closeDate);
-                    return (
-                      <tr
-                        key={opp.id}
-                        className="border-b border-gray-50 dark:border-slate-700 hover:bg-green-50/30 dark:hover:bg-slate-800/60 transition-colors group"
-                      >
-                        <td className="px-5 py-3.5">
-                          <Link
-                            href={`/opportunities/${opp.id}`}
-                            className="font-medium hover:underline text-brand dark:text-white"
-                          >
-                            {opp.name}
-                          </Link>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <Link
-                            href={`/accounts/${opp.accountId}`}
-                            className="text-gray-600 hover:underline text-[#2d6a4f] dark:text-emerald-300"
-                          >
-                            {accountName}
-                          </Link>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <StageBadge stage={opp.stage} />
-                        </td>
-                        <td className="px-5 py-3.5 text-right font-medium text-gray-700">
-                          {formatCurrency(opp.amount)}
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span
-                            className={`text-sm ${
-                              days < 0
-                                ? 'text-red-600 font-medium'
-                                : days < 7
-                                ? 'text-amber-600'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {formatDate(opp.closeDate)}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3.5 text-right text-gray-500">{opp.probability}%</td>
-                        <td className="px-5 py-3.5 text-gray-500">{getOwnerName(opp.ownerId)}</td>
-                        <td className="px-5 py-3.5">
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditOppId(opp.id)} className="p-2 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50" aria-label="Edit">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                          </button>
-                          <button
-                            onClick={() => setConfirmDeleteId(opp.id)}
-                            className="p-2 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
-                            aria-label="Delete"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <OpportunitiesDataTable
+              rows={oppList}
+              getAccountName={getAccountName}
+              getOwnerName={getOwnerName}
+              onRowClick={(o) => router.push(`/opportunities/${o.id}`)}
+              onEdit={(id) => setEditOppId(id)}
+              onDelete={(id) => setConfirmDeleteId(id)}
+              onUpdate={(id, patch) => updateOpportunity(id, patch)}
+              onStage={(id, s) => updateOpportunityStage(id, s)}
+            />
           )}
         </div>
       </main>
@@ -573,5 +533,118 @@ export default function OpportunitiesPage() {
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// DataTable adapter — kept in-file for proximity to the column
+// definitions. Mirrors the pattern used on the Accounts list.
+// ─────────────────────────────────────────────────────────────
+const STAGE_OPTIONS: { label: string; value: string }[] = STAGES.map((s) => ({ label: s, value: s }));
+
+function OpportunitiesDataTable({
+  rows, getAccountName, getOwnerName, onRowClick, onEdit, onDelete, onUpdate, onStage,
+}: {
+  rows: Opportunity[];
+  getAccountName: (id: string) => string;
+  getOwnerName: (id: string) => string;
+  onRowClick: (opp: Opportunity) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<Opportunity>) => void;
+  onStage: (id: string, stage: Stage) => void;
+}) {
+  const columns: DataTableColumn<Opportunity>[] = [
+    {
+      id: 'name', label: 'Opportunity', pinned: true, width: 240,
+      accessor: (r) => r.name,
+      render: (r) => (
+        <span className="font-medium text-brand dark:text-emerald-300 hover:underline">{r.name}</span>
+      ),
+      edit: { kind: 'text', onSave: (r, v) => onUpdate(r.id, { name: v }) },
+    },
+    {
+      id: 'account', label: 'Account', width: 200,
+      accessor: (r) => getAccountName(r.accountId),
+      render: (r) => <span className="text-gray-700 dark:text-gray-200">{getAccountName(r.accountId)}</span>,
+    },
+    {
+      id: 'stage', label: 'Stage', width: 150,
+      accessor: (r) => r.stage,
+      render: (r) => <StageBadge stage={r.stage} />,
+      edit: {
+        kind: 'select', options: STAGE_OPTIONS,
+        onSave: (r, v) => onStage(r.id, v as Stage),
+      },
+    },
+    {
+      id: 'amount', label: 'Amount', width: 120, align: 'right',
+      accessor: (r) => Number(r.amount) || 0,
+      render: (r) => <span className="font-medium tabular-nums">{formatCurrency(Number(r.amount) || 0)}</span>,
+      edit: {
+        kind: 'number',
+        onSave: (r, v) => onUpdate(r.id, { amount: Number(v) || 0 }),
+      },
+    },
+    {
+      id: 'closeDate', label: 'Close Date', width: 140,
+      accessor: (r) => r.closeDate,
+      render: (r) => {
+        const days = daysUntil(r.closeDate);
+        return (
+          <span className={days < 0 ? 'text-red-600 font-medium' : days < 7 ? 'text-amber-600' : 'text-gray-600 dark:text-gray-300'}>
+            {formatDate(r.closeDate)}
+          </span>
+        );
+      },
+      edit: { kind: 'date', onSave: (r, v) => onUpdate(r.id, { closeDate: v }) },
+    },
+    {
+      id: 'prob', label: 'Prob %', width: 90, align: 'right',
+      accessor: (r) => r.probability,
+      render: (r) => <span className="tabular-nums text-gray-500">{r.probability}%</span>,
+      edit: {
+        kind: 'number',
+        onSave: (r, v) => onUpdate(r.id, { probability: Math.max(0, Math.min(100, Number(v) || 0)) }),
+      },
+    },
+    {
+      id: 'owner', label: 'Owner', width: 150,
+      accessor: (r) => getOwnerName(r.ownerId),
+      render: (r) => <span className="text-gray-600 dark:text-gray-300">{getOwnerName(r.ownerId)}</span>,
+    },
+    {
+      id: 'actions', label: '', width: 80, align: 'right',
+      accessor: () => '',
+      render: (r) => (
+        <div className="flex items-center justify-end gap-0.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(r.id); }}
+            className="p-1 rounded text-gray-400 hover:text-brand hover:bg-brand-tint"
+            title="Edit opportunity"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(r.id); }}
+            className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50"
+            title="Delete opportunity"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <DataTable<Opportunity>
+      tableId="opportunities-list-v1"
+      columns={columns}
+      rows={rows}
+      getRowId={(o) => o.id}
+      onRowClick={onRowClick}
+      emptyMessage="No opportunities match the current filters."
+    />
   );
 }

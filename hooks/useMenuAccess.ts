@@ -20,6 +20,11 @@ const ROLE_DEFAULTS: Record<string, Set<string>> = {
   // Insights) plus full CRM access. Not granted /admin or sales_dashboard
   // by default; can still be unlocked per-user via user_permissions.
   technical_manager: new Set(['home', 'accounts', 'contacts', 'opportunities', 'tasks', 'archive', 'rnd', 'trials', 'reports', 'insights']),
+  // Intern — deliberately narrow. Accounts + Contacts only, plus
+  // their own Archive (every role gets that). No Home/Dashboard,
+  // no Opportunities/Tasks pipeline visibility, nothing further.
+  // Admins can widen per-user via user_permissions.
+  intern: new Set(['accounts', 'contacts', 'archive']),
 };
 
 const FULL_ACCESS = ['admin', 'administrative_manager', 'ceo'];

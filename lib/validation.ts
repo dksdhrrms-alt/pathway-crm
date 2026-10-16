@@ -23,6 +23,8 @@ export const ROLES = [
   'coo',
   'sales',
   'marketing',
+  'technical_manager',
+  'intern',
 ] as const;
 
 export const STATUSES = ['pending', 'active', 'inactive'] as const;

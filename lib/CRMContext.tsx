@@ -61,6 +61,7 @@ interface CRMContextType {
   addTask: (task: Task) => void;
   updateOpportunityStage: (id: string, stage: Stage) => void;
   updateOpportunityOwner: (id: string, ownerId: string) => void;
+  updateOpportunity: (id: string, updates: Partial<Opportunity>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   toggleTask: (id: string) => void;
   deleteAccount: (id: string) => void;
@@ -364,6 +365,19 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Generic opportunity update — used by the DataTable's inline
+  // editors (amount, closeDate, probability, name) so the single-
+  // field helpers above stay as the self-documenting entry points
+  // for stage/owner (the only two fields that trigger follow-on
+  // side effects elsewhere in the app).
+  const updateOpportunity = (id: string, updates: Partial<Opportunity>) => {
+    setOpportunities((prev) => prev.map((o) => (o.id === id ? { ...o, ...updates } : o)));
+    dbUpdateOpportunity(id, updates).catch((e) => {
+      console.error('updateOpportunity error:', e);
+      notifyCrmError('Failed to update opportunity.');
+    });
+  };
+
   const updateTask = (id: string, updates: Partial<Task>) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
     dbUpdateTask(id, updates).catch((e) => {
@@ -487,7 +501,7 @@ export function CRMProvider({ children }: { children: React.ReactNode }) {
       saleRecords, uploadHistory, salesBudgets, accountBudgets, setAccountBudgets, loading, loadingExtras, error,
       addAccount, updateAccount, addContact, updateContact,
       addOpportunity, addActivity, addTask,
-      updateOpportunityStage, updateOpportunityOwner, updateTask, toggleTask,
+      updateOpportunityStage, updateOpportunityOwner, updateOpportunity, updateTask, toggleTask,
       deleteAccount, deleteAccountsBulk, deleteContact, deleteContactsBulk,
       deleteOpportunity, deleteTask, deleteActivity, updateActivity,
       getActivitiesForAccount, getActivitiesForContact, getLastActivityDate,
