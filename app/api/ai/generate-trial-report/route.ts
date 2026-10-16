@@ -24,6 +24,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   AlignmentType, WidthType, BorderStyle, ShadingType, VerticalAlign,
+  PageOrientation, TableLayoutType,
 } from 'docx';
 
 export const dynamic = 'force-dynamic';
@@ -224,6 +225,13 @@ export async function buildTrialReportDocx(opts: {
     ],
   }));
 
+  // Landscape Letter with 0.5" margins = 10" of content width =
+  // 14400 twips. Our table is 12960 twips wide — fits with room
+  // to spare, with no risk of columns clipping on narrow screens
+  // or printers that force a smaller print area. (Portrait would
+  // leave only 7.5" of width and silently clip the "Next week"
+  // column on Word for Mac + certain Office 365 builds.)
+
   // One Trial table per selected access bucket.
   for (const bucket of bucketOrder) {
     const bucketGroups = BUCKET_GROUPS[bucket];
@@ -259,7 +267,15 @@ export async function buildTrialReportDocx(opts: {
       ] }),
     ];
 
-    children.push(new Table({ width: { size: colW.reduce((a, b) => a + b, 0), type: WidthType.DXA }, rows }));
+    children.push(new Table({
+      // tableLayout: fixed → Word honors our DXA column widths
+      //   exactly instead of auto-stretching to a logical "best fit"
+      //   that varies by locale and Word build.
+      layout: TableLayoutType.FIXED,
+      width: { size: colW.reduce((a, b) => a + b, 0), type: WidthType.DXA },
+      columnWidths: colW,
+      rows,
+    }));
   }
 
   if (stats.total === 0) {
@@ -277,7 +293,22 @@ export async function buildTrialReportDocx(opts: {
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 20 } } } },
-    sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children }],
+    sections: [{
+      properties: {
+        page: {
+          // Letter landscape: 11" × 8.5". docx swaps width/height
+          // itself when orientation is LANDSCAPE, so pass the
+          // PORTRAIT dimensions (12240 × 15840 twips) here — passing
+          // 15840 × 12240 would come out as a portrait page.
+          // Portrait left the Next-week column clipping on some
+          // Word builds; landscape mirrors Jason's weekly report
+          // and gives the two text columns room to breathe.
+          size: { orientation: PageOrientation.LANDSCAPE, width: 12240, height: 15840 },
+          margin: { top: 720, right: 720, bottom: 720, left: 720 },
+        },
+      },
+      children,
+    }],
   });
 
   const buffer = await Packer.toBuffer(doc);
