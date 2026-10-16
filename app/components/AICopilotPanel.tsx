@@ -29,11 +29,11 @@ interface HistoryItem {
 }
 
 const SUGGESTED = [
-  'Which accounts in Monogastric haven\'t been contacted in 60 days?',
-  'My open opportunities over $50k closing this quarter',
+  'When is Simplot likely to place an order?',
+  'Which of my deals is most at risk of stalling?',
+  'What should I follow up on today?',
   'Trials in progress with Amber or Red health',
-  'Contacts marked as Champion in Dairy accounts',
-  'Open tasks that are overdue by more than 7 days',
+  'Give me a brief on the Kalmbach account',
 ];
 
 export default function AICopilotPanel() {
@@ -165,12 +165,15 @@ export default function AICopilotPanel() {
             ) : (
               <div key={i} className="flex justify-start">
                 <div className={`max-w-full w-full ${item.errored ? 'text-destructive' : 'text-foreground'}`}>
-                  <div className="text-xs text-muted-fg mb-1">{item.content}</div>
+                  {/* Multi-paragraph answer. The new API returns a
+                      reasoned response with a "Suggested next steps:"
+                      bullet list — preserve newlines so it reads as
+                      intended. */}
+                  <AnswerBlock text={item.content} />
                   {item.rows && item.rows.length > 0 && item.headers && (
-                    <ResultTable rows={item.rows} headers={item.headers} />
-                  )}
-                  {item.rows && item.rows.length === 0 && !item.errored && (
-                    <div className="text-xs text-muted-fg italic">No matching rows.</div>
+                    <div className="mt-2">
+                      <ResultTable rows={item.rows} headers={item.headers} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -249,6 +252,45 @@ function ResultTable({ rows, headers }: { rows: any[]; headers: string[] }) {
       {rows.length > 30 && (
         <div className="text-[10px] text-muted-fg px-2 py-1 border-t border-border bg-[var(--surface-muted)]">
           Showing 30 of {rows.length}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * AnswerBlock — renders the reasoned answer from /api/ai/ask-crm.
+ * The route returns plain text that typically ends with a
+ * "Suggested next steps:" bullet list; we split on that line and
+ * render the bullets as a styled list for readability.
+ */
+function AnswerBlock({ text }: { text: string }) {
+  if (!text) return null;
+  const marker = /suggested next steps\s*:/i;
+  const match = text.match(marker);
+  if (!match || match.index === undefined) {
+    return <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{text}</div>;
+  }
+  const body = text.slice(0, match.index).trim();
+  const after = text.slice(match.index + match[0].length).trim();
+  const bullets = after
+    .split('\n')
+    .map((l) => l.replace(/^\s*[-*•\d.)\s]+/, '').trim())
+    .filter(Boolean);
+  return (
+    <div className="space-y-3">
+      {body && <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{body}</div>}
+      {bullets.length > 0 && (
+        <div className="rounded-lg border border-border bg-[var(--surface-muted)] p-3">
+          <div className="text-[10px] font-semibold text-brand uppercase tracking-wide mb-1.5">Suggested next steps</div>
+          <ul className="space-y-1 text-sm text-foreground">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex gap-2 leading-snug">
+                <span className="text-brand mt-0.5 shrink-0">→</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
