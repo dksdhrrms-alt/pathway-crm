@@ -6,6 +6,7 @@ import { Task, Priority, generateId } from '@/lib/data';
 import { useCRM } from '@/lib/CRMContext';
 import { useUsers } from '@/lib/UserContext';
 import SubmitButton from './SubmitButton';
+import { Modal } from './ui/Modal';
 
 interface NewTaskModalProps {
   defaultAccountId?: string;
@@ -86,26 +87,9 @@ export default function NewTaskModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
-      onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      tabIndex={-1}
-    >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New Task</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <Modal onClose={onClose} size="lg">
+      <Modal.Header title="New Task" onClose={onClose} />
+      <Modal.Body>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Subject *</label>
@@ -226,7 +210,7 @@ export default function NewTaskModal({
             </SubmitButton>
           </div>
         </form>
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }

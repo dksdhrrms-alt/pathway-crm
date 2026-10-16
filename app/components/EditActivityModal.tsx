@@ -26,6 +26,7 @@ import VoiceInputButton from './VoiceInputButton';
 import SubmitButton from './SubmitButton';
 import CommentThread from './CommentThread';
 import ActivityAttachmentsField from './ActivityAttachmentsField';
+import { Modal } from './ui/Modal';
 
 const ACTIVITY_TYPES: ActivityType[] = ['Call', 'Meeting', 'Email', 'Note'];
 const TYPE_LABEL: Record<ActivityType, string> = {
@@ -107,26 +108,9 @@ export default function EditActivityModal({ activity, onClose }: Props) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3"
-      tabIndex={-1}
-    >
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 overflow-y-auto"
-        style={{ maxHeight: 'calc(100dvh - 24px)', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))', WebkitOverflowScrolling: 'touch' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit activity</h2>
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-50"
-            aria-label="Close"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
+    <Modal onClose={onClose} size="lg" blockBackdropClose={submitting}>
+      <Modal.Header title="Edit activity" onClose={onClose} />
+      <Modal.Body>
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Type pills */}
           <div>
@@ -307,7 +291,7 @@ export default function EditActivityModal({ activity, onClose }: Props) {
           </div>
           <CommentThread parentType="activity" parentId={activity.id} />
         </div>
-      </div>
-    </div>
+      </Modal.Body>
+    </Modal>
   );
 }
