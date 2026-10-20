@@ -234,39 +234,34 @@ export default function QuickLogFAB() {
 
   return (
     <>
-      {/* FAB cluster — hidden when another modal is open.
-          Two buttons: ✨ Smart Log (free-text, AI-parsed) on top,
-          + Quick Log (structured form) at the bottom. The Smart
-          Log is deliberately smaller — most logs will still use
-          the structured form; Smart Log is the "in a hurry" lane. */}
+      {/* FAB cluster (bottom-right) — logging only. For asking
+          questions, Ask CRM lives at bottom-LEFT. The visual
+          separation keeps the two purposes from being confused.
+            · Smart Log : free-text "what happened" → Activity+Task
+            · + Quick Log: structured form with fields
+      */}
       {!hiddenByOther && (
       <div className="fixed right-7 bottom-7 z-40 flex flex-col items-end gap-3">
         <button
           onClick={() => setSmartOpen(true)}
-          className="press-nudge inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-white dark:bg-slate-800 text-brand dark:text-emerald-300 border border-brand/30 dark:border-emerald-700 shadow-[var(--shadow-md)] text-sm font-medium hover:bg-brand-tint"
-          title="Smart Log — just type/dictate what happened"
-          aria-label="Smart Log"
+          className="press-nudge inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-brand text-white shadow-[var(--shadow-lg)] hover:opacity-90 text-sm font-medium"
+          title="Log an activity — type what just happened and we'll fill in the fields"
+          aria-label="Smart Log activity"
         >
           <Sparkles className="w-4 h-4" />
           Smart Log
         </button>
         <button
           onClick={() => setIsOpen(true)}
-          className="press-nudge"
-          style={{
-            width: '56px', height: '56px', borderRadius: '50%',
-            background: 'var(--brand)', color: 'white', border: 'none',
-            cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-          title="Quick Log Activity"
+          className="press-nudge inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-white dark:bg-slate-800 text-brand dark:text-emerald-300 border border-brand/40 dark:border-emerald-700 shadow-[var(--shadow-md)] text-sm font-medium hover:bg-brand-tint"
+          title="Fill out a full activity form"
           aria-label="Quick Log Activity"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
+          Full Log
         </button>
       </div>
       )}

@@ -73,6 +73,20 @@ export default function SmartLogModal({ onClose, onSaved }: Props) {
       .map((c) => ({ id: c.id, name: `${c.firstName} ${c.lastName}` }));
   }, [contacts, preview?.account.id]);
 
+  /** Rough question detector so users who meant to open Ask CRM
+   *  (bottom-left) don't waste a round-trip here. We flag anything
+   *  that ends with "?" or starts with a question word in English
+   *  or Korean — same words Ask CRM already handles well. The user
+   *  can override and parse anyway if they really meant to log it. */
+  function looksLikeQuestion(s: string): boolean {
+    const t = s.trim();
+    if (!t) return false;
+    if (t.endsWith('?') || t.endsWith('?')) return true;
+    // \b only works on ASCII word chars, so Korean prefixes match without it.
+    return /^(?:(?:when|where|who|what|which|why|how)\b|(?:is|are|does|do|can|should|will)\s|언제|어디|누가|무엇|뭐|왜|어떻|어떤|얼마|몇)/i.test(t);
+  }
+  const questionLike = looksLikeQuestion(text);
+
   async function parse() {
     const trimmed = text.trim();
     if (trimmed.length < 5) { setError('Add a sentence or two first.'); return; }
@@ -156,6 +170,13 @@ export default function SmartLogModal({ onClose, onSaved }: Props) {
       <Modal.Body>
         {step === 'input' && (
           <div className="space-y-3">
+            {/* Purpose banner — makes it unmistakable that this
+                is for RECORDING what happened, not for asking
+                questions. */}
+            <div className="rounded-lg border border-brand/30 bg-brand-tint px-3 py-2 text-xs text-foreground">
+              <strong>Use this to record what just happened.</strong><br />
+              Need to <em>ask</em> something about the CRM instead? Use <strong>Ask CRM</strong> on the bottom-left (⌘⇧K).
+            </div>
             <div className="relative">
               <textarea
                 value={text}
@@ -173,6 +194,26 @@ export default function SmartLogModal({ onClose, onSaved }: Props) {
                 />
               </div>
             </div>
+            {/* Question detection — soft redirect to Ask CRM. The
+                parser will happily try to log a question as a Note,
+                but that's rarely what the user actually wants. */}
+            {questionLike && (
+              <div className="rounded-lg border border-indigo-300 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 px-3 py-2 text-xs text-indigo-900 dark:text-indigo-200">
+                <div className="font-semibold mb-0.5">This looks like a question.</div>
+                Smart Log <em>records</em> activities — it doesn't answer questions.
+                Try <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    // Open Ask CRM via its global hotkey. AICopilotPanel
+                    // listens for Cmd/Ctrl+Shift+K.
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'K', ctrlKey: true, shiftKey: true, metaKey: true }));
+                  }}
+                  className="underline font-medium hover:no-underline"
+                >Ask CRM (⌘⇧K)</button> for things like
+                "when will Simplot order?" or "which deal is at risk?".
+              </div>
+            )}
             <ul className="text-[11px] text-muted-fg space-y-0.5 pl-2">
               <li>↳ We'll detect the Account and Contact from the names you mention.</li>
               <li>↳ Phrases like "need to send samples next week" become a follow-up Task.</li>

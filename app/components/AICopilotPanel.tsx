@@ -100,16 +100,23 @@ export default function AICopilotPanel() {
 
   return (
     <>
-      {/* FAB — shown when the panel is closed. Sits above the QuickLog
-          floating + so it never overlaps. */}
+      {/* FAB — labelled pill so it's unambiguously "Ask CRM" and
+          not confused with Smart Log (which lives at bottom-right).
+          Positioned bottom-LEFT to physically separate the two
+          different-purpose entry points:
+            · Ask CRM  (purple/sparkles, bottom-left)  → questions
+            · Smart Log (green pill, bottom-right)     → log activities
+            · + Quick Log (green circle, bottom-right) → structured form
+      */}
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          title="Ask CRM (Cmd+Shift+K)"
+          title="Ask a question about your CRM data (Cmd+Shift+K)"
           aria-label="Open Ask CRM"
-          className="fixed bottom-24 right-6 z-40 h-11 w-11 rounded-full bg-brand text-brand-fg shadow-[var(--shadow-lg)] hover:bg-[var(--brand-hover)] press-nudge flex items-center justify-center"
+          className="fixed bottom-7 left-7 md:left-[calc(15rem+1.75rem)] z-40 inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-indigo-600 text-white shadow-[var(--shadow-lg)] hover:bg-indigo-700 press-nudge text-sm font-medium"
         >
-          <Sparkles className="w-5 h-5" />
+          <Sparkles className="w-4 h-4" />
+          Ask CRM
         </button>
       )}
 
