@@ -12,7 +12,7 @@
  *
  * Response: .docx (application/vnd.openxmlformats...).
  *
- * The cron (/api/cron/trial-weekly-report, Thu 12:00 PM) also
+ * The cron (/api/cron/trial-weekly-report, Wed 12:00 PM) also
  * calls into this file through buildTrialReportDocx() so the
  * email attachment is byte-identical to what the manual
  * download produces.

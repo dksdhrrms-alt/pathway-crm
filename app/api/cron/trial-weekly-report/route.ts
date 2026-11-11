@@ -1,5 +1,5 @@
 /**
- * Weekly Trial Report cron — Thursdays at 12:00 PM (US Central).
+ * Weekly Trial Report cron — Wednesdays at 12:00 PM (US Central).
  *
  * Pulls the recipient list from `trial_report_recipients` and sends
  * each person a .docx of this week's Trial Tracker report, scoped
@@ -180,7 +180,7 @@ function buildEmailHtml(opts: {
   </p>
 
   <p style="font-size:11px;color:#9ca3af;text-align:center;margin:28px 0 0;">
-    Scheduled every Thursday at 12 PM. Admin manages recipients in the CRM Admin page.
+    Scheduled every Wednesday at 12 PM. Admin manages recipients in the CRM Admin page.
   </p>
 </div></body></html>`;
 }

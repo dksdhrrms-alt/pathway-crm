@@ -14,7 +14,7 @@
  *         Directors show their team's bucket as locked-on too.
  *
  *   2. Weekly Trial Report Recipients
- *      -- The list the Thursday 12 PM cron sends the .docx to.
+ *      -- The list the Wednesday 12 PM cron sends the .docx to.
  *         Add a row with { email, label, teams[] }. The teams
  *         checkboxes let us send a Monogastric-only report to one
  *         person and a full report to another.
@@ -236,7 +236,7 @@ export default function TrialsAdminPanel() {
           <h2 className="font-semibold text-gray-900 dark:text-gray-100">Weekly Trial Report Recipients</h2>
         </header>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          Every <strong>Thursday at 12:00 PM</strong> a .docx with the current week's trial updates
+          Every <strong>Wednesday at 12:00 PM</strong> a .docx with the current week's trial updates
           is auto-sent to the addresses below. Each recipient can be scoped to only the team sections
           they care about.
         </p>
