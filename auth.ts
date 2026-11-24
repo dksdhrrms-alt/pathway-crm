@@ -80,40 +80,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      // Initial sign-in: stamp the role from the authorize() result and
-      // record the issue time so we know when to refresh.
+    jwt({ token, user }) {
+      // Initial sign-in only — stamp the role from the authorize()
+      // result into the JWT and return. We DELIBERATELY do not
+      // re-read from Supabase on later calls because this callback
+      // also runs inside the Next.js middleware, and middleware has
+      // a hard ~1.5s (edge) / 25s (node) initial-response budget.
+      //
+      // 2026-11-19 — 2026-11-24 outage: the earlier version did a
+      // Supabase roundtrip from here every 5 minutes. When the
+      // network path to Supabase slowed down the middleware hung
+      // and every page in the app returned 504 MIDDLEWARE_
+      // INVOCATION_TIMEOUT. Reverted to the simple baked-in
+      // behavior. Role changes now take effect on the user's next
+      // sign-in, which matches how NextAuth is designed to work.
       if (user) {
         token.role = (user as { role?: string }).role || 'sales';
-        token.roleRefreshedAt = Date.now();
-        return token;
-      }
-
-      // Subsequent requests: NextAuth usually hands us only the token,
-      // which means a role promotion in Supabase (e.g. Admin flips
-      // somebody from 'sales' to 'sales_director') never shows up in
-      // the user's menu / permissions until they sign out and back in.
-      // Brad hit exactly that on 2026-11-19. Refresh from the DB at
-      // most once every 5 minutes to keep the login surface cheap.
-      const FIVE_MIN = 5 * 60 * 1000;
-      const last = Number(token.roleRefreshedAt || 0);
-      if (token.sub && Date.now() - last > FIVE_MIN) {
-        try {
-          const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-          const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-            || process.env.SUPABASE_ANON_KEY
-            || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-          if (url && key) {
-            const sb = createClient(url, key, { auth: { persistSession: false } });
-            const { data } = await sb.from('users')
-              .select('role').eq('id', token.sub).maybeSingle();
-            if (data?.role) token.role = data.role as string;
-          }
-          token.roleRefreshedAt = Date.now();
-        } catch {
-          // Best-effort — on any failure we keep the stale role rather
-          // than booting the user out mid-session.
-        }
       }
       return token;
     },
